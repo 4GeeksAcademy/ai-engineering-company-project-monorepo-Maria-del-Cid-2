@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<!-- Configuración base del documento para caracteres, compatibilidad y visualización responsive -->
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<!-- Título SEO específico para la página de captación de solicitudes -->
+		<title>Solicita Información | Nexova Solutions</title>
+
+		<!-- Descripción SEO orientada a conversión para empresas interesadas en soluciones de talento -->
+		<meta
+			name="description"
+			content="Solicita información a Nexova Solutions y descubre cómo optimizar tu gestión de talento, selección y formación corporativa."
+		/>
+
+		<!-- Carga de Tailwind CSS mediante CDN para construir la interfaz sin hoja de estilos adicional -->
+		<script src="https://cdn.tailwindcss.com"></script>
+
+		<!-- Extensión del tema de Tailwind con los colores exactos de la identidad visual de Nexova -->
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							brand: {
+								anthracite: "#1F2328",
+								orange: "#F97316",
+								lightgray: "#E5E7EB",
+								white: "#FFFFFF"
+							}
+						}
+					}
+				}
+			};
+		</script>
+	</head>
+	<body class="bg-brand-white text-brand-anthracite">
+		<!-- Encabezado semántico replicado desde la landing principal, adaptando enlaces para regresar a index.html -->
+		<header class="sticky top-0 z-50 w-full border-b border-brand-lightgray bg-brand-white/95 backdrop-blur">
+			<!-- Contenedor principal del header con layout mobile-first y separación clara entre marca y navegación -->
+			<div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+				<div class="flex items-center justify-between gap-4">
+					<!-- Bloque de marca enlazado a la home principal para mantener continuidad entre páginas -->
+					<a
+						href="index.html"
+						class="flex min-w-0 items-center gap-3"
+						aria-label="Ir al inicio de Nexova Solutions"
+					>
+						<!-- Logo corporativo con la misma escala y presencia visual que en la landing principal -->
+						<img
+							src="Logo%20nexova%20Negro%20y%20naranja.png"
+							alt="Logo de Nexova Solutions en negro y naranja"
+							class="h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg:h-24 lg:max-w-[420px]"
+						/>
+					</a>
+
+					<!-- Botón hamburguesa visible en móvil para mostrar y ocultar el panel de navegación -->
+					<button
+						type="button"
+						class="inline-flex items-center justify-center rounded-lg border border-brand-lightgray p-3 text-brand-anthracite transition hover:border-brand-orange hover:text-brand-orange md:hidden"
+						aria-label="Abrir menú principal"
+						aria-controls="mobile-menu"
+						aria-expanded="false"
+						data-menu-button
+					>
+						<span class="sr-only">Abrir menú de navegación</span>
+						<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+						</svg>
+					</button>
+
+					<!-- Navegación de escritorio con la misma estética de la landing y un acceso explícito a Inicio -->
+					<nav class="hidden md:block" aria-label="Navegación principal">
+						<ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html">Inicio</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#servicios">Servicios</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#experiencia">Experiencia</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#contacto">Contacto</a></li>
+						</ul>
+					</nav>
+				</div>
+
+				<!-- Panel móvil replicado visualmente y adaptado para navegar entre la home y la página de solicitud -->
+				<nav
+					id="mobile-menu"
+					class="hidden border-t border-brand-lightgray pt-4 md:hidden"
+					aria-label="Navegación principal móvil"
+					data-mobile-menu
+				>
+					<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html">Inicio</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html#servicios">Servicios</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html#experiencia">Experiencia</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html#contacto">Contacto</a></li>
+					</ul>
+				</nav>
+			</div>
+		</header>
+
+		<!-- Contenido principal de la página con una única sección preparada para alojar el formulario comercial -->
+		<main>
+			<!-- Sección principal con fondo antracita corporativo para reforzar la identidad visual de Nexova -->
+			<section class="bg-brand-anthracite" aria-labelledby="application-title">
+				<!-- Contenedor central responsive con separación generosa para jerarquía visual y respiración del contenido -->
+				<div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+					<!-- Tarjeta principal a ancho completo con jerarquía vertical: título, párrafo y formulario -->
+					<div class="rounded-[2rem] bg-brand-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8 lg:p-10">
+						<!-- Cabecera compacta de la página para concentrar el mensaje y liberar espacio útil al formulario -->
+						<div class="max-w-4xl">
+							<!-- Etiqueta de marca para mantener continuidad con el resto del sitio -->
+							<p class="text-sm font-bold uppercase tracking-[0.28em] text-brand-orange sm:text-base">
+								Nexova Solutions
+							</p>
+
+							<!-- Título principal de la página con prioridad visual clara -->
+							<h2 id="application-title" class="mt-5 text-3xl font-black leading-tight text-brand-anthracite sm:text-4xl lg:text-5xl">
+								Solicita información y optimiza tu gestión de talento
+							</h2>
+
+							<!-- Párrafo introductorio unificado para evitar duplicidad y mejorar el balance visual -->
+							<p class="mt-6 max-w-4xl text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+								Cuéntanos qué reto tiene hoy tu empresa en selección, soporte o formación y prepararemos una propuesta alineada con tu contexto, tiempos y objetivos de crecimiento. Completa estos datos para que el equipo de Nexova pueda responder con una primera propuesta comercial clara, rápida y ajustada a tus necesidades.
+							</p>
+						</div>
+
+						<!-- Formulario principal situado a ancho completo para mejorar legibilidad y comodidad de uso -->
+						<form id="nexova-form" class="mt-8 space-y-8">
+									<!-- Rejilla principal: una columna en móvil y dos columnas en pantallas grandes -->
+									<div class="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+										<!-- Campo de nombre de la persona de contacto -->
+										<div class="space-y-2">
+											<label for="contact-name" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												Nombre de la persona
+											</label>
+											<input
+												id="contact-name"
+												name="contactName"
+												type="text"
+												required
+												aria-required="true"
+												aria-describedby="contact-name-error"
+												aria-invalid="false"
+												autocomplete="name"
+												data-error-target="contact-name-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="contact-name-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Introduce el nombre de la persona de contacto.</span>
+											</p>
+										</div>
+
+										<!-- Campo de puesto de trabajo de la persona de contacto -->
+										<div class="space-y-2">
+											<label for="job-title" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												Puesto de trabajo
+											</label>
+											<input
+												id="job-title"
+												name="jobTitle"
+												type="text"
+												required
+												aria-required="true"
+												aria-describedby="job-title-error"
+												aria-invalid="false"
+												autocomplete="organization-title"
+												data-error-target="job-title-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="job-title-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Introduce tu puesto de trabajo.</span>
+											</p>
+										</div>
+
+										<!-- Campo de nombre de la empresa -->
+										<div class="space-y-2">
+											<label for="company-name" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												Nombre de la empresa
+											</label>
+											<input
+												id="company-name"
+												name="companyName"
+												type="text"
+												required
+												aria-required="true"
+												aria-describedby="company-name-error"
+												aria-invalid="false"
+												autocomplete="organization"
+												data-error-target="company-name-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="company-name-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Introduce el nombre de la empresa.</span>
+											</p>
+										</div>
+
+										<!-- Campo de CIF con ejemplo de formato para facilitar el input -->
+										<div class="space-y-2">
+											<label for="company-cif" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												CIF de la empresa
+											</label>
+											<input
+												id="company-cif"
+												name="companyCif"
+												type="text"
+												required
+												aria-required="true"
+												aria-describedby="company-cif-error"
+												aria-invalid="false"
+												placeholder="Ejemplo: B12345678"
+												autocomplete="off"
+												data-error-target="company-cif-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="company-cif-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Introduce un CIF válido para la empresa.</span>
+											</p>
+										</div>
+
+										<!-- Campo de teléfono corporativo o de la persona de contacto -->
+										<div class="space-y-2">
+											<label for="contact-phone" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												Teléfono de contacto
+											</label>
+											<input
+												id="contact-phone"
+												name="contactPhone"
+												type="tel"
+												required
+												aria-required="true"
+												aria-describedby="contact-phone-error"
+												aria-invalid="false"
+												autocomplete="tel"
+												data-error-target="contact-phone-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="contact-phone-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Introduce un teléfono de contacto válido.</span>
+											</p>
+										</div>
+
+										<!-- Campo de email profesional para respuesta comercial -->
+										<div class="space-y-2">
+											<label for="contact-email" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												Email
+											</label>
+											<input
+												id="contact-email"
+												name="contactEmail"
+												type="email"
+												required
+												aria-required="true"
+												aria-describedby="contact-email-error"
+												aria-invalid="false"
+												autocomplete="email"
+												data-error-target="contact-email-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="contact-email-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Introduce un email profesional válido.</span>
+											</p>
+										</div>
+
+										<!-- Campo de país con datalist para desplegar opciones mientras el usuario escribe -->
+										<div class="space-y-2">
+											<label for="country" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												País
+											</label>
+											<input
+												id="country"
+												name="country"
+												type="text"
+												list="country-options"
+												required
+												aria-required="true"
+												aria-describedby="country-help country-error"
+												aria-invalid="false"
+												autocomplete="country-name"
+												data-error-target="country-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="country-help" class="text-sm leading-6 text-brand-anthracite/65">
+												Empieza a escribir y selecciona un país de Europa, Norteamérica o Sudamérica.
+											</p>
+											<p id="location-status" class="text-sm leading-6 text-brand-anthracite/65" aria-live="polite">
+												Cargando países y ciudades disponibles.
+											</p>
+											<p id="country-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Selecciona un país válido de la lista disponible.</span>
+											</p>
+											<datalist id="country-options"></datalist>
+										</div>
+
+										<!-- Campo de ciudad dependiente del país elegido por el usuario -->
+										<div class="space-y-2">
+											<label for="city" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+												Ciudad
+											</label>
+											<input
+												id="city"
+												name="city"
+												type="text"
+												list="city-options"
+												required
+												aria-required="true"
+												aria-describedby="city-help city-error"
+												aria-invalid="false"
+												autocomplete="address-level2"
+												disabled
+												data-error-target="city-error"
+												class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 disabled:cursor-not-allowed disabled:bg-brand-lightgray/60 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+											/>
+											<p id="city-help" class="text-sm leading-6 text-brand-anthracite/65">
+												Primero selecciona un país para ver ciudades de sus subdivisiones administrativas, incluidas sus capitales.
+											</p>
+											<p id="city-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+												<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+												<span>Selecciona una ciudad válida del país elegido.</span>
+											</p>
+											<datalist id="city-options"></datalist>
+										</div>
+									</div>
+
+									<!-- Campo de servicios de interés con título fuera del cuadro para alinearse con el resto del formulario -->
+									<div class="space-y-2">
+										<p class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Servicios de interés
+										</p>
+										<p id="services-help" class="text-sm leading-6 text-brand-anthracite/65">
+											Selecciona una o varias líneas de negocio.
+										</p>
+
+										<!-- Contenedor del grupo de checkboxes con menos margen interno y mejor alineación vertical -->
+										<fieldset id="services-fieldset" class="rounded-2xl border border-brand-lightgray bg-brand-white p-4 transition" aria-required="true" aria-describedby="services-help services-error">
+											<div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+												<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange">
+												<input
+													id="service-headhunting"
+													name="services"
+													type="checkbox"
+													value="Headhunting"
+													aria-required="true"
+													aria-describedby="services-help services-error"
+													aria-invalid="false"
+													data-service-checkbox
+													class="h-5 w-5 rounded border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+													required
+												/>
+												<span class="font-medium">Headhunting</span>
+											</label>
+
+											<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange">
+												<input
+													id="service-outsourcing"
+													name="services"
+													type="checkbox"
+													value="Outsourcing de soporte"
+													aria-required="true"
+													aria-describedby="services-help services-error"
+													aria-invalid="false"
+													data-service-checkbox
+													class="h-5 w-5 rounded border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+												/>
+												<span class="font-medium">Outsourcing de soporte</span>
+											</label>
+
+											<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange">
+												<input
+													id="service-training"
+													name="services"
+													type="checkbox"
+													value="Formación corporativa"
+													aria-required="true"
+													aria-describedby="services-help services-error"
+													aria-invalid="false"
+													data-service-checkbox
+													class="h-5 w-5 rounded border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+												/>
+												<span class="font-medium">Formación corporativa</span>
+											</label>
+										</div>
+									</fieldset>
+										<p id="services-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Selecciona al menos un servicio de interés.</span>
+										</p>
+								</div>
+
+									<!-- Bloque legal para consentimiento expreso del tratamiento de datos personales -->
+									<div id="privacy-consent-wrapper" class="rounded-3xl border border-brand-lightgray bg-brand-white p-5 transition">
+										<label for="privacy-consent" class="flex items-start gap-3 text-sm leading-7 text-brand-anthracite">
+											<input
+												id="privacy-consent"
+												name="privacyConsent"
+												type="checkbox"
+												required
+												aria-required="true"
+												aria-describedby="privacy-consent-error"
+												aria-invalid="false"
+												data-error-target="privacy-consent-error"
+												class="mt-1 h-5 w-5 rounded border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+											/>
+											<span>
+												Acepto el tratamiento de datos personales y la política de privacidad.
+											</span>
+										</label>
+										<p id="privacy-consent-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Debes aceptar el tratamiento de datos personales para continuar.</span>
+										</p>
+									</div>
+
+									<!-- Acciones finales del formulario con CTA principal y acción secundaria de reinicio -->
+									<div class="flex flex-col gap-4 border-t border-brand-lightgray pt-2 sm:flex-row sm:items-center sm:justify-end">
+										<button
+											type="reset"
+											class="inline-flex min-h-12 items-center justify-center rounded-full border border-brand-anthracite bg-transparent px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-brand-anthracite transition hover:bg-brand-anthracite hover:text-brand-white focus:outline-none focus:ring-4 focus:ring-brand-anthracite/15"
+										>
+											Limpiar datos y volver a empezar
+										</button>
+										<button
+											type="submit"
+											class="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/20"
+										>
+											Enviar solicitud
+										</button>
+									</div>
+						</form>
+
+						<!-- Tarjeta de éxito oculta por defecto que sustituye al formulario al validar correctamente -->
+						<article id="form-success-card" class="hidden rounded-[2rem] border border-brand-lightgray bg-brand-white p-8 text-center shadow-sm" aria-live="polite">
+							<div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-orange text-brand-white">
+								<svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" />
+								</svg>
+							</div>
+							<h3 class="mt-6 text-3xl font-black tracking-tight text-brand-anthracite">Gracias por confiar en Nexova</h3>
+							<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+								Hemos recibido correctamente los datos introducidos. Un miembro del equipo de Nexova se pondrá en contacto contigo lo antes posible para revisar tu solicitud y proponerte el siguiente paso.
+							</p>
+							<a
+								href="index.html"
+								class="mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/20"
+							>
+								Volver a la web
+							</a>
+						</article>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<!-- Pie de página semántico replicado visualmente desde la landing principal con enlaces adaptados a la home -->
+		<footer class="w-full border-t border-brand-lightgray bg-brand-anthracite text-brand-white">
+			<!-- Contenedor principal del footer con navegación secundaria, enlaces legales y cierre corporativo -->
+			<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+				<div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+					<!-- Bloque de identidad resumida para reforzar la marca en el cierre de página -->
+					<div class="max-w-xl">
+						<p class="text-lg font-black uppercase tracking-[0.22em] text-brand-white">Nexova</p>
+						<p class="mt-3 text-sm leading-7 text-brand-lightgray">
+							Consultoría de recursos humanos para empresas de tecnología, retail y finanzas con sedes en Valencia y Miami.
+						</p>
+					</div>
+
+					<!-- Navegación secundaria con el mismo tono visual y accesos dirigidos a la landing principal -->
+					<nav aria-label="Navegación secundaria del pie de página">
+						<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-brand-lightgray sm:flex-row sm:gap-6">
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html">Inicio</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#servicios">Servicios</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#experiencia">Experiencia</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#contacto">Contacto</a></li>
+						</ul>
+					</nav>
+				</div>
+
+				<!-- Franja final del footer con copyright y enlaces legales de marcador -->
+				<div class="mt-8 flex flex-col gap-4 border-t border-brand-white/10 pt-6 text-sm text-brand-lightgray sm:flex-row sm:items-center sm:justify-between">
+					<p>© 2011-2026 Nexova. Todos los derechos reservados.</p>
+					<div class="flex flex-col gap-3 sm:flex-row sm:gap-6">
+						<a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver política de privacidad">Política de privacidad</a>
+						<a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver aviso legal">Aviso legal</a>
+					</div>
+				</div>
+			</div>
+		</footer>
+
+		<!-- Catálogo local de países y ciudades para evitar dependencias remotas en el formulario -->
+		<script src="data/location-catalog.es.js"></script>
+
+		<!-- Script de interacción para abrir y cerrar el menú móvil del header -->
+		<script>
+			document.addEventListener("DOMContentLoaded", () => {
+				const menuButton = document.querySelector("[data-menu-button]");
+				const mobileMenu = document.querySelector("[data-mobile-menu]");
+				const form = document.querySelector("#nexova-form");
+				const successCard = document.querySelector("#form-success-card");
+				const countryInput = document.querySelector("#country");
+				const cityInput = document.querySelector("#city");
+				const locationStatus = document.querySelector("#location-status");
+				const countryOptions = document.querySelector("#country-options");
+				const cityOptions = document.querySelector("#city-options");
+				const serviceCheckboxes = document.querySelectorAll("[data-service-checkbox]");
+				const servicesFieldset = document.querySelector("#services-fieldset");
+				const servicesError = document.querySelector("#services-error");
+				const privacyConsent = document.querySelector("#privacy-consent");
+				const privacyConsentWrapper = document.querySelector("#privacy-consent-wrapper");
+				const locationCatalog = window.NEXOVA_LOCATION_CATALOG || { countries: [], citiesByCountry: {} };
+				let citiesByCountry = locationCatalog.citiesByCountry || {};
+				const formFields = form ? Array.from(form.querySelectorAll("input[list], input[type='text'], input[type='tel'], input[type='email']")) : [];
+
+				if (!menuButton || !mobileMenu) {
+					return;
+				}
+
+				const closeMenu = () => {
+					mobileMenu.classList.add("hidden");
+					menuButton.setAttribute("aria-expanded", "false");
+					menuButton.setAttribute("aria-label", "Abrir menú principal");
+				};
+
+				const toggleMenu = () => {
+					const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+					mobileMenu.classList.toggle("hidden", isOpen);
+					menuButton.setAttribute("aria-expanded", String(!isOpen));
+					menuButton.setAttribute("aria-label", isOpen ? "Abrir menú principal" : "Cerrar menú principal");
+				};
+
+				menuButton.addEventListener("click", toggleMenu);
+				mobileMenu.querySelectorAll("a").forEach((link) => {
+					link.addEventListener("click", closeMenu);
+				});
+
+				if (countryInput && cityInput && cityOptions && countryOptions) {
+					const setLocationStatus = (message) => {
+						if (locationStatus) {
+							locationStatus.textContent = message;
+						}
+					};
+
+					const normalizeCountryName = (value) => value.trim().toLowerCase();
+
+					const populateCountryOptions = () => {
+						countryOptions.innerHTML = "";
+
+						locationCatalog.countries.forEach((countryName) => {
+							const option = document.createElement("option");
+							option.value = countryName;
+							countryOptions.appendChild(option);
+						});
+
+						countryInput.disabled = locationCatalog.countries.length === 0;
+						cityInput.disabled = true;
+
+						if (locationCatalog.countries.length === 0) {
+							setLocationStatus("No se pudo cargar el catálogo local de países y ciudades.");
+							return;
+						}
+
+						setLocationStatus("Países cargados. Empieza a escribir para ver sugerencias.");
+					};
+
+					const syncCities = () => {
+						const selectedCountry = countryInput.value.trim();
+						const matchedCountry = Object.keys(citiesByCountry).find(
+							(countryName) => normalizeCountryName(countryName) === normalizeCountryName(selectedCountry)
+						);
+						const cities = matchedCountry ? citiesByCountry[matchedCountry] : [];
+
+						cityOptions.innerHTML = "";
+						cityInput.value = "";
+						cityInput.disabled = cities.length === 0;
+
+						if (cities.length === 0) {
+							setLocationStatus(selectedCountry ? "No hay ciudades cargadas para ese país. Selecciona un país válido de la lista." : "Selecciona un país para habilitar la ciudad.");
+							return;
+						}
+
+						cities.forEach((city) => {
+							const option = document.createElement("option");
+							option.value = city;
+							cityOptions.appendChild(option);
+						});
+
+						setLocationStatus(`Se han cargado ${cities.length} ciudades para ${matchedCountry}.`);
+					};
+
+					populateCountryOptions();
+					countryInput.addEventListener("input", syncCities);
+					countryInput.addEventListener("change", syncCities);
+				}
+
+				const showFieldError = (field, message) => {
+					const errorTargetId = field.dataset.errorTarget;
+					const errorNode = errorTargetId ? document.getElementById(errorTargetId) : null;
+
+					field.setAttribute("aria-invalid", "true");
+					field.classList.remove("border-brand-lightgray", "focus:border-brand-orange", "focus:ring-brand-orange/15");
+					field.classList.add("border-red-600", "focus:border-red-600", "focus:ring-red-100");
+
+					if (errorNode) {
+						errorNode.classList.remove("hidden");
+						errorNode.classList.add("flex");
+						const errorText = errorNode.querySelector("span");
+						if (errorText) {
+							errorText.textContent = message;
+						}
+					}
+				};
+
+				const clearFieldError = (field) => {
+					const errorTargetId = field.dataset.errorTarget;
+					const errorNode = errorTargetId ? document.getElementById(errorTargetId) : null;
+
+					field.setAttribute("aria-invalid", "false");
+					field.classList.remove("border-red-600", "focus:border-red-600", "focus:ring-red-100");
+					field.classList.add("border-brand-lightgray", "focus:border-brand-orange", "focus:ring-brand-orange/15");
+
+					if (errorNode) {
+						errorNode.classList.add("hidden");
+						errorNode.classList.remove("flex");
+					}
+				};
+
+				const showServicesError = (message) => {
+					if (servicesFieldset) {
+						servicesFieldset.classList.remove("border-brand-lightgray");
+						servicesFieldset.classList.add("border-red-600", "ring-2", "ring-red-100");
+					}
+
+					serviceCheckboxes.forEach((checkbox) => {
+						checkbox.setAttribute("aria-invalid", "true");
+					});
+
+					if (servicesError) {
+						servicesError.classList.remove("hidden");
+						servicesError.classList.add("flex");
+						const errorText = servicesError.querySelector("span");
+						if (errorText) {
+							errorText.textContent = message;
+						}
+					}
+				};
+
+				const clearServicesError = () => {
+					if (servicesFieldset) {
+						servicesFieldset.classList.remove("border-red-600", "ring-2", "ring-red-100");
+						servicesFieldset.classList.add("border-brand-lightgray");
+					}
+
+					serviceCheckboxes.forEach((checkbox) => {
+						checkbox.setAttribute("aria-invalid", "false");
+					});
+
+					if (servicesError) {
+						servicesError.classList.add("hidden");
+						servicesError.classList.remove("flex");
+					}
+				};
+
+				const showPrivacyError = (message) => {
+					if (privacyConsentWrapper) {
+						privacyConsentWrapper.classList.remove("border-brand-lightgray");
+						privacyConsentWrapper.classList.add("border-red-600", "ring-2", "ring-red-100");
+					}
+
+					if (privacyConsent) {
+						showFieldError(privacyConsent, message);
+					}
+				};
+
+				const clearPrivacyError = () => {
+					if (privacyConsentWrapper) {
+						privacyConsentWrapper.classList.remove("border-red-600", "ring-2", "ring-red-100");
+						privacyConsentWrapper.classList.add("border-brand-lightgray");
+					}
+
+					if (privacyConsent) {
+						clearFieldError(privacyConsent);
+					}
+				};
+
+				const validateTextField = (field) => {
+					const value = field.value.trim();
+
+					if (!value) {
+						showFieldError(field, "Este campo es obligatorio.");
+						return false;
+					}
+
+					if (field.name === "contactEmail" && !field.checkValidity()) {
+						showFieldError(field, "Introduce un email profesional válido.");
+						return false;
+					}
+
+					if (field.name === "contactPhone" && value.replace(/\D/g, "").length < 7) {
+						showFieldError(field, "Introduce un teléfono de contacto válido.");
+						return false;
+					}
+
+					if (field.name === "companyCif" && !/^[A-Za-z]\d{7}[A-Za-z0-9]$|^[A-Za-z0-9]\d{7}[A-Za-z0-9]$/.test(value)) {
+						showFieldError(field, "Introduce un CIF con un formato similar a B12345678.");
+						return false;
+					}
+
+					if (field.name === "country" && !Object.keys(citiesByCountry).some((countryName) => countryName.toLowerCase() === value.toLowerCase())) {
+						showFieldError(field, "Selecciona un país válido de la lista disponible.");
+						return false;
+					}
+
+					if (field.name === "city") {
+						const selectedCountry = countryInput ? countryInput.value.trim() : "";
+						const matchedCountry = Object.keys(citiesByCountry).find((countryName) => countryName.toLowerCase() === selectedCountry.toLowerCase());
+						const availableCities = matchedCountry ? citiesByCountry[matchedCountry] : [];
+
+						if (!availableCities.some((cityName) => cityName.toLowerCase() === value.toLowerCase())) {
+							showFieldError(field, "Selecciona una ciudad válida del país elegido.");
+							return false;
+						}
+					}
+
+					clearFieldError(field);
+					return true;
+				};
+
+				const validateServices = () => {
+					const hasCheckedService = Array.from(serviceCheckboxes).some((checkbox) => checkbox.checked);
+
+					if (!hasCheckedService) {
+						showServicesError("Selecciona al menos un servicio de interés.");
+						return false;
+					}
+
+					clearServicesError();
+					return true;
+				};
+
+				const validatePrivacyConsent = () => {
+					if (!privacyConsent || privacyConsent.checked) {
+						clearPrivacyError();
+						return true;
+					}
+
+					showPrivacyError("Debes aceptar el tratamiento de datos personales para continuar.");
+					return false;
+				};
+
+				const resetValidationState = () => {
+					formFields.forEach((field) => {
+						clearFieldError(field);
+					});
+
+					clearServicesError();
+					clearPrivacyError();
+				};
+
+				if (serviceCheckboxes.length > 0) {
+					const syncServiceValidation = () => {
+						const hasCheckedService = Array.from(serviceCheckboxes).some((checkbox) => checkbox.checked);
+
+						serviceCheckboxes.forEach((checkbox, index) => {
+							checkbox.required = !hasCheckedService && index === 0;
+							checkbox.setCustomValidity(hasCheckedService ? "" : "Selecciona al menos un servicio.");
+						});
+					};
+
+					syncServiceValidation();
+					serviceCheckboxes.forEach((checkbox) => {
+						checkbox.addEventListener("change", syncServiceValidation);
+					});
+				}
+
+				formFields.forEach((field) => {
+					field.addEventListener("input", () => {
+						if (field.getAttribute("aria-invalid") === "true") {
+							validateTextField(field);
+						}
+					});
+
+					field.addEventListener("blur", () => {
+						if (field.value.trim()) {
+							validateTextField(field);
+						}
+					});
+				});
+
+				if (privacyConsent) {
+					privacyConsent.addEventListener("change", validatePrivacyConsent);
+				}
+
+				if (form) {
+					form.addEventListener("submit", (event) => {
+						// Evita el envío nativo para poder controlar la validación y la respuesta visual.
+						event.preventDefault();
+
+						// Limpia primero cualquier estado visual anterior antes de recalcular errores.
+						resetValidationState();
+
+						// Valida uno por uno los campos de texto y selección gestionados por el formulario.
+						const areFieldsValid = formFields.every((field) => validateTextField(field));
+
+						// Valida el grupo de servicios múltiple y el consentimiento legal por separado.
+						const areServicesValid = validateServices();
+						const isPrivacyConsentValid = validatePrivacyConsent();
+
+						// Si hay cualquier error, mueve el foco al primer campo inválido y detiene el flujo.
+						if (!areFieldsValid || !areServicesValid || !isPrivacyConsentValid) {
+							const firstInvalidField = form.querySelector("[aria-invalid='true']");
+							if (firstInvalidField) {
+								firstInvalidField.focus();
+							}
+							return;
+						}
+
+						// Si todo es correcto, oculta el formulario y muestra la tarjeta final de confirmación.
+						form.classList.add("hidden");
+						if (successCard) {
+							successCard.classList.remove("hidden");
+						}
+					});
+
+					form.addEventListener("reset", () => {
+						// El reset nativo borra los valores; después limpiamos errores y restauramos estados auxiliares.
+						requestAnimationFrame(() => {
+							resetValidationState();
+							if (countryInput) {
+								countryInput.value = "";
+							}
+							if (cityInput) {
+								cityInput.value = "";
+								cityInput.disabled = true;
+							}
+							if (cityOptions) {
+								cityOptions.innerHTML = "";
+							}
+							if (successCard) {
+								successCard.classList.add("hidden");
+							}
+							form.classList.remove("hidden");
+							if (locationCatalog.countries.length > 0 && locationStatus) {
+								locationStatus.textContent = "Países cargados. Empieza a escribir para ver sugerencias.";
+							}
+						});
+					});
+				}
+			});
+		</script>
+	</body>
+</html>

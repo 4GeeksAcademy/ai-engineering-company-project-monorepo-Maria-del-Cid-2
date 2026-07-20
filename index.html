@@ -133,14 +133,25 @@
 						</svg>
 					</button>
 
-					<!-- Navegación principal en escritorio con disposición horizontal y foco en accesibilidad -->
-					<nav class="hidden md:block" aria-label="Navegación principal">
-						<ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
-							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#servicios">Servicios</a></li>
-							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#experiencia">Experiencia</a></li>
-							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#contacto">Contacto</a></li>
-						</ul>
-					</nav>
+					<!-- Bloque derecho en escritorio con menú y CTA alineados en una misma fila -->
+					<div class="hidden md:flex md:ml-auto md:items-center md:gap-4">
+						<!-- Navegación principal en escritorio con disposición horizontal y foco en accesibilidad -->
+						<nav aria-label="Navegación principal">
+							<ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#servicios">Servicios</a></li>
+								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#experiencia">Experiencia</a></li>
+								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#contacto">Contacto</a></li>
+							</ul>
+						</nav>
+
+						<!-- CTA principal en escritorio situado a la derecha del menú -->
+						<a
+							href="application.html"
+							class="inline-flex items-center justify-center rounded-full bg-brand-orange px-5 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/25"
+						>
+							Solicitar asesoría
+						</a>
+					</div>
 				</div>
 
 				<!-- Panel móvil oculto por defecto y preparado para que JavaScript alterne su visibilidad sin cambiar la estructura HTML -->
@@ -162,7 +173,7 @@
 		<!-- Contenido principal de la página con secciones semánticas identificadas por ID -->
 		<main>
 			<!-- Sección Hero: propuesta de valor principal y mensaje de apertura -->
-			<section id="hero" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+			<section id="hero" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12" aria-labelledby="hero-title">
 				<!-- Banner principal con imagen de contexto profesional, superposición oscura y composición adaptable a cualquier pantalla -->
 				<div class="relative overflow-hidden rounded-[2rem] bg-brand-anthracite shadow-2xl">
 					<!-- Imagen decorativa del hero orientada a tecnología, juventud e innovación aplicada a recursos humanos -->
@@ -191,7 +202,7 @@
 							</p>
 
 							<!-- Único h1 de la página, optimizado para SEO en recursos humanos y adquisición de talento tecnológico -->
-							<h1 class="mt-6 text-4xl font-black leading-tight text-brand-white sm:text-5xl lg:text-6xl">
+							<h1 id="hero-title" class="mt-6 text-4xl font-black leading-tight text-brand-white sm:text-5xl lg:text-6xl">
 								Consultoría Estratégica de Recursos Humanos y Adquisición de Talento Tecnológico
 							</h1>
 
@@ -203,7 +214,7 @@
 							<!-- Acciones principales del hero para dirigir tráfico a los bloques clave de conversión y servicios -->
 							<div class="mt-8 flex flex-col gap-4 sm:flex-row">
 								<a
-									href="#contacto"
+									href="application.html"
 									class="inline-flex items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-brand-white transition hover:bg-orange-600"
 								>
 									Solicitar asesoría
@@ -224,10 +235,11 @@
 			<section
 				id="servicios"
 				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
+				aria-labelledby="servicios-title"
 			>
 				<!-- Encabezado de la sección de servicios con título semántico y texto de contexto para presentar la oferta principal -->
 				<div class="mx-auto max-w-3xl text-center">
-					<h2 class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
+					<h2 id="servicios-title" class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
 						Servicios de Recursos Humanos para Empresas en Crecimiento
 					</h2>
 					<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
@@ -317,12 +329,12 @@
 				</div>
 
 				<!-- Cierre comercial de la sección con texto explicativo y botón de acción, sin presentarlo como una card independiente -->
-				<div class="mt-10 max-w-3xl">
+				<div class="mx-auto mt-10 max-w-3xl text-center">
 					<p class="text-base leading-8 text-brand-anthracite/80 sm:text-lg">
 						Cuéntanos qué necesita tu empresa y te ayudaremos a definir la solución adecuada para selección, soporte o formación corporativa.
 					</p>
 					<a
-						href="#"
+						href="application.html"
 						class="mt-6 inline-flex items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-brand-white transition hover:bg-orange-600"
 					>
 						Solicitar propuesta
@@ -334,10 +346,11 @@
 			<section
 				id="experiencia"
 				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
+				aria-labelledby="experiencia-title"
 			>
 				<!-- Encabezado principal de la sección de experiencia con un h2 centrado para destacar prueba social y credibilidad -->
 				<div class="mx-auto max-w-3xl text-center">
-					<h2 class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
+					<h2 id="experiencia-title" class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
 						La Experiencia de las Empresas que Confían en Nexova
 					</h2>
 					<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
@@ -350,7 +363,7 @@
 					<!-- Testimonio 1 orientado al sector tecnológico con fondo oscuro para maximizar contraste -->
 					<article class="flex h-full flex-col rounded-3xl bg-brand-anthracite p-6 text-brand-white shadow-sm ring-1 ring-brand-anthracite/10">
 						<!-- Bloque de estrellas con iconos SVG naranjas para representar la valoración del cliente -->
-						<div class="flex items-center gap-2 text-brand-orange" aria-label="Valoración de cinco estrellas">
+						<div class="flex items-center gap-2 text-brand-orange" role="img" aria-label="Valoración de cinco estrellas">
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
@@ -373,7 +386,7 @@
 					<!-- Testimonio 2 enfocado al sector retail con tarjeta clara para alternar contraste y ritmo visual -->
 					<article class="flex h-full flex-col rounded-3xl bg-brand-white p-6 text-brand-anthracite shadow-sm ring-1 ring-brand-lightgray">
 						<!-- Bloque de estrellas SVG en naranja para mantener consistencia visual con la marca -->
-						<div class="flex items-center gap-2 text-brand-orange" aria-label="Valoración de cinco estrellas">
+						<div class="flex items-center gap-2 text-brand-orange" role="img" aria-label="Valoración de cinco estrellas">
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
@@ -396,7 +409,7 @@
 					<!-- Testimonio 3 orientado al sector financiero con fondo oscuro para cerrar la composición con simetría visual -->
 					<article class="flex h-full flex-col rounded-3xl bg-brand-anthracite p-6 text-brand-white shadow-sm ring-1 ring-brand-anthracite/10">
 						<!-- Línea de estrellas naranjas para expresar satisfacción máxima del cliente -->
-						<div class="flex items-center gap-2 text-brand-orange" aria-label="Valoración de cinco estrellas">
+						<div class="flex items-center gap-2 text-brand-orange" role="img" aria-label="Valoración de cinco estrellas">
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
 							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
@@ -422,10 +435,11 @@
 			<section
 				id="contacto"
 				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
+				aria-labelledby="contacto-title"
 			>
 				<!-- Encabezado de la sección de contacto con título semántico y mensaje persuasivo orientado a conversión -->
 				<div class="mx-auto max-w-3xl text-center">
-					<h2 class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
+					<h2 id="contacto-title" class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
 						Hablemos de la Solución que tu Empresa Necesita
 					</h2>
 					<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
@@ -533,7 +547,7 @@
 				<!-- Cierre de conversión con botón principal grande y accesible enlazado al futuro formulario -->
 				<div class="mt-10 flex justify-center">
 					<a
-						href="#"
+						href="application.html"
 						class="inline-flex min-h-14 items-center justify-center rounded-full bg-brand-orange px-8 py-4 text-base font-bold uppercase tracking-[0.14em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/30"
 						aria-label="Solicitar información a través del futuro formulario de contacto"
 					>
@@ -576,5 +590,34 @@
 				</div>
 			</div>
 		</footer>
+
+		<script>
+			document.addEventListener("DOMContentLoaded", () => {
+				const menuButton = document.querySelector("[data-menu-button]");
+				const mobileMenu = document.querySelector("[data-mobile-menu]");
+
+				if (!menuButton || !mobileMenu) {
+					return;
+				}
+
+				const closeMenu = () => {
+					mobileMenu.classList.add("hidden");
+					menuButton.setAttribute("aria-expanded", "false");
+					menuButton.setAttribute("aria-label", "Abrir menú principal");
+				};
+
+				const toggleMenu = () => {
+					const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+					mobileMenu.classList.toggle("hidden", isOpen);
+					menuButton.setAttribute("aria-expanded", String(!isOpen));
+					menuButton.setAttribute("aria-label", isOpen ? "Abrir menú principal" : "Cerrar menú principal");
+				};
+
+				menuButton.addEventListener("click", toggleMenu);
+				mobileMenu.querySelectorAll("a").forEach((link) => {
+					link.addEventListener("click", closeMenu);
+				});
+			});
+		</script>
 	</body>
 </html>
