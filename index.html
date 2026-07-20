@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<!-- Configuración base del documento para caracteres, compatibilidad y responsive -->
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<!-- Título SEO optimizado para intención B2B en sectores tecnológico, retail y financiero -->
+		<title>Consultoría de Recursos Humanos | Tecnología, Retail y Finanzas</title>
+
+		<!-- Descripción SEO enfocada a empresas medianas con necesidades de gestión y estrategia de talento -->
+		<meta
+			name="description"
+			content="Headhunting especializada en mandos medios y directivos, outsourcing de soporte al cliente tech y formación corporativa en liderazgo y habilidades blandas."
+		/>
+
+		<!-- Carga de Tailwind CSS mediante CDN (único sistema de estilos permitido) -->
+		<script src="https://cdn.tailwindcss.com"></script>
+
+		<!-- Extensión del tema de Tailwind para registrar los colores exactos de la marca -->
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							brand: {
+								anthracite: '#1F2328',
+								orange: '#F97316',
+								lightgray: '#E5E7EB',
+								white: '#FFFFFF'
+							}
+						}
+					}
+				}
+			};
+		</script>
+
+		<!-- Marcado estructurado Schema.org en formato JSON-LD para una consultora de recursos humanos con presencia en España y USA -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "ProfessionalService",
+				"name": "Consultoría de Recursos Humanos",
+				"description": "Consultoría de recursos humanos para empresas medianas de los sectores tecnológico, retail y financiero.",
+				"url": "https://www.consultoria-recursos-humanos.com",
+				"telephone": "+34-900-000-000",
+				"email": "contacto@consultoria-recursos-humanos.com",
+				"logo": "https://www.consultoria-recursos-humanos.com/logo.png",
+				"address": {
+					"@type": "PostalAddress",
+					"streetAddress": "Calle de Ejemplo 123",
+					"addressLocality": "Madrid",
+					"addressRegion": "Madrid",
+					"postalCode": "28001",
+					"addressCountry": "ES"
+				},
+				"areaServed": [
+					{
+						"@type": "Country",
+						"name": "España"
+					},
+					{
+						"@type": "Country",
+						"name": "Estados Unidos"
+					}
+				],
+				"department": [
+					{
+						"@type": "Organization",
+						"name": "Sede España",
+						"address": {
+							"@type": "PostalAddress",
+							"streetAddress": "Calle de Ejemplo 123",
+							"addressLocality": "Madrid",
+							"addressRegion": "Madrid",
+							"postalCode": "28001",
+							"addressCountry": "ES"
+						}
+					},
+					{
+						"@type": "Organization",
+						"name": "Sede USA",
+						"address": {
+							"@type": "PostalAddress",
+							"streetAddress": "500 Market Street",
+							"addressLocality": "San Francisco",
+							"addressRegion": "CA",
+							"postalCode": "94105",
+							"addressCountry": "US"
+						}
+					}
+				],
+				"sameAs": [
+					"https://www.linkedin.com/company/consultoria-recursos-humanos",
+					"https://www.instagram.com/consultoria-recursos-humanos"
+				]
+			}
+		</script>
+	</head>
+	<body class="bg-brand-white text-brand-anthracite">
+		<!-- Encabezado semántico principal para navegación, branding y acceso rápido a secciones -->
+		<header class="w-full border-b border-brand-lightgray bg-brand-white">
+			<!-- Contenedor interno del header (intencionalmente vacío para futura implementación) -->
+			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"></div>
+		</header>
+
+		<!-- Contenido principal de la página con secciones semánticas identificadas por ID -->
+		<main>
+			<!-- Sección Hero: propuesta de valor principal y mensaje de apertura -->
+			<section id="hero" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"></section>
+
+			<!-- Sección Servicios: catálogo de soluciones de recursos humanos y gestión de talento -->
+			<section
+				id="servicios"
+				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
+			></section>
+
+			<!-- Sección Experiencia: trayectoria en transformación cultural y estrategia de talento -->
+			<section
+				id="experiencia"
+				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
+			></section>
+
+			<!-- Sección Contacto: canales para captar leads y solicitudes comerciales -->
+			<section
+				id="contacto"
+				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
+			></section>
+		</main>
+
+		<!-- Pie de página semántico para información corporativa, legal y enlaces secundarios -->
+		<footer class="w-full border-t border-brand-lightgray bg-brand-anthracite text-brand-white">
+			<!-- Contenedor interno del footer (intencionalmente vacío para futura implementación) -->
+			<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"></div>
+		</footer>
+	</body>
+</html>
