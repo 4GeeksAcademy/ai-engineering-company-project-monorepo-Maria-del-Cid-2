@@ -11,7 +11,7 @@
 
 		<!-- Descripción SEO enfocada a empresas medianas con necesidades de gestión y estrategia de talento -->
 		<meta
-			name="description"
+			name="descripytion"
 			content="Headhunting especializada en mandos medios y directivos, outsourcing de soporte al cliente tech y formación corporativa en liderazgo y habilidades blandas."
 		/>
 
@@ -100,39 +100,481 @@
 	</head>
 	<body class="bg-brand-white text-brand-anthracite">
 		<!-- Encabezado semántico principal para navegación, branding y acceso rápido a secciones -->
-		<header class="w-full border-b border-brand-lightgray bg-brand-white">
-			<!-- Contenedor interno del header (intencionalmente vacío para futura implementación) -->
-			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"></div>
+		<header class="sticky top-0 z-50 w-full border-b border-brand-lightgray bg-brand-white/95 backdrop-blur">
+			<!-- Contenedor principal del header con layout mobile-first y separación clara entre marca y navegación -->
+			<div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+				<div class="flex items-center justify-between gap-4">
+					<!-- Bloque de marca con enlace a inicio y logo real adaptado para mantener buena legibilidad en móvil y escritorio -->
+					<a
+						href="#hero"
+						class="flex min-w-0 items-center gap-3"
+						aria-label="Ir al inicio de Nexova Solutions"
+					>
+						<!-- Logo corporativo con escala reforzada para darle más presencia visual en móvil y escritorio -->
+						<img
+							src="Logo%20nexova%20Negro%20y%20naranja.png"
+							alt="Logo de Nexova Solutions en negro y naranja"
+							class="h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg:h-24 lg:max-w-[420px]"
+						/>
+					</a>
+
+					<!-- Botón hamburguesa visible en móvil y preparado para futura interacción con JavaScript -->
+					<button
+						type="button"
+						class="inline-flex items-center justify-center rounded-lg border border-brand-lightgray p-3 text-brand-anthracite transition hover:border-brand-orange hover:text-brand-orange md:hidden"
+						aria-label="Abrir menú principal"
+						aria-controls="mobile-menu"
+						aria-expanded="false"
+						data-menu-button
+					>
+						<span class="sr-only">Abrir menú de navegación</span>
+						<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+						</svg>
+					</button>
+
+					<!-- Navegación principal en escritorio con disposición horizontal y foco en accesibilidad -->
+					<nav class="hidden md:block" aria-label="Navegación principal">
+						<ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#servicios">Servicios</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#experiencia">Experiencia</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#contacto">Contacto</a></li>
+						</ul>
+					</nav>
+				</div>
+
+				<!-- Panel móvil oculto por defecto y preparado para que JavaScript alterne su visibilidad sin cambiar la estructura HTML -->
+				<nav
+					id="mobile-menu"
+					class="hidden border-t border-brand-lightgray pt-4 md:hidden"
+					aria-label="Navegación principal móvil"
+					data-mobile-menu
+				>
+					<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="#servicios">Servicios</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="#experiencia">Experiencia</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="#contacto">Contacto</a></li>
+					</ul>
+				</nav>
+			</div>
 		</header>
 
 		<!-- Contenido principal de la página con secciones semánticas identificadas por ID -->
 		<main>
 			<!-- Sección Hero: propuesta de valor principal y mensaje de apertura -->
-			<section id="hero" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"></section>
+			<section id="hero" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+				<!-- Banner principal con imagen de contexto profesional, superposición oscura y composición adaptable a cualquier pantalla -->
+				<div class="relative overflow-hidden rounded-[2rem] bg-brand-anthracite shadow-2xl">
+					<!-- Imagen decorativa del hero orientada a tecnología, juventud e innovación aplicada a recursos humanos -->
+					<img
+						src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80"
+						alt=""
+						class="absolute inset-0 h-full w-full object-cover"
+						aria-hidden="true"
+					/>
+
+					<!-- Capa de color para asegurar contraste, legibilidad y coherencia con la identidad visual de la marca -->
+					<div class="absolute inset-0 bg-brand-anthracite/50"></div>
+					<div class="absolute inset-0 bg-gradient-to-r from-brand-anthracite/70 via-brand-anthracite/55 to-brand-anthracite/25"></div>
+
+					<!-- Contenido textual del hero con jerarquía SEO, mensaje comercial y llamadas a la acción -->
+					<div class="relative px-6 py-16 sm:px-10 sm:py-20 lg:px-16 lg:py-24">
+						<div class="max-w-3xl">
+							<!-- Nombre comercial de la empresa presentado como etiqueta de marca, sin competir con el h1 SEO -->
+							<p class="text-sm font-bold uppercase tracking-[0.3em] text-brand-orange sm:text-base">
+								Nexova Solutions
+							</p>
+
+							<!-- Eslogan oficial de la empresa para reforzar posicionamiento y tono de marca -->
+							<p class="mt-4 text-xl font-semibold text-brand-white sm:text-2xl">
+								Conectamos talento. Impulsamos empresas
+							</p>
+
+							<!-- Único h1 de la página, optimizado para SEO en recursos humanos y adquisición de talento tecnológico -->
+							<h1 class="mt-6 text-4xl font-black leading-tight text-brand-white sm:text-5xl lg:text-6xl">
+								Consultoría Estratégica de Recursos Humanos y Adquisición de Talento Tecnológico
+							</h1>
+
+							<!-- Texto persuasivo para empresas medianas que buscan externalizar talento para ganar tiempo, eficiencia y control de costes -->
+							<p class="mt-6 max-w-2xl text-base leading-8 text-brand-lightgray sm:text-lg">
+								Ayudamos a medianas empresas de tecnología, retail y finanzas a externalizar selección, soporte y formación para reducir costes operativos, acelerar contrataciones y liberar tiempo interno sin perder calidad en la experiencia de talento.
+							</p>
+
+							<!-- Acciones principales del hero para dirigir tráfico a los bloques clave de conversión y servicios -->
+							<div class="mt-8 flex flex-col gap-4 sm:flex-row">
+								<a
+									href="#contacto"
+									class="inline-flex items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-brand-white transition hover:bg-orange-600"
+								>
+									Solicitar asesoría
+								</a>
+								<a
+									href="#servicios"
+									class="inline-flex items-center justify-center rounded-full border border-brand-white px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-brand-white transition hover:border-brand-orange hover:text-brand-orange"
+								>
+									Ver servicios
+								</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
 
 			<!-- Sección Servicios: catálogo de soluciones de recursos humanos y gestión de talento -->
 			<section
 				id="servicios"
 				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
-			></section>
+			>
+				<!-- Encabezado de la sección de servicios con título semántico y texto de contexto para presentar la oferta principal -->
+				<div class="mx-auto max-w-3xl text-center">
+					<h2 class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
+						Servicios de Recursos Humanos para Empresas en Crecimiento
+					</h2>
+					<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+						Diseñamos soluciones flexibles para medianas empresas que necesitan incorporar talento, reforzar su atención al cliente y desarrollar liderazgo interno sin ampliar su estructura operativa.
+					</p>
+				</div>
+
+				<!-- Grid principal de servicios con disposición en columna en móvil y tres columnas en pantallas grandes -->
+				<div class="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+					<!-- Tarjeta de headhunting enfocada en selección especializada de perfiles medios y directivos -->
+					<article class="flex h-full flex-col rounded-3xl bg-brand-lightgray p-6 shadow-sm ring-1 ring-black/5">
+						<!-- Icono SVG del servicio de selección usando exclusivamente los colores corporativos de la interfaz -->
+						<div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-anthracite text-brand-orange">
+							<svg
+								class="h-9 w-9"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								role="img"
+								aria-label="Icono de búsqueda y selección de talento para headhunting"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 17a6.5 6.5 0 1 1 4.34-11.34A6.5 6.5 0 0 1 10.5 17Z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="m15.5 15.5 5 5" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M8.5 10.5h4M10.5 8.5v4" />
+							</svg>
+						</div>
+						<!-- Título semántico del servicio para estructurar la jerarquía interna de la sección -->
+						<h3 class="mt-6 text-2xl font-bold text-brand-anthracite">Headhunting</h3>
+						<!-- Descripción breve del servicio alineada con la propuesta comercial indicada -->
+						<p class="mt-4 text-base leading-7 text-brand-anthracite/80">
+							Selección especializada de perfiles medios y directivos para acelerar contrataciones estratégicas con mejor ajuste cultural y funcional.
+						</p>
+					</article>
+
+					<!-- Tarjeta de outsourcing enfocada en soporte al cliente para empresas tecnológicas -->
+					<article class="flex h-full flex-col rounded-3xl bg-brand-white p-6 shadow-sm ring-1 ring-brand-lightgray">
+						<!-- Icono SVG del servicio de outsourcing con el mismo lenguaje visual y cromático del sitio -->
+						<div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-orange text-brand-white">
+							<svg
+								class="h-9 w-9"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								role="img"
+								aria-label="Icono de auriculares que representa outsourcing de soporte al cliente"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M4 13a8 8 0 1 1 16 0" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M5 13v4a2 2 0 0 0 2 2h2v-6H7a2 2 0 0 0-2 2Z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M19 13v4a2 2 0 0 1-2 2h-2v-6h2a2 2 0 0 1 2 2Z" />
+							</svg>
+						</div>
+						<!-- Título semántico del servicio de outsourcing -->
+						<h3 class="mt-6 text-2xl font-bold text-brand-anthracite">Outsourcing</h3>
+						<!-- Descripción comercial del servicio centrada en equipos de soporte para compañías tecnológicas -->
+						<p class="mt-4 text-base leading-7 text-brand-anthracite/80">
+							Equipos de soporte al cliente para empresas tecnológicas que buscan escalar atención, mejorar tiempos de respuesta y optimizar costes operativos.
+						</p>
+					</article>
+
+					<!-- Tarjeta de formación corporativa enfocada en liderazgo y habilidades blandas -->
+					<article class="flex h-full flex-col rounded-3xl bg-brand-lightgray p-6 shadow-sm ring-1 ring-black/5">
+						<!-- Icono SVG del servicio formativo manteniendo coherencia visual con el resto de la marca -->
+						<div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-anthracite text-brand-orange">
+							<svg
+								class="h-9 w-9"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								role="img"
+								aria-label="Icono de formación profesional para habilidades blandas y liderazgo"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5 12 4l8 3.5L12 11 4 7.5Z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M6 10.5V15c0 1.2 2.7 3 6 3s6-1.8 6-3v-4.5" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M20 8v6" />
+							</svg>
+						</div>
+						<!-- Título semántico del servicio de formación -->
+						<h3 class="mt-6 text-2xl font-bold text-brand-anthracite">Formación corporativa</h3>
+						<!-- Descripción del servicio orientada a desarrollo de soft skills y liderazgo -->
+						<p class="mt-4 text-base leading-7 text-brand-anthracite/80">
+							Programas de habilidades blandas y liderazgo para fortalecer mandos, mejorar comunicación y elevar el rendimiento de los equipos.
+						</p>
+					</article>
+				</div>
+
+				<!-- Cierre comercial de la sección con texto explicativo y botón de acción, sin presentarlo como una card independiente -->
+				<div class="mt-10 max-w-3xl">
+					<p class="text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+						Cuéntanos qué necesita tu empresa y te ayudaremos a definir la solución adecuada para selección, soporte o formación corporativa.
+					</p>
+					<a
+						href="#"
+						class="mt-6 inline-flex items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-brand-white transition hover:bg-orange-600"
+					>
+						Solicitar propuesta
+					</a>
+				</div>
+			</section>
 
 			<!-- Sección Experiencia: trayectoria en transformación cultural y estrategia de talento -->
 			<section
 				id="experiencia"
 				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
-			></section>
+			>
+				<!-- Encabezado principal de la sección de experiencia con un h2 centrado para destacar prueba social y credibilidad -->
+				<div class="mx-auto max-w-3xl text-center">
+					<h2 class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
+						La Experiencia de las Empresas que Confían en Nexova
+					</h2>
+					<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+						Acompañamos a compañías que necesitan resultados medibles en selección, soporte al cliente y desarrollo de liderazgo con un enfoque cercano, ágil y estratégico.
+					</p>
+				</div>
+
+				<!-- Sistema de testimonios responsive con una columna en móvil y tres tarjetas en pantallas grandes -->
+				<div class="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+					<!-- Testimonio 1 orientado al sector tecnológico con fondo oscuro para maximizar contraste -->
+					<article class="flex h-full flex-col rounded-3xl bg-brand-anthracite p-6 text-brand-white shadow-sm ring-1 ring-brand-anthracite/10">
+						<!-- Bloque de estrellas con iconos SVG naranjas para representar la valoración del cliente -->
+						<div class="flex items-center gap-2 text-brand-orange" aria-label="Valoración de cinco estrellas">
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+						</div>
+						<!-- Opinión del cliente sobre el impacto del servicio de headhunting en el negocio -->
+						<blockquote class="mt-6 text-base leading-8 text-brand-lightgray">
+							“Nexova nos ayudó a cubrir posiciones críticas de mando intermedio en menos tiempo y con perfiles mucho mejor alineados a nuestra cultura.”
+						</blockquote>
+						<!-- Identificación del cliente con nombre, cargo y empresa para reforzar credibilidad -->
+						<footer class="mt-6 border-t border-brand-white/15 pt-5">
+							<p class="text-lg font-bold text-brand-white">Lucía</p>
+							<p class="mt-1 text-sm uppercase tracking-[0.14em] text-brand-orange">
+								People Manager · NovaTech
+							</p>
+						</footer>
+					</article>
+
+					<!-- Testimonio 2 enfocado al sector retail con tarjeta clara para alternar contraste y ritmo visual -->
+					<article class="flex h-full flex-col rounded-3xl bg-brand-white p-6 text-brand-anthracite shadow-sm ring-1 ring-brand-lightgray">
+						<!-- Bloque de estrellas SVG en naranja para mantener consistencia visual con la marca -->
+						<div class="flex items-center gap-2 text-brand-orange" aria-label="Valoración de cinco estrellas">
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+						</div>
+						<!-- Opinión del cliente sobre el servicio de outsourcing y la mejora operativa obtenida -->
+						<blockquote class="mt-6 text-base leading-8 text-brand-anthracite/80">
+							“El equipo de soporte externalizado se integró rápido con nuestra operación y mejoró de forma visible la atención al cliente en campañas de alto volumen.”
+						</blockquote>
+						<!-- Datos del cliente para contextualizar el testimonio dentro del sector retail -->
+						<footer class="mt-6 border-t border-brand-lightgray pt-5">
+							<p class="text-lg font-bold text-brand-anthracite">Daniel</p>
+							<p class="mt-1 text-sm uppercase tracking-[0.14em] text-brand-orange">
+								Director de Operaciones · RetailWave
+							</p>
+						</footer>
+					</article>
+
+					<!-- Testimonio 3 orientado al sector financiero con fondo oscuro para cerrar la composición con simetría visual -->
+					<article class="flex h-full flex-col rounded-3xl bg-brand-anthracite p-6 text-brand-white shadow-sm ring-1 ring-brand-anthracite/10">
+						<!-- Línea de estrellas naranjas para expresar satisfacción máxima del cliente -->
+						<div class="flex items-center gap-2 text-brand-orange" aria-label="Valoración de cinco estrellas">
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+							<svg class="h-5 w-5 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 12.6 6.8l5.9.9-4.2 4.1 1 5.8L10 14.8 4.7 17.6l1-5.8-4.2-4.1 5.9-.9L10 1.5Z" /></svg>
+						</div>
+						<!-- Testimonio centrado en formación corporativa y desarrollo de liderazgo en entorno financiero -->
+						<blockquote class="mt-6 text-base leading-8 text-brand-lightgray">
+							“Los programas de liderazgo de Nexova elevaron la comunicación entre mandos y mejoraron la coordinación de equipos en un entorno muy exigente.”
+						</blockquote>
+						<!-- Pie del testimonio con nombre y contexto profesional del cliente -->
+						<footer class="mt-6 border-t border-brand-white/15 pt-5">
+							<p class="text-lg font-bold text-brand-white">Marta</p>
+							<p class="mt-1 text-sm uppercase tracking-[0.14em] text-brand-orange">
+								HR Business Partner · FinCore
+							</p>
+						</footer>
+					</article>
+				</div>
+			</section>
 
 			<!-- Sección Contacto: canales para captar leads y solicitudes comerciales -->
 			<section
 				id="contacto"
 				class="mx-auto max-w-7xl border-t border-brand-lightgray px-4 py-16 sm:px-6 lg:px-8"
-			></section>
+			>
+				<!-- Encabezado de la sección de contacto con título semántico y mensaje persuasivo orientado a conversión -->
+				<div class="mx-auto max-w-3xl text-center">
+					<h2 class="text-3xl font-black tracking-tight text-brand-anthracite sm:text-4xl">
+						Hablemos de la Solución que tu Empresa Necesita
+					</h2>
+					<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+						Si buscas una forma más ágil de cubrir posiciones clave, reforzar tu soporte o impulsar liderazgo interno, solicita información y te orientaremos sin compromiso.
+					</p>
+				</div>
+
+				<!-- Bloque principal de contacto con las dos sedes y una composición responsive de una o dos columnas -->
+				<div class="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+					<!-- Tarjeta de la sede de Valencia con iconografía SVG y datos de contacto claramente estructurados -->
+					<article class="rounded-3xl bg-brand-lightgray p-6 shadow-sm ring-1 ring-black/5">
+						<h3 class="text-2xl font-bold text-brand-anthracite">Valencia, España</h3>
+						<div class="mt-6 space-y-4">
+							<!-- Línea de dirección física con icono descriptivo -->
+							<div class="flex items-start gap-4">
+								<div class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-anthracite text-brand-orange">
+									<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-label="Icono de ubicación para la sede de Valencia">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" />
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+									</svg>
+								</div>
+								<div>
+									<p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Dirección</p>
+									<p class="mt-1 text-base leading-7 text-brand-anthracite/80">Avenida de la Innovación 28, 4º, 46004 Valencia, España</p>
+								</div>
+							</div>
+
+							<!-- Línea de teléfono local con icono visual y número verosímil -->
+							<div class="flex items-start gap-4">
+								<div class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-anthracite text-brand-orange">
+									<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-label="Icono de teléfono para la sede de Valencia">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M5 4h3l2 5-2 1.5a16 16 0 0 0 5.5 5.5L15 14l5 2v3a2 2 0 0 1-2.2 2A17 17 0 0 1 3 6.2 2 2 0 0 1 5 4Z" />
+									</svg>
+								</div>
+								<div>
+									<p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Teléfono</p>
+									<p class="mt-1 text-base leading-7 text-brand-anthracite/80">+34 96 351 42 80</p>
+								</div>
+							</div>
+
+							<!-- Línea de correo corporativo compartido con iconografía consistente -->
+							<div class="flex items-start gap-4">
+								<div class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-anthracite text-brand-orange">
+									<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-label="Icono de correo electrónico corporativo">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4z" />
+										<path stroke-linecap="round" stroke-linejoin="round" d="m4 7 8 6 8-6" />
+									</svg>
+								</div>
+								<div>
+									<p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Email</p>
+									<p class="mt-1 text-base leading-7 text-brand-anthracite/80">info@nexovasolutions.com</p>
+								</div>
+							</div>
+						</div>
+					</article>
+
+					<!-- Tarjeta de la sede de Miami con estructura paralela para facilitar lectura y comparación entre oficinas -->
+					<article class="rounded-3xl bg-brand-white p-6 shadow-sm ring-1 ring-brand-lightgray">
+						<h3 class="text-2xl font-bold text-brand-anthracite">Miami, USA</h3>
+						<div class="mt-6 space-y-4">
+							<!-- Línea de dirección física de la sede americana -->
+							<div class="flex items-start gap-4">
+								<div class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-orange text-brand-white">
+									<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-label="Icono de ubicación para la sede de Miami">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" />
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+									</svg>
+								</div>
+								<div>
+									<p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Dirección</p>
+									<p class="mt-1 text-base leading-7 text-brand-anthracite/80">1201 Brickell Avenue, Suite 510, Miami, FL 33131, USA</p>
+								</div>
+							</div>
+
+							<!-- Línea de teléfono local de Miami con formato consistente -->
+							<div class="flex items-start gap-4">
+								<div class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-orange text-brand-white">
+									<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-label="Icono de teléfono para la sede de Miami">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M5 4h3l2 5-2 1.5a16 16 0 0 0 5.5 5.5L15 14l5 2v3a2 2 0 0 1-2.2 2A17 17 0 0 1 3 6.2 2 2 0 0 1 5 4Z" />
+									</svg>
+								</div>
+								<div>
+									<p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Teléfono</p>
+									<p class="mt-1 text-base leading-7 text-brand-anthracite/80">+1 305 555 1846</p>
+								</div>
+							</div>
+
+							<!-- Línea de email corporativo compartido para contacto internacional -->
+							<div class="flex items-start gap-4">
+								<div class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-orange text-brand-white">
+									<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-label="Icono de correo electrónico corporativo para la sede de Miami">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4z" />
+										<path stroke-linecap="round" stroke-linejoin="round" d="m4 7 8 6 8-6" />
+									</svg>
+								</div>
+								<div>
+									<p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Email</p>
+									<p class="mt-1 text-base leading-7 text-brand-anthracite/80">info@nexovasolutions.com</p>
+								</div>
+							</div>
+						</div>
+					</article>
+				</div>
+
+				<!-- Cierre de conversión con botón principal grande y accesible enlazado al futuro formulario -->
+				<div class="mt-10 flex justify-center">
+					<a
+						href="#"
+						class="inline-flex min-h-14 items-center justify-center rounded-full bg-brand-orange px-8 py-4 text-base font-bold uppercase tracking-[0.14em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/30"
+						aria-label="Solicitar información a través del futuro formulario de contacto"
+					>
+						Solicitar información
+					</a>
+				</div>
+			</section>
 		</main>
 
 		<!-- Pie de página semántico para información corporativa, legal y enlaces secundarios -->
 		<footer class="w-full border-t border-brand-lightgray bg-brand-anthracite text-brand-white">
-			<!-- Contenedor interno del footer (intencionalmente vacío para futura implementación) -->
-			<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"></div>
+			<!-- Contenedor principal del footer con navegación secundaria, enlaces legales y cierre corporativo -->
+			<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+				<div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+					<!-- Bloque de identidad resumida para reforzar la marca en el cierre de página -->
+					<div class="max-w-xl">
+						<p class="text-lg font-black uppercase tracking-[0.22em] text-brand-white">Nexova</p>
+						<p class="mt-3 text-sm leading-7 text-brand-lightgray">
+							Consultoría de recursos humanos para empresas de tecnología, retail y finanzas con sedes en Valencia y Miami.
+						</p>
+					</div>
+
+					<!-- Navegación semántica del footer para mejorar la usabilidad y el acceso rápido a las secciones clave -->
+					<nav aria-label="Navegación secundaria del pie de página">
+						<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-brand-lightgray sm:flex-row sm:gap-6">
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#servicios">Servicios</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#experiencia">Experiencia</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#contacto">Contacto</a></li>
+						</ul>
+					</nav>
+				</div>
+
+				<!-- Franja final del footer con copyright y enlaces legales simulados -->
+				<div class="mt-8 flex flex-col gap-4 border-t border-brand-white/10 pt-6 text-sm text-brand-lightgray sm:flex-row sm:items-center sm:justify-between">
+					<p>© 2011-2026 Nexova. Todos los derechos reservados.</p>
+					<div class="flex flex-col gap-3 sm:flex-row sm:gap-6">
+						<a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver política de privacidad">Política de privacidad</a>
+						<a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver aviso legal">Aviso legal</a>
+					</div>
+				</div>
+			</div>
 		</footer>
 	</body>
 </html>
