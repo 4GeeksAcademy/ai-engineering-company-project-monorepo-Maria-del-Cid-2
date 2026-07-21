@@ -127,8 +127,12 @@
 
 						<!-- Formulario principal situado a ancho completo para mejorar legibilidad y comodidad de uso -->
 						<form id="nexova-form" class="mt-8 space-y-8">
-									<!-- Rejilla principal: una columna en móvil y dos columnas en pantallas grandes -->
-									<div class="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+									<!-- Agrupación semántica de datos de contacto, empresa y ubicación -->
+									<fieldset class="space-y-4">
+										<legend class="text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">Datos de contacto, empresa y ubicación</legend>
+
+										<!-- Rejilla principal: una columna en móvil y dos columnas en pantallas grandes -->
+										<div class="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
 										<!-- Campo de nombre de la persona de contacto -->
 										<div class="space-y-2">
 											<label for="contact-name" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
@@ -328,18 +332,17 @@
 											<datalist id="city-options"></datalist>
 										</div>
 									</div>
+									</fieldset>
 
 									<!-- Campo de servicios de interés con título fuera del cuadro para alinearse con el resto del formulario -->
 									<div class="space-y-2">
-										<p class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
-											Servicios de interés
-										</p>
 										<p id="services-help" class="text-sm leading-6 text-brand-anthracite/65">
 											Selecciona una o varias líneas de negocio.
 										</p>
 
 										<!-- Contenedor del grupo de checkboxes con menos margen interno y mejor alineación vertical -->
 										<fieldset id="services-fieldset" class="rounded-2xl border border-brand-lightgray bg-brand-white p-4 transition" aria-required="true" aria-describedby="services-help services-error">
+											<legend class="px-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">Servicios de interés</legend>
 											<div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
 												<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange">
 												<input
@@ -395,7 +398,8 @@
 								</div>
 
 									<!-- Bloque legal para consentimiento expreso del tratamiento de datos personales -->
-									<div id="privacy-consent-wrapper" class="rounded-3xl border border-brand-lightgray bg-brand-white p-5 transition">
+									<fieldset id="privacy-consent-wrapper" class="rounded-3xl border border-brand-lightgray bg-brand-white p-5 transition">
+										<legend class="px-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">Consentimiento legal y privacidad</legend>
 										<label for="privacy-consent" class="flex items-start gap-3 text-sm leading-7 text-brand-anthracite">
 											<input
 												id="privacy-consent"
@@ -416,7 +420,7 @@
 											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
 											<span>Debes aceptar el tratamiento de datos personales para continuar.</span>
 										</p>
-									</div>
+									</fieldset>
 
 									<!-- Acciones finales del formulario con CTA principal y acción secundaria de reinicio -->
 									<div class="flex flex-col gap-4 border-t border-brand-lightgray pt-2 sm:flex-row sm:items-center sm:justify-end">
@@ -494,7 +498,7 @@
 		</footer>
 
 		<!-- Catálogo local de países y ciudades para evitar dependencias remotas en el formulario -->
-		<script src="data/location-catalog.es.js"></script>
+		<script src="../data/location-catalog.es.js"></script>
 
 		<!-- Lógica de interacción y validación extraída a un archivo dedicado -->
 		<script src="validation.js"></script>
