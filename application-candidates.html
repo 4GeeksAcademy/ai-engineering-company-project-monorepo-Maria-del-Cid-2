@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<title>Envíanos tu CV | Nexova Solutions</title>
+
+		<meta
+			name="description"
+			content="¿Buscas trabajo? Déjanos tu CV en Nexova Solutions y te ayudamos a encontrar la oportunidad laboral que se adapta a tu perfil profesional."
+		/>
+
+		<script src="https://cdn.tailwindcss.com"></script>
+
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							brand: {
+								anthracite: "#1F2328",
+								orange: "#F97316",
+								lightgray: "#E5E7EB",
+								white: "#FFFFFF"
+							}
+						}
+					}
+				}
+			};
+		</script>
+	</head>
+	<body class="bg-brand-white text-brand-anthracite">
+		<!-- HEADER: misma estructura y branding que index.html -->
+		<header class="sticky top-0 z-50 w-full border-b border-brand-lightgray bg-brand-white/95 backdrop-blur">
+			<div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+				<div class="flex items-center justify-between gap-4">
+					<a
+						href="index.html"
+						class="flex min-w-0 items-center gap-3"
+						aria-label="Ir al inicio de Nexova Solutions"
+					>
+						<img
+							src="Logo%20nexova%20Negro%20y%20naranja.png"
+							alt="Logo de Nexova Solutions en negro y naranja"
+							class="h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg:h-24 lg:max-w-[420px]"
+						/>
+					</a>
+
+					<button
+						type="button"
+						class="inline-flex items-center justify-center rounded-lg border border-brand-lightgray p-3 text-brand-anthracite transition hover:border-brand-orange hover:text-brand-orange md:hidden"
+						aria-label="Abrir menú principal"
+						aria-controls="mobile-menu"
+						aria-expanded="false"
+						data-menu-button
+					>
+						<span class="sr-only">Abrir menú de navegación</span>
+						<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+						</svg>
+					</button>
+
+					<nav class="hidden md:block" aria-label="Navegación principal">
+						<ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html">Inicio</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#servicios">Servicios</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#experiencia">Experiencia</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#contacto">Contacto</a></li>
+						</ul>
+					</nav>
+				</div>
+
+				<nav
+					id="mobile-menu"
+					class="hidden border-t border-brand-lightgray pt-4 md:hidden"
+					aria-label="Navegación principal móvil"
+					data-mobile-menu
+				>
+					<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html">Inicio</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html#servicios">Servicios</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html#experiencia">Experiencia</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="index.html#contacto">Contacto</a></li>
+					</ul>
+				</nav>
+			</div>
+		</header>
+
+		<!-- MAIN: formulario para candidatos -->
+		<main>
+			<section class="bg-brand-anthracite" aria-labelledby="application-title">
+				<div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+					<div class="rounded-[2rem] bg-brand-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8 lg:p-10">
+						<!-- Cabecera -->
+						<div class="max-w-4xl">
+							<p class="text-sm font-bold uppercase tracking-[0.28em] text-brand-orange sm:text-base">
+								Nexova Solutions
+							</p>
+
+							<h1 id="application-title" class="mt-5 text-3xl font-black leading-tight text-brand-anthracite sm:text-4xl lg:text-5xl">
+								Déjanos tu CV y te ayudamos a mejorar tu situación laboral
+							</h1>
+
+							<p class="mt-6 max-w-4xl text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+								Completa el siguiente formulario para que conozcamos más sobre tu trayectoria profesional y podamos ayudarte a encontrar un trabajo que se adapte a tus necesidades y perfil.
+							</p>
+						</div>
+
+						<!-- Banner para empresas -->
+						<div class="mt-8 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 p-4 text-center sm:p-5" role="alert">
+							<p class="text-sm font-semibold text-brand-anthracite sm:text-base">
+								¿Eres una empresa buscando talento? Escríbenos a
+								<a href="mailto:contacto@nexova.com" class="font-bold text-brand-orange underline transition hover:text-orange-600">contacto@nexova.com</a>
+							</p>
+						</div>
+
+						<!-- FORMULARIO -->
+						<form id="candidate-form" class="mt-8 space-y-8" novalidate>
+							<fieldset class="space-y-4">
+								<legend class="text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">Datos personales y profesionales</legend>
+
+								<div class="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+									<!-- Nombre completo -->
+									<div class="space-y-2">
+										<label for="full-name" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Nombre completo <span class="text-red-500">*</span>
+										</label>
+										<input
+											id="full-name"
+											name="fullName"
+											type="text"
+											required
+											aria-required="true"
+											aria-describedby="full-name-error"
+											aria-invalid="false"
+											autocomplete="name"
+											placeholder="Ej: María García López"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										/>
+										<p id="full-name-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>El nombre debe contener al menos nombre y apellido</span>
+										</p>
+									</div>
+
+									<!-- Email -->
+									<div class="space-y-2">
+										<label for="email" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Email <span class="text-red-500">*</span>
+										</label>
+										<input
+											id="email"
+											name="email"
+											type="email"
+											required
+											aria-required="true"
+											aria-describedby="email-error"
+											aria-invalid="false"
+											autocomplete="email"
+											placeholder="Ej: maria@ejemplo.com"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										/>
+										<p id="email-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Ingresa un email válido (ejemplo: nombre@empresa.com)</span>
+										</p>
+									</div>
+
+									<!-- Teléfono -->
+									<div class="space-y-2">
+										<label for="phone" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Teléfono <span class="text-red-500">*</span>
+										</label>
+										<input
+											id="phone"
+											name="phone"
+											type="tel"
+											required
+											aria-required="true"
+											aria-describedby="phone-error"
+											aria-invalid="false"
+											autocomplete="tel"
+											placeholder="Ej: +34 612 345 678"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										/>
+										<p id="phone-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>El teléfono debe incluir código de país (ejemplo: +34 612 345 678)</span>
+										</p>
+									</div>
+
+									<!-- País de residencia -->
+									<div class="space-y-2">
+										<label for="country" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											País de residencia <span class="text-red-500">*</span>
+										</label>
+										<select
+											id="country"
+											name="country"
+											required
+											aria-required="true"
+											aria-describedby="country-error"
+											aria-invalid="false"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										>
+											<option value="">Selecciona una opción</option>
+											<option value="España">España</option>
+											<option value="Estados Unidos">Estados Unidos</option>
+											<option value="Otro">Otro</option>
+										</select>
+										<p id="country-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Selecciona tu país de residencia</span>
+										</p>
+									</div>
+
+									<!-- Años de experiencia -->
+									<div class="space-y-2">
+										<label for="experience" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Años de experiencia <span class="text-red-500">*</span>
+										</label>
+										<input
+											id="experience"
+											name="experience"
+											type="number"
+											required
+											aria-required="true"
+											aria-describedby="experience-error"
+											aria-invalid="false"
+											min="0"
+											max="50"
+											placeholder="Ej: 5"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										/>
+										<p id="experience-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Los años de experiencia deben estar entre 0 y 50</span>
+										</p>
+									</div>
+
+									<!-- Sector de interés -->
+									<div class="space-y-2">
+										<label for="sector" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Sector de interés <span class="text-red-500">*</span>
+										</label>
+										<select
+											id="sector"
+											name="sector"
+											required
+											aria-required="true"
+											aria-describedby="sector-error"
+											aria-invalid="false"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										>
+											<option value="">Selecciona una opción</option>
+											<option value="Tecnología">Tecnología</option>
+											<option value="Retail">Retail</option>
+											<option value="Servicios Financieros">Servicios Financieros</option>
+											<option value="Consultoría">Consultoría</option>
+											<option value="Otro">Otro</option>
+										</select>
+										<p id="sector-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Selecciona el sector de tu interés</span>
+										</p>
+									</div>
+
+									<!-- Nivel de inglés -->
+									<div class="space-y-2">
+										<label for="english-level" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+											Nivel de inglés <span class="text-red-500">*</span>
+										</label>
+										<select
+											id="english-level"
+											name="englishLevel"
+											required
+											aria-required="true"
+											aria-describedby="english-level-error"
+											aria-invalid="false"
+											class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+										>
+											<option value="">Selecciona una opción</option>
+											<option value="Básico">Básico</option>
+											<option value="Intermedio">Intermedio</option>
+											<option value="Avanzado">Avanzado</option>
+											<option value="Nativo">Nativo</option>
+										</select>
+										<p id="english-level-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+											<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+											<span>Indica tu nivel de inglés</span>
+										</p>
+									</div>
+								</div>
+							</fieldset>
+
+							<!-- Disponibilidad (radio buttons) -->
+							<fieldset class="space-y-3 rounded-2xl border border-brand-lightgray bg-brand-white p-4 transition" aria-required="true" aria-describedby="availability-error">
+								<legend class="px-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+									Disponibilidad <span class="text-red-500">*</span>
+								</legend>
+								<div class="flex flex-wrap gap-3">
+									<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange has-[:checked]:border-brand-orange has-[:checked]:bg-brand-orange/5">
+										<input
+											type="radio"
+											name="availability"
+											value="Inmediata"
+											required
+											aria-required="true"
+											class="h-5 w-5 border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+										/>
+										<span class="font-medium">Inmediata</span>
+									</label>
+									<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange has-[:checked]:border-brand-orange has-[:checked]:bg-brand-orange/5">
+										<input
+											type="radio"
+											name="availability"
+											value="1 mes"
+											aria-required="true"
+											class="h-5 w-5 border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+										/>
+										<span class="font-medium">1 mes</span>
+									</label>
+									<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange has-[:checked]:border-brand-orange has-[:checked]:bg-brand-orange/5">
+										<input
+											type="radio"
+											name="availability"
+											value="2-3 meses"
+											aria-required="true"
+											class="h-5 w-5 border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+										/>
+										<span class="font-medium">2-3 meses</span>
+									</label>
+									<label class="flex items-center gap-3 rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-sm text-brand-anthracite transition hover:border-brand-orange has-[:checked]:border-brand-orange has-[:checked]:bg-brand-orange/5">
+										<input
+											type="radio"
+											name="availability"
+											value="Solo explorando"
+											aria-required="true"
+											class="h-5 w-5 border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+										/>
+										<span class="font-medium">Solo explorando</span>
+									</label>
+								</div>
+								<p id="availability-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+									<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+									<span>Selecciona tu disponibilidad</span>
+								</p>
+							</fieldset>
+
+							<!-- LinkedIn -->
+							<div class="space-y-2">
+								<label for="linkedin" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+									LinkedIn (URL del perfil) <span class="text-brand-anthracite/50">(opcional)</span>
+								</label>
+								<input
+									id="linkedin"
+									name="linkedin"
+									type="url"
+									aria-required="false"
+									aria-describedby="linkedin-error"
+									aria-invalid="false"
+									autocomplete="url"
+									placeholder="Ej: https://www.linkedin.com/in/tuperfil"
+									class="min-h-12 w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15"
+								/>
+								<p id="linkedin-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+									<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+									<span>Si incluyes LinkedIn, debe ser una URL válida</span>
+								</p>
+							</div>
+
+							<!-- Comentarios adicionales -->
+							<div class="space-y-2">
+								<label for="comments" class="block text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">
+									Comentarios adicionales <span class="text-brand-anthracite/50">(opcional)</span>
+								</label>
+								<textarea
+									id="comments"
+									name="comments"
+									rows="4"
+									maxlength="500"
+									aria-describedby="comments-error comments-counter"
+									aria-invalid="false"
+									placeholder="Cuéntanos cualquier detalle que quieras añadir..."
+									class="min-h-[120px] w-full rounded-2xl border border-brand-lightgray bg-brand-white px-4 py-3 text-base text-brand-anthracite outline-none transition placeholder:text-brand-anthracite/35 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/15 resize-y"
+								></textarea>
+								<div class="flex items-center justify-between">
+									<p id="comments-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+										<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+										<span id="comments-error-text">Los comentarios no pueden exceder 500 caracteres (quedan 500)</span>
+									</p>
+									<p id="comments-counter" class="text-sm text-brand-anthracite/50" aria-live="polite">Quedan 500 caracteres</p>
+								</div>
+							</div>
+
+							<!-- Checkbox política de datos -->
+							<fieldset id="privacy-wrapper" class="rounded-3xl border border-brand-lightgray bg-brand-white p-5 transition">
+								<legend class="px-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite">Consentimiento legal</legend>
+								<label for="privacy-consent" class="flex items-start gap-3 text-sm leading-7 text-brand-anthracite">
+									<input
+										id="privacy-consent"
+										name="privacyConsent"
+										type="checkbox"
+										required
+										aria-required="true"
+										aria-describedby="privacy-consent-error"
+										aria-invalid="false"
+										class="mt-1 h-5 w-5 rounded border-brand-lightgray text-brand-orange focus:ring-brand-orange"
+									/>
+									<span>
+										Acepto la política de tratamiento de datos
+									</span>
+								</label>
+								<p id="privacy-consent-error" class="hidden items-start gap-2 text-sm font-medium text-red-600" aria-live="assertive" role="alert">
+									<svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.75.75 0 0 0 1.5 0V6.5Zm0 7a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" clip-rule="evenodd" /></svg>
+									<span>Debes aceptar la política de tratamiento de datos para continuar</span>
+								</p>
+							</fieldset>
+
+							<!-- Botones de acción -->
+							<div class="flex flex-col gap-4 border-t border-brand-lightgray pt-6 sm:flex-row sm:items-center sm:justify-end">
+								<button
+									type="reset"
+									class="inline-flex min-h-12 items-center justify-center rounded-full border border-brand-anthracite bg-transparent px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-brand-anthracite transition hover:bg-brand-anthracite hover:text-brand-white focus:outline-none focus:ring-4 focus:ring-brand-anthracite/15"
+								>
+									Limpiar formulario
+								</button>
+								<button
+									type="submit"
+									class="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/20"
+								>
+									Enviar mi CV
+								</button>
+							</div>
+						</form>
+
+						<!-- Tarjeta de éxito -->
+						<article id="form-success-card" class="hidden rounded-[2rem] border border-brand-lightgray bg-brand-white p-8 text-center shadow-sm" aria-live="polite">
+							<div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-orange text-brand-white">
+								<svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" />
+								</svg>
+							</div>
+							<h2 class="mt-6 text-3xl font-black tracking-tight text-brand-anthracite">¡Gracias por tu interés!</h2>
+							<p class="mt-4 text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+								Hemos recibido correctamente tu CV y datos profesionales. El equipo de Nexova revisará tu perfil y te contactaremos si surge una oportunidad que se ajuste a tus necesidades.
+							</p>
+							<a
+								href="index.html"
+								class="mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-brand-orange px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-brand-white transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-brand-orange/20"
+							>
+								Volver a la web
+							</a>
+						</article>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<!-- FOOTER: mismo estilo que index.html con redes sociales -->
+		<footer class="w-full border-t border-brand-lightgray bg-brand-anthracite text-brand-white">
+			<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+				<div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+					<div class="max-w-xl">
+						<p class="text-lg font-black uppercase tracking-[0.22em] text-brand-white">Nexova</p>
+						<p class="mt-3 text-sm leading-7 text-brand-lightgray">
+							Consultoría de recursos humanos para empresas de tecnología, retail y finanzas con sedes en Valencia y Miami.
+						</p>
+						<div class="mt-5 flex items-center gap-4">
+							<a
+								href="https://www.instagram.com/nexovasolutions/"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-white/30 text-brand-white transition hover:border-brand-orange hover:text-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+								aria-label="Ir al perfil de Instagram de Nexova"
+							>
+								<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-hidden="true">
+									<rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+									<circle cx="12" cy="12" r="5" />
+									<circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+								</svg>
+							</a>
+							<a
+								href="https://www.linkedin.com/company/nexovasolutions/"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-white/30 text-brand-white transition hover:border-brand-orange hover:text-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+								aria-label="Ir al perfil de LinkedIn de Nexova"
+							>
+								<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-hidden="true">
+									<rect x="2" y="2" width="20" height="20" rx="3" />
+									<path stroke-linecap="round" stroke-linejoin="round" d="M7 10v7M7 7.5v.01" />
+									<path stroke-linecap="round" stroke-linejoin="round" d="M11 17v-4.5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2V17M11 10v7" />
+								</svg>
+							</a>
+						</div>
+					</div>
+
+					<nav aria-label="Navegación secundaria del pie de página">
+						<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-brand-lightgray sm:flex-row sm:gap-6">
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html">Inicio</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#servicios">Servicios</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#experiencia">Experiencia</a></li>
+							<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="index.html#contacto">Contacto</a></li>
+						</ul>
+					</nav>
+				</div>
+
+				<div class="mt-8 flex flex-col gap-4 border-t border-brand-white/10 pt-6 text-sm text-brand-lightgray sm:flex-row sm:items-center sm:justify-between">
+					<p>© 2011-2026 Nexova. Todos los derechos reservados.</p>
+					<div class="flex flex-col gap-3 sm:flex-row sm:gap-6">
+						<a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver política de privacidad">Política de privacidad</a>
+						<a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver aviso legal">Aviso legal</a>
+					</div>
+				</div>
+			</div>
+		</footer>
+
+		<!-- JavaScript: menú móvil, validación y contador -->
+		<script>
+			document.addEventListener("DOMContentLoaded", () => {
+				// --- Menú móvil ---
+				const menuButton = document.querySelector("[data-menu-button]");
+				const mobileMenu = document.querySelector("[data-mobile-menu]");
+				if (menuButton && mobileMenu) {
+					const closeMenu = () => {
+						mobileMenu.classList.add("hidden");
+						menuButton.setAttribute("aria-expanded", "false");
+						menuButton.setAttribute("aria-label", "Abrir menú principal");
+					};
+					const toggleMenu = () => {
+						const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+						mobileMenu.classList.toggle("hidden", isOpen);
+						menuButton.setAttribute("aria-expanded", String(!isOpen));
+						menuButton.setAttribute("aria-label", isOpen ? "Abrir menú principal" : "Cerrar menú principal");
+					};
+					menuButton.addEventListener("click", toggleMenu);
+					mobileMenu.querySelectorAll("a").forEach((link) => {
+						link.addEventListener("click", closeMenu);
+					});
+				}
+
+				// --- Elementos del formulario ---
+				const form = document.getElementById("candidate-form");
+				const successCard = document.getElementById("form-success-card");
+
+				// --- Contador de comentarios ---
+				const comments = document.getElementById("comments");
+				const commentsCounter = document.getElementById("comments-counter");
+				const commentsError = document.getElementById("comments-error");
+				const commentsErrorText = document.getElementById("comments-error-text");
+
+				if (comments && commentsCounter) {
+					const maxLen = 500;
+					const updateCounter = () => {
+						const remaining = maxLen - comments.value.length;
+						commentsCounter.textContent = `Quedan ${remaining} caracteres`;
+						if (remaining < 0) {
+							commentsError.classList.remove("hidden");
+							commentsErrorText.textContent = `Los comentarios no pueden exceder 500 caracteres (quedan ${remaining})`;
+							comments.setAttribute("aria-invalid", "true");
+						} else {
+							commentsError.classList.add("hidden");
+							comments.setAttribute("aria-invalid", "false");
+						}
+					};
+					comments.addEventListener("input", updateCounter);
+				}
+
+				// --- Funciones auxiliares de validación ---
+				const showError = (errorId, input) => {
+					const errEl = document.getElementById(errorId);
+					if (errEl) {
+						errEl.classList.remove("hidden");
+						errEl.classList.add("flex");
+					}
+					if (input) {
+						input.setAttribute("aria-invalid", "true");
+						input.classList.add("border-red-500", "focus:border-red-500", "focus:ring-red-500/15");
+					}
+				};
+
+				const hideError = (errorId, input) => {
+					const errEl = document.getElementById(errorId);
+					if (errEl) {
+						errEl.classList.add("hidden");
+						errEl.classList.remove("flex");
+					}
+					if (input) {
+						input.setAttribute("aria-invalid", "false");
+						input.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-500/15");
+					}
+				};
+
+				const clearAllErrors = () => {
+					document.querySelectorAll("[id$='-error']").forEach((el) => {
+						el.classList.add("hidden");
+						el.classList.remove("flex");
+					});
+					form.querySelectorAll("input, select, textarea").forEach((input) => {
+						input.setAttribute("aria-invalid", "false");
+						input.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-500/15");
+					});
+				};
+
+				// --- Validación en submit ---
+				form.addEventListener("submit", (e) => {
+					e.preventDefault();
+					clearAllErrors();
+
+					let isValid = true;
+
+					// 1. Nombre completo: mínimo 2 palabras
+					const fullName = document.getElementById("full-name");
+					const nameValue = fullName.value.trim();
+					if (nameValue.split(/\s+/).length < 2) {
+						showError("full-name-error", fullName);
+						isValid = false;
+					}
+
+					// 2. Email: formato válido
+					const email = document.getElementById("email");
+					const emailValue = email.value.trim();
+					const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+					if (!emailRegex.test(emailValue)) {
+						showError("email-error", email);
+						isValid = false;
+					}
+
+					// 3. Teléfono: debe comenzar con +
+					const phone = document.getElementById("phone");
+					const phoneValue = phone.value.trim();
+					if (!/^\+\d/.test(phoneValue) || phoneValue.length < 6) {
+						showError("phone-error", phone);
+						isValid = false;
+					}
+
+					// 4. País: no vacío
+					const country = document.getElementById("country");
+					if (!country.value) {
+						showError("country-error", country);
+						isValid = false;
+					}
+
+					// 5. Años de experiencia: entre 0 y 50
+					const experience = document.getElementById("experience");
+					const expValue = parseInt(experience.value, 10);
+					if (isNaN(expValue) || expValue < 0 || expValue > 50) {
+						showError("experience-error", experience);
+						isValid = false;
+					}
+
+					// 6. Sector: no vacío
+					const sector = document.getElementById("sector");
+					if (!sector.value) {
+						showError("sector-error", sector);
+						isValid = false;
+					}
+
+					// 7. Nivel de inglés: no vacío
+					const englishLevel = document.getElementById("english-level");
+					if (!englishLevel.value) {
+						showError("english-level-error", englishLevel);
+						isValid = false;
+					}
+
+					// 8. Disponibilidad: algún radio seleccionado
+					const availability = form.querySelector('input[name="availability"]:checked');
+					if (!availability) {
+						const availError = document.getElementById("availability-error");
+						if (availError) {
+							availError.classList.remove("hidden");
+							availError.classList.add("flex");
+						}
+						isValid = false;
+					}
+
+					// 9. LinkedIn: si se proporciona, debe ser URL válida
+					const linkedin = document.getElementById("linkedin");
+					const linkedinValue = linkedin.value.trim();
+					if (linkedinValue) {
+						if (!/^https?:\/\/.+/.test(linkedinValue)) {
+							showError("linkedin-error", linkedin);
+							isValid = false;
+						}
+					}
+
+					// 10. Comentarios: máximo 500 caracteres
+					if (comments && comments.value.length > 500) {
+						showError("comments-error", comments);
+						isValid = false;
+					}
+
+					// 11. Política de datos: debe estar marcado
+					const privacyConsent = document.getElementById("privacy-consent");
+					if (!privacyConsent.checked) {
+						const privacyError = document.getElementById("privacy-consent-error");
+						if (privacyError) {
+							privacyError.classList.remove("hidden");
+							privacyError.classList.add("flex");
+						}
+						privacyConsent.setAttribute("aria-invalid", "true");
+						privacyConsent.classList.add("ring-2", "ring-red-500");
+						isValid = false;
+					}
+
+					// Si todo es válido, mostrar éxito
+					if (isValid) {
+						form.classList.add("hidden");
+						successCard.classList.remove("hidden");
+					}
+				});
+
+				// Limpiar estado visual del checkbox al marcarlo/desmarcarlo
+				const privacyConsent = document.getElementById("privacy-consent");
+				if (privacyConsent) {
+					privacyConsent.addEventListener("change", () => {
+						const err = document.getElementById("privacy-consent-error");
+						if (privacyConsent.checked) {
+							if (err) { err.classList.add("hidden"); err.classList.remove("flex"); }
+							privacyConsent.setAttribute("aria-invalid", "false");
+							privacyConsent.classList.remove("ring-2", "ring-red-500");
+						}
+					});
+				}
+			});
+		</script>
+	</body>
+</html>
