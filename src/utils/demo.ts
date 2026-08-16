@@ -1,5 +1,6 @@
 import { filterCandidatesBySkills,  filterCandidatesBySeniority,  filterCandidatesByAvailability, sortCandidatesBySalary, sortCandidatesByExperience } from "./collections";
 import { Candidate } from "../types/models";
+import { findCandidateById, findCandidateByEmail, binarySearchCandidateBySalary} from "./search";
 
 const candidates: Candidate[] = [
     {
@@ -59,3 +60,18 @@ console.log("Experiencia ascendente:", experienceAsc);
 
 const experienceDesc = sortCandidatesByExperience(candidates, "desc");
 console.log("Experiencia descendente:", experienceDesc);
+
+console.log("Buscar por ID:");
+console.log(findCandidateById(candidates, "1"));
+console.log(findCandidateById(candidates, "999"));
+
+
+console.log("Buscar por email:");
+console.log(findCandidateByEmail(candidates, "ANA@EMAIL.COM"));
+console.log(findCandidateByEmail(candidates, "noexiste@email.com"));
+
+const candidatesBySalary = sortCandidatesBySalary(candidates, "asc");
+
+console.log("Búsqueda binaria:");
+console.log(binarySearchCandidateBySalary(candidatesBySalary, 35000));
+console.log(binarySearchCandidateBySalary(candidatesBySalary, 50000));
