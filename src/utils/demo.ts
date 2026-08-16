@@ -1,6 +1,7 @@
 import { filterCandidatesBySkills,  filterCandidatesBySeniority,  filterCandidatesByAvailability, sortCandidatesBySalary, sortCandidatesByExperience } from "./collections";
-import { Candidate } from "../types/models";
+import { Candidate, CandidateStatus, SelectionProcess } from "../types/models";
 import { findCandidateById, findCandidateByEmail, binarySearchCandidateBySalary} from "./search";
+import { countCandidatesByStatus, calculateAverageSalary, findTopSkills, calculateVacancyFillRate } from "./transformations";
 
 const candidates: Candidate[] = [
     {
@@ -34,6 +35,29 @@ const candidates: Candidate[] = [
         location: "Valencia",
         remoteOnly: false,
         status: "Active"
+    }
+];
+
+const processes: SelectionProcess[] = [
+    {
+        id: "1",
+        candidateId: "1",
+        vacancyId: "1",
+        stage: "Hired",
+        score: 90,
+        notes: "Candidato contratado",
+        createdAt: new Date(),
+        updatedAt: new Date()
+    },
+    {
+        id: "2",
+        candidateId: "2",
+        vacancyId: "1",
+        stage: "Interview",
+        score: 75,
+        notes: "Pendiente de entrevista",
+        createdAt: new Date(),
+        updatedAt: new Date()
     }
 ];
 
@@ -75,3 +99,15 @@ const candidatesBySalary = sortCandidatesBySalary(candidates, "asc");
 console.log("Búsqueda binaria:");
 console.log(binarySearchCandidateBySalary(candidatesBySalary, 35000));
 console.log(binarySearchCandidateBySalary(candidatesBySalary, 50000));
+
+console.log("Candidatos por estado:");
+console.log(countCandidatesByStatus(candidates));
+
+console.log("Salario medio:");
+console.log(calculateAverageSalary(candidates));
+
+console.log("Habilidades más frecuentes:");
+console.log(findTopSkills(candidates, 3));
+
+console.log("Porcentaje de procesos contratados:");
+console.log(calculateVacancyFillRate(processes));
