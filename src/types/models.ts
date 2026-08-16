@@ -1,11 +1,12 @@
+
 /// ENTIDADES DE NEGOCIO
 /// INTERFAZ CANDIDATO: 
-type EnglishLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "Native";
-type SeniorityLevel = "Junior" | "Semi-Senior" | "Senior" | "Lead" | "Executive";
-type AvailabilityStatus = "Immediate" | "2 weeks" | "1 month" | "Not available";
-type CandidateStatus = "Active" | "In process" | "Hired" | "Inactive";
+export type EnglishLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "Native";
+export type SeniorityLevel = "Junior" | "Semi-Senior" | "Senior" | "Lead" | "Executive";
+export type AvailabilityStatus = "Immediate" | "2 weeks" | "1 month" | "Not available";
+export type CandidateStatus = "Active" | "In process" | "Hired" | "Inactive";
 
-interface Candidate {
+export interface Candidate {
     id: string;
     fullName: string;
     email: string;
@@ -23,9 +24,9 @@ interface Candidate {
 }
     
 // INTERFAZ VACANTE: 
-type VacancyStatus = "Open" | "In progress" | "Closed" | "On hold";
+export type VacancyStatus = "Open" | "In progress" | "Closed" | "On hold";
 
-interface Vacancy {
+export interface Vacancy {
     id: string;
     title: string;
     companyName: string;
@@ -43,9 +44,9 @@ interface Vacancy {
 }
 
 //INTERFAZ SELECTIONPROCESS
-type ProcessStage = "Screening" | "Interview" | "Technical test" | "Final interview" | "Offer" | "Rejected" | "Hired";
+export type ProcessStage = "Screening" | "Interview" | "Technical test" | "Final interview" | "Offer" | "Rejected" | "Hired";
 
-interface SelectionProcess {
+export interface SelectionProcess {
     id: string;
     candidateId: string;
     vacancyId: string;
