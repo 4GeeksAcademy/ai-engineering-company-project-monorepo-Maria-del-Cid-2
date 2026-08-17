@@ -1,9 +1,4 @@
-
-import { Candidate, Vacancy, SelectionProcess } from "../types/models";
-
-
-
-export const candidates: Candidate[] = [
+export const candidates = [
     {
         id: "1",
         fullName: "Ana García",
@@ -85,8 +80,7 @@ export const candidates: Candidate[] = [
         status: "Hired"
     }
 ];
-
-export const processes: SelectionProcess[] = [
+export const processes = [
     {
         id: "1",
         candidateId: "1",
@@ -108,8 +102,7 @@ export const processes: SelectionProcess[] = [
         updatedAt: new Date()
     }
 ];
-
-export const vacancies: Vacancy[] = [
+export const vacancies = [
     {
         id: "1",
         title: "Senior Full-Stack Developer",

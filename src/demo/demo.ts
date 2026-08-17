@@ -1,11 +1,11 @@
 // Para ejecutar las pruebas: npx tsx src/utils/demo.ts
 
 
-import { filterCandidatesBySkills,  filterCandidatesBySeniority,  filterCandidatesByAvailability, sortCandidatesBySalary, sortCandidatesByExperience } from "./collections";
+import { filterCandidatesBySkills,  filterCandidatesBySeniority,  filterCandidatesByAvailability, sortCandidatesBySalary, sortCandidatesByExperience } from "../utils/collections";
 import { Candidate, CandidateStatus, SelectionProcess } from "../types/models";
-import { findCandidateById, findCandidateByEmail, binarySearchCandidateBySalary} from "./search";
-import { countCandidatesByStatus, calculateAverageSalary, findTopSkills, calculateVacancyFillRate, calculateCandidateScore, rankCandidatesForVacancy,groupCandidatesBySeniority } from "./transformations";
-import { validateCandidate, validateVacancy, isValidEmail } from "./validations";
+import { findCandidateById, findCandidateByEmail, binarySearchCandidateBySalary} from "../utils/search";
+import { countCandidatesByStatus, calculateAverageSalary, findTopSkills, calculateVacancyFillRate, calculateCandidateScore, rankCandidatesForVacancy,groupCandidatesBySeniority } from "../utils/transformations";
+import { validateCandidate, validateVacancy, isValidEmail } from "../utils/validations";
 import { candidates, vacancies, processes } from "../data/data";
 
 
