@@ -1,9 +1,7 @@
-import { Candidate } from "../types/models";
+import { Candidate, SeniorityLevel, AvailabilityStatus } from "../types/models";
 
 // función para devolver los candidatos que cuentan con TODAS las habilidades requeridas (matching de habilidades, case-intensitive)
 export function filterCandidatesBySkills(candidates: Candidate[], requiredSkills: string[]): Candidate[]{
-
-
 return candidates.filter (candidate => requiredSkills.every(requiredSkill => 
     candidate.skills.some(candidateSkill => candidateSkill.toLowerCase() === requiredSkill.toLowerCase()
   )

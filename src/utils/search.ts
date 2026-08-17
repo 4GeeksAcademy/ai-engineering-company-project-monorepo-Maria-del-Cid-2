@@ -1,7 +1,6 @@
 //FUNCIONES DE OPERACIONES DE BÚSQUEDA
 
 import { Candidate } from "../types/models";
-import { sortCandidatesByExperience } from "./collections";
 
 //función para buscar candidatos por ID
 export function findCandidateById(candidates: Candidate[], id: string): Candidate | null {

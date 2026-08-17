@@ -1,7 +1,9 @@
 import { filterCandidatesBySkills,  filterCandidatesBySeniority,  filterCandidatesByAvailability, sortCandidatesBySalary, sortCandidatesByExperience } from "./collections";
 import { Candidate, CandidateStatus, SelectionProcess } from "../types/models";
 import { findCandidateById, findCandidateByEmail, binarySearchCandidateBySalary} from "./search";
-import { countCandidatesByStatus, calculateAverageSalary, findTopSkills, calculateVacancyFillRate } from "./transformations";
+import { countCandidatesByStatus, calculateAverageSalary, findTopSkills, calculateVacancyFillRate, calculateCandidateScore, rankCandidatesForVacancy,groupCandidatesBySeniority } from "./transformations";
+import { validateCandidate, validateVacancy, isValidEmail } from "./validations";
+
 
 const candidates: Candidate[] = [
     {
@@ -61,6 +63,41 @@ const processes: SelectionProcess[] = [
     }
 ];
 
+const vacancies: Vacancy[] = [
+    {
+        id: "1",
+        title: "Senior Full-Stack Developer",
+        companyName: "TechCorp Solutions",
+        requiredSkills: ["TypeScript", "React", "Node.js"],
+        preferredSkills: ["PostgreSQL", "Docker"],
+        minYearsExperience: 4,
+        maxYearsExperience: 8,
+        requiredEnglishLevel: "B2",
+        requiredSeniority: "Senior",
+        salaryRangeMin: 5000,
+        salaryRangeMax: 7000,
+        isRemote: true,
+        location: "Remote",
+        status: "Open"
+    },
+    {
+        id: "2",
+        title: "Junior Java Developer",
+        companyName: "Innovatech",
+        requiredSkills: ["Java", "Spring"],
+        preferredSkills: ["SQL", "Docker"],
+        minYearsExperience: 1,
+        maxYearsExperience: 3,
+        requiredEnglishLevel: "B1",
+        requiredSeniority: "Junior",
+        salaryRangeMin: 2500,
+        salaryRangeMax: 3500,
+        isRemote: false,
+        location: "Valencia",
+        status: "Open"
+    }
+];
+
 const result = filterCandidatesBySkills(candidates, ["TypeScript"]);
 console.log(result);
 
@@ -111,3 +148,24 @@ console.log(findTopSkills(candidates, 3));
 
 console.log("Porcentaje de procesos contratados:");
 console.log(calculateVacancyFillRate(processes));
+
+console.log("Validación del candidato:");
+console.log(validateCandidate(candidates[0]));
+
+console.log("Validación del email:");
+console.log(isValidEmail(candidates[0].email));
+
+console.log("Validación de la primera vacante:");
+console.log(validateVacancy(vacancies[0]));
+
+console.log("Validación de la segunda vacante:");
+console.log(validateVacancy(vacancies[1]));
+
+console.log("Puntuación de Ana para la vacante:");
+console.log(calculateCandidateScore(candidates[0], vacancies[0]));
+
+console.log("Ranking de candidatos para la vacante:");
+console.log(rankCandidatesForVacancy(candidates, vacancies[0]));
+
+console.log("Candidatos agrupados por seniority:");
+console.log(groupCandidatesBySeniority(candidates));
