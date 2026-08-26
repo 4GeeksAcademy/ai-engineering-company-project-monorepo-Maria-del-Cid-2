@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "build:demo-runtime": "npx tsc src/data/data.ts src/utils/collections.ts src/utils/search.ts src/utils/transformations.ts src/utils/validations.ts --target ES2020 --module ES2020 --moduleResolution bundler --outDir src/runtime-ts --skipLibCheck",
+    "watch:demo-runtime": "npx tsc src/data/data.ts src/utils/collections.ts src/utils/search.ts src/utils/transformations.ts src/utils/validations.ts --target ES2020 --module ES2020 --moduleResolution bundler --outDir src/runtime-ts --skipLibCheck --watch"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

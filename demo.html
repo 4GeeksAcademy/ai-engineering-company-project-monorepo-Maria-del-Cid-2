@@ -33,7 +33,7 @@
             <img
               src="./Logo%20nexova%20Negro%20y%20naranja.png"
               alt="Logo de Nexova"
-              class="h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg:h-20 lg:max-w-[360px]"
+              class="h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg:h-24 lg:max-w-[420px]"
             />
           </a>
 
@@ -45,6 +45,7 @@
             aria-expanded="false"
             data-menu-button
           >
+            <span class="sr-only">Abrir menú de navegación</span>
             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
             </svg>
@@ -53,16 +54,16 @@
           <div class="hidden md:flex md:ml-auto md:items-center">
             <nav aria-label="Navegación principal">
               <ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
-                <li><a class="transition hover:text-brand-orange" href="./index.html#servicios">Servicios</a></li>
-                <li><a class="transition hover:text-brand-orange" href="./application-candidates.html">Talento</a></li>
-                <li><a class="transition hover:text-brand-orange text-brand-orange" href="./demo.html">Demo</a></li>
-                <li><a class="transition hover:text-brand-orange" href="./index.html#contacto">Contacto</a></li>
+                <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./index.html#servicios">Servicios</a></li>
+                <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./application-candidates.html">Talento</a></li>
+                <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./demo.html">Demo</a></li>
+                <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./index.html#contacto">Contacto</a></li>
               </ul>
             </nav>
           </div>
         </div>
 
-        <nav id="mobile-menu" class="hidden border-t border-brand-lightgray pt-4 md:hidden" data-mobile-menu>
+        <nav id="mobile-menu" class="hidden border-t border-brand-lightgray pt-4 md:hidden" aria-label="Navegación principal móvil" data-mobile-menu>
           <ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
             <li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="./index.html#servicios">Servicios</a></li>
             <li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="./application-candidates.html">Talento</a></li>
@@ -224,9 +225,58 @@
 
     <footer class="mt-12 w-full border-t border-brand-lightgray bg-brand-anthracite text-brand-white">
       <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p class="text-sm text-brand-lightgray">© Nexova Solutions — Data Processing Demo</p>
-          <a href="./index.html" class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange hover:text-orange-400">Volver al sitio público</a>
+        <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div class="max-w-xl">
+            <p class="text-lg font-black uppercase tracking-[0.22em] text-brand-white">Nexova</p>
+            <p class="mt-3 text-sm leading-7 text-brand-lightgray">
+              Consultoría de recursos humanos para empresas de tecnología, retail y finanzas con sedes en Valencia y Miami.
+            </p>
+            <div class="mt-5 flex items-center gap-4">
+              <a
+                href="https://www.instagram.com/nexovasolutions/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-white/30 text-brand-white transition hover:border-brand-orange hover:text-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+                aria-label="Ir al perfil de Instagram de Nexova"
+              >
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-hidden="true">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <circle cx="12" cy="12" r="5" />
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+              </a>
+              <a
+                href="https://www.linkedin.com/company/nexovasolutions/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-white/30 text-brand-white transition hover:border-brand-orange hover:text-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+                aria-label="Ir al perfil de LinkedIn de Nexova"
+              >
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" role="img" aria-hidden="true">
+                  <rect x="2" y="2" width="20" height="20" rx="3" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 10v7M7 7.5v.01" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 17v-4.5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2V17M11 10v7" />
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <nav aria-label="Navegación secundaria del pie de página">
+            <ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-brand-lightgray sm:flex-row sm:gap-6">
+              <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./index.html#servicios">Servicios</a></li>
+              <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./application-candidates.html">Talento</a></li>
+              <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./demo.html">Demo</a></li>
+              <li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="./index.html#contacto">Contacto</a></li>
+            </ul>
+          </nav>
+        </div>
+
+        <div class="mt-8 flex flex-col gap-4 border-t border-brand-white/10 pt-6 text-sm text-brand-lightgray sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2011-2026 Nexova. Todos los derechos reservados.</p>
+          <div class="flex flex-col gap-3 sm:flex-row sm:gap-6">
+            <a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver política de privacidad">Política de privacidad</a>
+            <a class="transition hover:text-brand-orange focus:text-brand-orange" href="#" aria-label="Ver aviso legal">Aviso legal</a>
+          </div>
         </div>
       </div>
     </footer>
