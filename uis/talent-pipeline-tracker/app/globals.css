@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: #1f2328;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* === Nexova brand colors (from index.html) === */
+  /* Anthracite = #1F2328, Orange = #F97316, Lightgray = #E5E7EB, White = #FFFFFF */
+  --color-brand-anthracite: #1f2328;
+  --color-brand-orange: #f97316;
+  --color-brand-lightgray: #e5e7eb;
+  --color-brand-white: #ffffff;
+
+  /* Semantic aliases for existing component code */
+  --color-nexova-50: #fff7ed;
+  --color-nexova-100: #ffedd5;
+  --color-nexova-200: #fed7aa;
+  --color-nexova-300: #fdba74;
+  --color-nexova-400: #fb923c;
+  --color-nexova-500: #f97316;
+  --color-nexova-600: #ea580c;
+  --color-nexova-700: #c2410c;
+  --color-nexova-800: #9a3412;
+  --color-nexova-900: #7c2d12;
+
+  /* Status colors */
+  --color-status-received: #e0f2fe;
+  --color-status-in-progress: #fef9c3;
+  --color-status-selected: #dcfce7;
+  --color-status-discarded: #fee2e2;
+  --color-stage-pending: #f1f5f9;
+  --color-stage-review: #fef3c7;
+  --color-stage-interview: #dbeafe;
+  --color-stage-offer: #d1fae5;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-brand-anthracite);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
