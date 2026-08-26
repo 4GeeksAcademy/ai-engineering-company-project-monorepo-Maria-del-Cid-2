@@ -36,64 +36,38 @@
 			};
 		</script>
 
-		<!-- Marcado estructurado Schema.org en formato JSON-LD para una consultora de recursos humanos con presencia en España y USA -->
+		<!-- Marcado estructurado Schema.org en formato JSON-LD para la organización Nexova -->
 		<script type="application/ld+json">
 			{
 				"@context": "https://schema.org",
-				"@type": "ProfessionalService",
-				"name": "Consultoría de Recursos Humanos",
-				"description": "Consultoría de recursos humanos para empresas medianas de los sectores tecnológico, retail y financiero.",
-				"url": "https://www.consultoria-recursos-humanos.com",
-				"telephone": "+34-900-000-000",
-				"email": "contacto@consultoria-recursos-humanos.com",
-				"logo": "https://www.consultoria-recursos-humanos.com/logo.png",
-				"address": {
-					"@type": "PostalAddress",
-					"streetAddress": "Calle de Ejemplo 123",
-					"addressLocality": "Madrid",
-					"addressRegion": "Madrid",
-					"postalCode": "28001",
-					"addressCountry": "ES"
+				"@type": "Organization",
+				"name": "Nexova",
+				"description": "Consultora de recursos humanos y adquisición de talento",
+				"url": "https://nexova.com",
+				"foundingDate": "2011",
+				"address": [
+					{
+						"@type": "PostalAddress",
+						"addressCountry": "ES",
+						"addressLocality": "Valencia",
+						"addressRegion": "Comunidad Valenciana"
+					},
+					{
+						"@type": "PostalAddress",
+						"addressCountry": "US",
+						"addressLocality": "Miami",
+						"addressRegion": "Florida"
+					}
+				],
+				"contactPoint": {
+					"@type": "ContactPoint",
+					"telephone": "+34-960-123-456",
+					"contactType": "customer service",
+					"availableLanguage": ["Spanish", "English"]
 				},
-				"areaServed": [
-					{
-						"@type": "Country",
-						"name": "España"
-					},
-					{
-						"@type": "Country",
-						"name": "Estados Unidos"
-					}
-				],
-				"department": [
-					{
-						"@type": "Organization",
-						"name": "Sede España",
-						"address": {
-							"@type": "PostalAddress",
-							"streetAddress": "Calle de Ejemplo 123",
-							"addressLocality": "Madrid",
-							"addressRegion": "Madrid",
-							"postalCode": "28001",
-							"addressCountry": "ES"
-						}
-					},
-					{
-						"@type": "Organization",
-						"name": "Sede USA",
-						"address": {
-							"@type": "PostalAddress",
-							"streetAddress": "500 Market Street",
-							"addressLocality": "San Francisco",
-							"addressRegion": "CA",
-							"postalCode": "94105",
-							"addressCountry": "US"
-						}
-					}
-				],
 				"sameAs": [
-					"https://www.linkedin.com/company/consultoria-recursos-humanos",
-					"https://www.instagram.com/consultoria-recursos-humanos"
+					"https://linkedin.com/company/nexova",
+					"https://instagram.com/nexova"
 				]
 			}
 		</script>
@@ -140,6 +114,7 @@
 							<ul class="flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
 								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#servicios">Servicios</a></li>
 								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="application-candidates.html">Talento</a></li>
+								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="../demo.html">Demo</a></li>
 								<li><a class="transition hover:text-brand-orange focus:text-brand-orange" href="#contacto">Contacto</a></li>
 							</ul>
 						</nav>
@@ -156,6 +131,7 @@
 					<ul class="flex flex-col gap-3 text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite">
 						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="#servicios">Servicios</a></li>
 						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="application-candidates.html">Talento</a></li>
+						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="../demo.html">Demo</a></li>
 						<li><a class="block rounded-lg px-3 py-2 transition hover:bg-brand-lightgray hover:text-brand-orange" href="#contacto">Contacto</a></li>
 					</ul>
 				</nav>
