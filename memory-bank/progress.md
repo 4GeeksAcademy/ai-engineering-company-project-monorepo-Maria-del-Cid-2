@@ -92,7 +92,7 @@ El frontend está construido con:
 - React 19.2.8
 - TypeScript 5
 - Tailwind CSS 4
-
+La aplicación está ubicada actualmente en `uis/backoffice/talent-pipeline-tracker`, siguiendo la estructura definida para las aplicaciones internas de Nexova. La web pública existente está organizada en `uis/website`.
 ---
 
 ## 4. Pendiente en este ejercicio
