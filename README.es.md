@@ -306,3 +306,15 @@ Esta plantilla fue creada como parte del Programa de Carrera de Ingeniería de I
 Puedes encontrar otras plantillas y recursos similares en la [página de GitHub de 4Geeks Academy](https://github.com/4geeksacademy).
 
 _Esta plantilla la mantiene 4Geeks Academy para el track de Ingeniería de IA. Uso exclusivo del programa._
+
+## Previsualización local
+
+Para comprobar las aplicaciones de Nexova en Codespaces:
+
+### Backoffice — Talent Pipeline Tracker
+
+Desde la raíz del repositorio:gi
+
+```bash
+cd uis/backoffice/talent-pipeline-tracker
+npm run dev
