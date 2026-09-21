@@ -318,3 +318,10 @@ Desde la raíz del repositorio:gi
 ```bash
 cd uis/backoffice/talent-pipeline-tracker
 npm run dev
+
+Abrir el puerto 3000 en Ports → Open in Browser.
+
+### Website 
+cd uis/website
+npx http-server . -p 3001 -a 0.0.0.0
+Abrir el puerto 3001 en Ports → Open in Browser.
