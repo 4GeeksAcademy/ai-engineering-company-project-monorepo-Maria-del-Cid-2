@@ -4,7 +4,8 @@ Servicio backend previsto para la funcionalidad **Incident Analysis** de Nexova.
 
 ## Estado actual
 
-La Unidad 6 añade una CLI que ejecuta el análisis y, opcionalmente, la
+La Unidad 7 añade una aplicación FastAPI con `POST /api/incidents/analyze`. La
+Unidad 6 añade una CLI que ejecuta el análisis y, opcionalmente, la
 exportación segura de los resultados agregados. La Unidad 5 añadió la
 exportación segura de los resultados agregados de análisis,
 además de la validación aislada y el lector/normalizador CSV:
@@ -17,11 +18,10 @@ además de la validación aislada y el lector/normalizador CSV:
 - validación de negocio con siete códigos de error estables;
 - exportación agregada con columnas `metric`, `dimension` y `value`.
 - CLI ejecutable con `python scripts/analyze.py <ruta.csv>`.
+- endpoint multipart `POST /api/incidents/analyze` para analizar un CSV.
 
 Todavía no incluye:
 
-- aplicación FastAPI;
-- endpoints HTTP;
 - persistencia.
 
 La exportación sólo recibe un `IncidentAnalysisResult` y nunca serializa filas
@@ -30,6 +30,20 @@ originales ni `customer_email`.
 La CLI termina preguntando `Export results to CSV? [y / n]:`; responde `y` para
 crear `results.csv` en el directorio de ejecución o `n` para no crear ningún
 archivo.
+
+### Ejecutar la API
+
+Instala las dependencias del servicio y arranca FastAPI con:
+
+```bash
+cd services/api
+python -m pip install -e .
+uvicorn app.main:app --reload
+```
+
+El endpoint recibe el campo multipart `file` y devuelve únicamente métricas
+agregadas. Los archivos ausentes, vacíos, no CSV o mal formados responden con
+HTTP 400.
 
 ## Estructura prevista
 
