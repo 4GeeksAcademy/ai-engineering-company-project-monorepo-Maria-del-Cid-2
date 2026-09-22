@@ -4,15 +4,16 @@ Servicio backend previsto para la funcionalidad **Incident Analysis** de Nexova.
 
 ## Estado actual
 
-Esta primera unidad contiene únicamente los contratos mínimos del dominio de incidentes:
+La Unidad 2 añade el lector y normalizador CSV sobre los contratos mínimos del dominio:
 
 - categorías y estados permitidos;
 - códigos de errores de validación;
-- modelos internos para incidencias y resultados agregados.
+- modelos internos para incidencias y resultados agregados;
+- lectura UTF-8 con cabecera y separador coma;
+- normalización de espacios y conversión conservadora del score.
 
 Todavía no incluye:
 
-- lector CSV;
 - validación completa;
 - aplicación FastAPI;
 - endpoints HTTP;
