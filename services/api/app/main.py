@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import io
+from io import StringIO
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 from .incidents.analysis import analyze_incidents
 from .incidents.csv_reader import CsvReadError, read_incidents_csv
+from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
 
 app = FastAPI(title="Nexova Incident Analysis API", version="0.1.0")
+_latest_result: IncidentAnalysisResult | None = None
 
 
 @app.post("/api/incidents/analyze")
@@ -34,7 +38,26 @@ async def analyze_uploaded_incidents(file: UploadFile = File(...)) -> dict[str, 
     except (UnicodeDecodeError, CsvReadError) as exc:
         raise HTTPException(status_code=400, detail="Invalid CSV file") from exc
 
+    global _latest_result
+    _latest_result = result
     return _serialize_result(result)
+
+
+@app.get("/api/incidents/results/export")
+async def export_latest_result() -> StreamingResponse:
+    """Download the latest aggregate result as a privacy-safe CSV."""
+
+    if _latest_result is None:
+        raise HTTPException(status_code=404, detail="No analysis result available")
+
+    output = StringIO()
+    export_analysis_csv(_latest_result, output)
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=results.csv"},
+    )
 
 
 def _serialize_result(result: IncidentAnalysisResult) -> dict[str, object]:
