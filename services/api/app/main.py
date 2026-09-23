@@ -6,6 +6,7 @@ import io
 from io import StringIO
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from .incidents.analysis import analyze_incidents
@@ -14,6 +15,12 @@ from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
 
 app = FastAPI(title="Nexova Incident Analysis API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 _latest_result: IncidentAnalysisResult | None = None
 
 
