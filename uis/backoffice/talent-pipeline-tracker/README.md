@@ -16,6 +16,22 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Incident Analysis API client
+
+The Incident Analysis client is isolated in `lib/incident-analysis-api.ts` and
+does not modify the existing Talent Pipeline Tracker client or its API base.
+Set `NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE` when the FastAPI service is not
+running at `http://localhost:8000/api`:
+
+```bash
+NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE=http://localhost:8000/api npm run dev
+```
+
+It sends CSV files as `multipart/form-data` without setting the `Content-Type`
+header manually, and only handles aggregate analysis results or the exported
+CSV blob. Sensitive incident fields such as customer emails are not part of the
+client types or responses.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

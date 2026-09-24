@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexova-incident-analysis"
+version = "0.1.0"
+description = "Domain contracts for Nexova incident analysis"
+requires-python = ">=3.11"
+dependencies = [
+	"fastapi>=0.110,<1",
+	"python-multipart>=0.0.9,<1",
+	"uvicorn>=0.29,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

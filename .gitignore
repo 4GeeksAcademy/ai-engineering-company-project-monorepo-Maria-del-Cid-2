@@ -13,3 +13,6 @@ out/
 # archivos del sistema/editor
 .DS_Store
 *.log
+
+# documentación personal de aprendizaje
+docs/Aprendiendo-*.md
