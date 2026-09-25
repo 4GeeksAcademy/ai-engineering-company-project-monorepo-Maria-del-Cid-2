@@ -24,6 +24,16 @@ además de la validación aislada y el lector/normalizador CSV:
 - endpoint `GET /api/incidents/results/export` para descargar el último
     resultado agregado como CSV.
 
+La funcionalidad Supplier Directory se integrará en esta misma aplicación
+FastAPI. El prefijo actual de rutas es explícito (`/api`) en cada endpoint de
+Incident Analysis; por tanto, el router futuro de proveedores deberá exponer el
+contrato `/api/suppliers` sin crear una segunda aplicación FastAPI.
+
+La persistencia inicial del Supplier Directory utiliza TinyDB y queda aislada
+en `app/suppliers/database.py`. En esta unidad sólo se añaden los contratos
+Pydantic y la inicialización de TinyDB; todavía no se implementan el seeder,
+los endpoints ni el frontend.
+
 Todavía no incluye:
 
 - persistencia.
