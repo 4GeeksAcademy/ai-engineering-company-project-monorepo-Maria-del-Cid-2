@@ -15,6 +15,9 @@ dependencies = [
 	"uvicorn>=0.29,<1",
 ]
 
+[project.scripts]
+seed = "app.suppliers.seed:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
