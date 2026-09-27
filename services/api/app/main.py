@@ -13,6 +13,7 @@ from .incidents.analysis import analyze_incidents
 from .incidents.csv_reader import CsvReadError, read_incidents_csv
 from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
+from .suppliers.router import router as suppliers_router
 
 app = FastAPI(title="Nexova Incident Analysis API", version="0.1.0")
 app.add_middleware(
@@ -21,6 +22,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+app.include_router(suppliers_router)
 _latest_result: IncidentAnalysisResult | None = None
 
 
