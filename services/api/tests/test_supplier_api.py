@@ -24,6 +24,8 @@ PAYLOAD = {
 
 
 class SupplierApiTests(unittest.TestCase):
+    FRONTEND_ORIGIN = "https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev"
+
     def setUp(self) -> None:
         self.temporary_directory = TemporaryDirectory()
         self.database_path = Path(self.temporary_directory.name) / "suppliers.json"
@@ -64,6 +66,23 @@ class SupplierApiTests(unittest.TestCase):
         self.assertEqual(len(self.client.get("/api/suppliers?country=USA").json()), 1)
         self.assertEqual(len(self.client.get("/api/suppliers?category=ats_software").json()), 1)
         self.assertEqual(self.client.get("/api/suppliers?country=France").status_code, 422)
+
+    def test_cors_allows_supplier_patch_and_delete(self) -> None:
+        for method in ("PATCH", "DELETE"):
+            with self.subTest(method=method):
+                response = self.client.options(
+                    "/api/suppliers/1/status" if method == "PATCH" else "/api/suppliers/1",
+                    headers={
+                        "Origin": self.FRONTEND_ORIGIN,
+                        "Access-Control-Request-Method": method,
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["access-control-allow-origin"], self.FRONTEND_ORIGIN)
+                self.assertIn(
+                    method,
+                    response.headers["access-control-allow-methods"].split(", "),
+                )
 
     def test_get_by_id_and_missing_id(self) -> None:
         self.create_supplier()

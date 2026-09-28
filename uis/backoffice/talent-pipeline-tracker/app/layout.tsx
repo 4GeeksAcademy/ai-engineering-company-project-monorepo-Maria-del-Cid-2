@@ -46,6 +46,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               >
                 Incident Analysis
               </Link>
+              <span className="text-sm text-brand-lightgray">·</span>
+              <Link
+                href="/suppliers"
+                className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite/70 transition-colors hover:text-brand-anthracite"
+              >
+                Supplier Directory
+              </Link>
             </nav>
           </div>
         </header>
