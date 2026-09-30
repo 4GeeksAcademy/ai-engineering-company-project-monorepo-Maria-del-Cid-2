@@ -14,7 +14,7 @@ from tinydb import Query, TinyDB
 from tinydb.table import Document, Table
 
 from .database import get_profiles_table, get_users_table
-from .models import Profile, ProfileCreate, ProfileUpdate, User, UserCreate, UserUpdate
+from .models import Profile, ProfileCreate, ProfileUpdate, User, UserCreate, UserRole, UserUpdate
 
 
 class UserRepository:
@@ -32,6 +32,26 @@ class UserRepository:
     def create(self, payload: UserCreate, hashed_password: str) -> User:
         user_id = max((doc.doc_id for doc in self._table), default=0) + 1
         user = User.from_create(user_id, payload, hashed_password)
+        self._table.insert(
+            Document(user.model_dump(mode="json"), doc_id=user_id)
+        )
+        return user
+
+    def create_with_attrs(
+        self,
+        payload: UserCreate,
+        hashed_password: str,
+        *,
+        is_active: bool = True,
+        role: UserRole = UserRole.USER,
+    ) -> User:
+        """Crea un usuario con atributos personalizados.
+
+        Permite especificar ``is_active`` y ``role`` en lugar de usar
+        los valores por defecto de ``from_create``.
+        """
+        user_id = max((doc.doc_id for doc in self._table), default=0) + 1
+        user = User.from_create(user_id, payload, hashed_password, is_active=is_active, role=role)
         self._table.insert(
             Document(user.model_dump(mode="json"), doc_id=user_id)
         )

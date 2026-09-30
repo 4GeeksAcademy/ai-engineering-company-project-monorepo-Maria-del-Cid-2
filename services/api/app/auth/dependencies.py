@@ -22,7 +22,7 @@ from .security import decode_access_token
 # sin token (o con token inválido), FastAPI/OAuth2 responde con 401
 # y el header WWW-Authenticate: Bearer.
 
-_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def get_repository() -> UserRepository:
@@ -106,3 +106,14 @@ def get_current_user(
         )
 
     return user
+
+
+def get_profile_repository() -> ProfileRepository:
+    """Proporciona un ProfileRepository conectado a la BD de auth."""
+    from .repository import ProfileRepository
+
+    database = get_database()
+    try:
+        yield ProfileRepository(database)
+    finally:
+        database.close()

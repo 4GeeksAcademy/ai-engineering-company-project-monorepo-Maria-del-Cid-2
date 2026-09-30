@@ -70,6 +70,9 @@ class User(BaseModel):
         user_id: int,
         payload: UserCreate,
         hashed_password: str,
+        *,
+        is_active: bool = True,
+        role: UserRole = UserRole.USER,
     ) -> User:
         """Construye un User persistido a partir de un payload de creación.
 
@@ -81,13 +84,17 @@ class User(BaseModel):
             Datos proporcionados por el cliente (email + contraseña).
         hashed_password : str
             Hash bcrypt de la contraseña (nunca la original).
+        is_active : bool
+            Si el usuario está activo (por defecto True).
+        role : UserRole
+            Rol del usuario (por defecto ``user``).
         """
         return cls(
             id=user_id,
             email=payload.email,
             hashed_password=hashed_password,
-            is_active=True,
-            role=UserRole.USER,
+            is_active=is_active,
+            role=role,
             created_at=datetime.now(timezone.utc),
         )
 
