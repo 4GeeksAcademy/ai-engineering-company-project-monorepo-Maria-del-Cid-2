@@ -1,6 +1,6 @@
 """Endpoint tests for Supplier Directory Step 3."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import os
@@ -8,9 +8,22 @@ import unittest
 
 from fastapi.testclient import TestClient
 
+from app.auth.dependencies import get_current_user
+from app.auth.models import User, UserRole
 from app.main import app
 from app.suppliers.database import create_database
 from app.suppliers.seed import seed_suppliers
+
+
+# ── Usuario ficticio para los tests funcionales ─────────────────────────────
+_FAKE_USER = User(
+    id=999,
+    email="test@nexova.com",
+    hashed_password="fake",
+    is_active=True,
+    role=UserRole.ADMIN,
+    created_at=datetime.now(timezone.utc),
+)
 
 
 PAYLOAD = {
@@ -30,9 +43,13 @@ class SupplierApiTests(unittest.TestCase):
         self.temporary_directory = TemporaryDirectory()
         self.database_path = Path(self.temporary_directory.name) / "suppliers.json"
         os.environ["SUPPLIER_DIRECTORY_DB_PATH"] = str(self.database_path)
+        # Sobrescribir get_current_user para que los tests funcionales
+        # no necesiten un token JWT real.
+        app.dependency_overrides[get_current_user] = lambda: _FAKE_USER
         self.client = TestClient(app)
 
     def tearDown(self) -> None:
+        app.dependency_overrides.pop(get_current_user, None)
         os.environ.pop("SUPPLIER_DIRECTORY_DB_PATH", None)
         self.temporary_directory.cleanup()
 
