@@ -1,0 +1,1 @@
+"""Auth package — configuración, seguridad y dependencias de autenticación."""
