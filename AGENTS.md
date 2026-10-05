@@ -46,6 +46,15 @@ Antes de realizar cambios debe:
 6. Definir un plan breve de implementación.
 7. Preguntar al usuario si los requisitos son ambiguos o existe una decisión arquitectónica importante que no pueda determinarse con seguridad.
 
+Al investigar un comportamiento reportado:
+
+- Sigue la petición desde la UI hasta el cliente HTTP, la ruta backend y la persistencia efectiva antes de atribuir una causa.
+- Comprueba la URL/base configurada, los prefijos de ruta, los headers y el estado HTTP; para datos vacíos, comprueba también la ruta de base de datos que abrió el proceso.
+- Separa explícitamente hechos reproducidos, hipótesis y preguntas abiertas. No presentes una hipótesis como causa raíz confirmada.
+- Contrasta la documentación con la implementación y las pruebas cercanas; actualiza la documentación obsoleta cuando el alcance lo permita.
+- Si un comando puede modificar datos locales (por ejemplo, seeders o scripts de carga), identifica antes el archivo de destino y usa una base aislada/temporal. No ejecutes operaciones destructivas sobre datos de trabajo para diagnosticar.
+- Distingue verificaciones automatizadas de validación manual en navegador; no declares comprobado un flujo de usuario solo porque pasen tests de cliente o compilación.
+
 No se deben crear nuevas carpetas ni estructuras arquitectónicas sin revisar previamente el README correspondiente y la estructura existente del repositorio.
 
 ---

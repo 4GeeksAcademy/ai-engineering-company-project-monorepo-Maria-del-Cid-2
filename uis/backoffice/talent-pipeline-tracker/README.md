@@ -44,6 +44,19 @@ Protected Nexova requests opt into Bearer authentication through the shared
 client. The existing candidate Tracker and Incident Analysis clients remain
 separate and do not receive the session token.
 
+Supplier Directory requests opt into Bearer authentication. A `401` should be
+diagnosed by checking that login completed, a token is present, and the request
+uses the Nexova API base; successful registration alone does not create a
+session. Keep the Nexova and Incident Analysis clients separate from the
+4Geeks Tracker client.
+
+The Nexova client binds the native `globalThis.fetch` before storing it as a
+method, while preserving injected fetchers used by tests. Keep this binding if
+the client is changed. The auth form also renders a stable pre-hydration
+placeholder; do not infer the cause of earlier browser DOM mutations from that
+mitigation alone. Validate login and registration in a browser in addition to
+automated client checks.
+
 Run the shared client tests with `npm test` from this application directory.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

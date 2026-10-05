@@ -79,6 +79,8 @@ Implementada la infraestructura frontend de cliente Nexova y sesión JWT en
 
 - cliente compartido con token Bearer opt-in, almacenamiento local, validación
   de sesión mediante `/auth/me`, cierre local e invalidación ante `401`;
+- el fetch nativo se almacena enlazado a `globalThis`, manteniendo fetchers
+  inyectados para tests y evitando invocarlo con receptor incorrecto;
 - tipos de usuario/sesión y `AuthProvider` compatible con SSR;
 - integración autenticada de Supplier Directory; Tracker e Incident Analysis
   permanecen separados;
@@ -88,6 +90,19 @@ Esta fase no añade pantallas de autenticación ni protección global de rutas.
 Verificación: 12 tests, TypeScript, lint focalizado y build pasan. El lint global
 sigue reportando errores React preexistentes en `app/page.tsx`,
 `hooks/useRecord.ts` y `hooks/useRecords.ts`.
+
+### Autenticación del backoffice — AUTH-02, fase 3
+
+Implementadas las rutas `/login` y `/register` con un formulario compartido,
+validación en español, estados de envío, prevención de peticiones duplicadas y
+controles accesibles. El login envía el formulario OAuth2 esperado, guarda el
+JWT mediante el cliente compartido, valida `/auth/me` y redirige a `/`; el
+registro envía únicamente email y contraseña, y ofrece continuar al login sin
+crear sesión. No se añadieron guards ni se protegieron rutas existentes.
+
+Verificación: 21 tests frontend, 64 tests backend de auth, TypeScript, lint
+focalizado, build y comprobación HTTP SSR completados. El lint global sigue
+fallando solo por los tres errores React preexistentes indicados en fase 2.
 
 ---
 
@@ -116,69 +131,35 @@ La aplicación está ubicada actualmente en `uis/backoffice/talent-pipeline-trac
 - Validación visual: comprobadas correctamente la website pública y el backoffice mediante las previsualizaciones de Codespaces.
 ---
 
-## 4. Pendiente en este ejercicio
+## 4. Hallazgos y pendientes confirmados
 
-El objetivo inmediato es completar la infraestructura de soporte para agentes de desarrollo.
+- La ruta predeterminada de Supplier es `services/data/suppliers.json`; no se
+  detectó override en el entorno inspeccionado y el archivo existe con 15
+  entradas. Esto no demuestra qué ruta usó un proceso histórico ni por qué se
+  observó `[]` anteriormente.
+- Sin token, Supplier responde `401 Not authenticated`; con token inválido,
+  `401 Invalid credentials`. El registro no inicia sesión automáticamente.
+- No hay archivos CSV en el workspace, aunque las pruebas hacen referencia a
+  `scripts/incidents-nexova.csv`. La causa y el efecto sobre pruebas/demos
+  dependen de confirmar o recuperar ese fixture; no se generó uno.
+- La causa exacta de los errores de hidratación observados no está confirmada.
+  La solución actual evita renderizar el formulario antes de hidratar, pero se
+  debe completar la validación de login/registro en Chrome.
+- El README de `services/api` estaba desactualizado respecto a Supplier y se
+  sincronizó con la implementación actual.
 
-Pendiente:
+## 5. Siguiente trabajo
 
-- crear el `AGENTS.md` global del repositorio;
-- definir reglas en `.agents/rules/`;
-- crear al menos una skill reutilizable en `.agents/skills/`;
-- completar la estructura de aplicaciones indicada por la plantilla:
-  - `uis/website`
-  - `uis/backoffice`;
-- proporcionar una estructura inicial visible para `backoffice`;
-- comprobar que la estructura resultante respeta las instrucciones del monorepo;
-- revisar los cambios realizados;
-- ejecutar las comprobaciones necesarias;
-- preparar commit y PR.
+1. Validar manualmente login, registro, persistencia de sesión y acceso a
+   Supplier Directory en Chrome con API/base URL y CORS correctos.
+2. Confirmar la disponibilidad y ubicación esperada del CSV de pruebas de
+   Incident Analysis.
+3. Si reaparece una respuesta vacía de Supplier, registrar URL/base efectiva,
+   estado HTTP, presencia/validez del token (nunca su valor) y ruta DB del
+   proceso antes de atribuir una causa.
 
----
-
-## 5. Estructura de agentes pendiente
-
-Debe existir una separación clara entre:
-
-### Configuración de agentes de desarrollo
-
-`.agents/`
-
-Incluye:
-
-- reglas;
-- skills reutilizables para el agente de desarrollo.
-
-### Código de producto relacionado con IA
-
-`agents/`
-
-Contiene los agentes que forman parte del producto Nexova.
-
-### Skills de producto
-
-`skills/`
-
-Contiene las skills que forman parte del producto Nexova.
-
-Estas tres áreas no deben mezclarse.
-
----
-
-## 6. Próximos pasos
-
-Orden previsto:
-
-1. Crear `AGENTS.md` en la raíz.
-2. Crear las reglas necesarias en `.agents/rules/`.
-3. Crear una skill reutilizable en `.agents/skills/`.
-4. Crear o completar `uis/website` según las instrucciones del ejercicio.
-5. Crear `uis/backoffice` con su estructura inicial y vista de entrada.
-6. Mantener los servicios backend dentro de `services/`.
-7. Ejecutar las comprobaciones del proyecto.
-8. Revisar `git diff` y `git status`.
-9. Crear el commit.
-10. Preparar la PR.
+No se ejecutaron tests, seeders ni scripts de análisis durante esta actualización
+documental para evitar efectos sobre datos locales.
 
 ---
 

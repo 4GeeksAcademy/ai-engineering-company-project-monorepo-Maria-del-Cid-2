@@ -44,7 +44,7 @@ Cada aplicación o servicio debe mantener su propia documentación técnica y fu
 
 La aplicación Talent Pipeline Tracker está actualmente ubicada en:
 
-`uis/talent-pipeline-tracker/`
+`uis/backoffice/talent-pipeline-tracker/`
 
 Es una aplicación frontend construida con:
 
@@ -64,11 +64,11 @@ Scripts disponibles:
 
 La aplicación dispone de instrucciones específicas en:
 
-`uis/talent-pipeline-tracker/AGENTS.md`
+`uis/backoffice/talent-pipeline-tracker/AGENTS.md`
 
 y contexto funcional en:
 
-`uis/talent-pipeline-tracker/context.md`
+`uis/backoffice/talent-pipeline-tracker/context.md`
 
 Antes de modificar esta aplicación deben consultarse ambos archivos.
 
@@ -333,7 +333,7 @@ El `AGENTS.md` de la aplicación indica que esta versión puede contener cambios
 
 Antes de implementar o modificar APIs específicas de Next.js:
 
-- consultar las instrucciones de `uis/talent-pipeline-tracker/AGENTS.md`;
+- consultar las instrucciones de `uis/backoffice/talent-pipeline-tracker/AGENTS.md`;
 - consultar la documentación local de Next.js indicada por dichas instrucciones cuando sea necesario.
 
 No asumir comportamiento de versiones antiguas de Next.js.
@@ -369,3 +369,67 @@ Las instrucciones globales del repositorio se encuentran en:
 `AGENTS.md`
 
 Estas configuraciones deben complementar, no sustituir, las instrucciones específicas de cada aplicación.
+
+---
+
+## 16. API Nexova: módulos y configuración
+
+La aplicación FastAPI de `services/api` registra Incident Analysis, Supplier
+Directory y las rutas de autenticación/perfiles en una sola instancia. Los
+prefijos `/api` están incluidos en las rutas; la base frontend debe terminar en
+`/api`, sin duplicar ese prefijo.
+
+El cliente Nexova usa `NEXT_PUBLIC_NEXOVA_API_BASE` y, si no se configura,
+`http://localhost:8000/api`. En Codespaces se debe usar el origen reenviado del
+puerto 8000 más `/api`, y permitir el origen exacto del frontend en
+`CORS_ORIGINS`. No usar `*`. Las variables `NEXT_PUBLIC_*` son públicas y no
+deben contener secretos.
+
+El cliente Incident Analysis es independiente (`lib/incident-analysis-api.ts`)
+y usa `NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE`, con default
+`http://localhost:8000/api`. No comparte sesión ni base URL con el cliente
+Nexova ni con el Tracker de 4Geeks.
+
+## 17. Autenticación
+
+- `POST /api/auth/login` recibe formulario OAuth2 URL-encoded con `username` igual al email y `password`.
+- `POST /api/users` recibe JSON con `email` y `password`; el registro no inicia sesión. Un email duplicado devuelve `409` y una entrada inválida `422`.
+- `GET /api/auth/me` valida el JWT de la sesión.
+- El frontend guarda el token bajo `nexova_access_token`; el cliente solo envía `Authorization: Bearer` cuando la operación opta explícitamente por auth. Un `401` en una solicitud protegida invalida la sesión local.
+- Login y registro son públicos. Supplier Directory requiere autenticación; Incident Analysis no la requiere. El registro por sí solo no habilita solicitudes protegidas.
+- Auth usa TinyDB en `services/data/auth.json` por defecto o `AUTH_DB_PATH`. La serialización de registro es un lock dentro del proceso, no entre workers; el README del API documenta esa limitación.
+
+## 18. Incident Analysis
+
+- `POST /api/incidents/analyze` recibe un CSV en el campo multipart `file` y devuelve métricas agregadas. El cliente no debe fijar manualmente `Content-Type` para `FormData`.
+- `GET /api/incidents/results/export` exporta el último resultado agregado del proceso. Antes de un análisis correcto devuelve `404`; el resultado es temporal, compartido por proceso y no persistido.
+- La respuesta y la exportación no incluyen filas originales ni emails.
+- No se encontró ningún CSV en el workspace, aunque las pruebas referencian `scripts/incidents-nexova.csv`. La disponibilidad de ese fixture y cualquier conclusión que dependa de sus datos quedan pendientes de confirmación.
+
+## 19. Supplier Directory y persistencia
+
+Supplier Directory expone `GET/POST /api/suppliers`,
+`GET /api/suppliers/{id}`, `PATCH /api/suppliers/{id}/rate`,
+`PATCH /api/suppliers/{id}/status` y `DELETE /api/suppliers/{id}`. Todas estas
+rutas requieren JWT. Un `401` significa que falta o no es válido el token; un
+array vacío, por sí solo, no demuestra un fallo del endpoint.
+
+La base TinyDB usa `services/data/suppliers.json` por defecto o
+`SUPPLIER_DIRECTORY_DB_PATH`. El seeder es explícito, idempotente por nombre y
+no se ejecuta al iniciar FastAPI. Comprueba la ruta efectiva del proceso antes
+de concluir que la base está vacía o de ejecutar un seed. En la inspección
+actual, el archivo por defecto existe y contiene 15 proveedores; no se debe
+asumir que otras instalaciones tienen los mismos datos.
+
+## 20. Hallazgos de diagnóstico frontend
+
+El cliente Nexova conserva fetchers inyectados para tests y enlaza el fetch
+nativo con `globalThis` (`globalThis.fetch.bind(globalThis)`). Si se cambia el
+cliente, no guardar el fetch nativo sin binding y después invocarlo como método:
+el receptor puede ser incorrecto en el navegador.
+
+`AuthForm` evita comparar HTML distinto entre SSR e hidratación: el formulario
+se monta en cliente después del placeholder inicial. La causa exacta de las
+mutaciones de DOM observadas anteriormente no quedó demostrada; no atribuirla a
+LastPass u otra extensión sin reproducción. Tests/build tampoco sustituyen la
+comprobación manual del login y registro en Chrome.

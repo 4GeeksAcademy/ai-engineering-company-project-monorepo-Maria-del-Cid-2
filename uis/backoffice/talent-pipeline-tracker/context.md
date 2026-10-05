@@ -1,6 +1,6 @@
 # CONTEXT — Nexova · Hito 3: Talent Pipeline Tracker
 
-> **Ruta en el repositorio:** `03-talent-pipeline-tracker/CONTEXT-nexova.es.md`
+> **Ruta en el repositorio:** `uis/backoffice/talent-pipeline-tracker/context.md`
 
 ---
 
