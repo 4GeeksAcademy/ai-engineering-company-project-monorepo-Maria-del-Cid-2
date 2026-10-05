@@ -22,6 +22,14 @@ export interface TokenResponse {
   token_type: "bearer";
 }
 
+export interface RegisteredUser {
+  id: number;
+  email: string;
+  is_active: boolean;
+  role: UserRole;
+  created_at: string;
+}
+
 export type SessionStatus =
   | "loading"
   | "authenticated"

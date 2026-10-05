@@ -120,7 +120,7 @@ export class NexovaApiClient {
 
   constructor(options: NexovaApiClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? NEXOVA_API_BASE).replace(/\/+$/, "");
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
     this.injectedStorage = options.storage;
     this.redirectToExpiredLogin =
       options.redirectToExpiredLogin ?? this.defaultExpiredLoginRedirect;
