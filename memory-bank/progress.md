@@ -72,6 +72,23 @@ Se ha revisado y confirmado la existencia y funcionamiento previsto de:
 - tipos TypeScript;
 - constantes para estados y etapas.
 
+### Autenticación del backoffice — AUTH-02, fase 2
+
+Implementada la infraestructura frontend de cliente Nexova y sesión JWT en
+`uis/backoffice/talent-pipeline-tracker`:
+
+- cliente compartido con token Bearer opt-in, almacenamiento local, validación
+  de sesión mediante `/auth/me`, cierre local e invalidación ante `401`;
+- tipos de usuario/sesión y `AuthProvider` compatible con SSR;
+- integración autenticada de Supplier Directory; Tracker e Incident Analysis
+  permanecen separados;
+- configuración `NEXT_PUBLIC_NEXOVA_API_BASE` y pruebas nativas del cliente.
+
+Esta fase no añade pantallas de autenticación ni protección global de rutas.
+Verificación: 12 tests, TypeScript, lint focalizado y build pasan. El lint global
+sigue reportando errores React preexistentes en `app/page.tsx`,
+`hooks/useRecord.ts` y `hooks/useRecords.ts`.
+
 ---
 
 ## 3. Estado actual del Talent Pipeline Tracker

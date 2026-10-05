@@ -32,6 +32,20 @@ header manually, and only handles aggregate analysis results or the exported
 CSV blob. Sensitive incident fields such as customer emails are not part of the
 client types or responses.
 
+## Nexova API client and session
+
+The authenticated Nexova client uses `NEXT_PUBLIC_NEXOVA_API_BASE`, defaulting
+to `http://localhost:8000/api` for local development. In Codespaces, set it to
+the forwarded API origin (port 8000) plus `/api`; the frontend origin must also
+be included in the API's `CORS_ORIGINS` allowlist. This public URL is not a
+secret; never put API keys or signing secrets in `NEXT_PUBLIC_*` variables.
+
+Protected Nexova requests opt into Bearer authentication through the shared
+client. The existing candidate Tracker and Incident Analysis clients remain
+separate and do not receive the session token.
+
+Run the shared client tests with `npm test` from this application directory.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
