@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 from io import StringIO
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -18,12 +19,31 @@ from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
 from .auth.routers.profiles_router import router as profiles_router
 
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev",
+)
+
+
+def get_cors_origins() -> list[str]:
+    """Return explicit browser origins from CORS_ORIGINS or development defaults."""
+    configured_origins = os.getenv("CORS_ORIGINS")
+    origins = (
+        [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+        if configured_origins is not None
+        else list(_DEFAULT_CORS_ORIGINS)
+    )
+    if "*" in origins:
+        raise ValueError("CORS_ORIGINS must contain explicit origins, not '*'")
+    return origins
+
+
 app = FastAPI(title="Nexova Incident Analysis API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev"],
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_origins=get_cors_origins(),
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(suppliers_router)
 app.include_router(auth_router)

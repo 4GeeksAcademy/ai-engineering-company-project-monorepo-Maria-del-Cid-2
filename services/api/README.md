@@ -87,3 +87,17 @@ PYTHONPATH=services/api python -m unittest discover -s services/api/tests -p 'te
 ```
 
 La configuración de dependencias y ejecución de FastAPI se añadirá en la unidad correspondiente, cuando se implemente la API.
+
+## Configuración de autenticación y CORS
+
+Configura `CORS_ORIGINS` como una lista separada por comas de orígenes exactos
+(esquema, host y puerto), sin comodines. Si no se define, se permiten los
+orígenes de desarrollo `http://localhost:3000` y el Codespace configurado en
+`app/main.py`. En despliegues no locales, establece explícitamente la allowlist
+del frontend; el servidor rechaza `*`. Se permiten los headers `Authorization`
+y `Content-Type`, y el método `PUT` necesario para actualizar perfiles.
+
+La base de autenticación usa TinyDB. El registro serializa la comprobación y la
+creación de emails dentro del proceso, por lo que el servicio debe ejecutarse
+con un único worker. Este lock no coordina varios procesos; desplegar varios
+workers requiere una persistencia con unicidad atómica para el email.

@@ -59,7 +59,6 @@ class UserCreateRequest(BaseModel):
     """Payload para crear un usuario (y opcionalmente su Profile).
 
     - ``password`` se hashea antes de almacenar (nunca en texto plano).
-    - ``role`` por defecto es ``user``.
     - ``profile`` puede incluir ``name``, ``phone`` y ``address``.
     """
 
@@ -67,8 +66,6 @@ class UserCreateRequest(BaseModel):
 
     email: EmailStr
     password: str = Field(min_length=1)
-    is_active: bool = True
-    role: UserRole = UserRole.USER
     profile: ProfileCreate | None = None
 
 
