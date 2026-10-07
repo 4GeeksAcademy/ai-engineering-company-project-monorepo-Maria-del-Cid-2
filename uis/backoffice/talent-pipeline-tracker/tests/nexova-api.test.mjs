@@ -166,6 +166,38 @@ describe("NexovaApiClient", () => {
     assert.equal(requestCount, 1);
   });
 
+  it("updates the authenticated session profile without refetching /auth/me", async () => {
+    let requestCount = 0;
+    const storage = new MemoryStorage();
+    const client = makeClient({
+      storage,
+      fetcher: async () => {
+        requestCount += 1;
+        return userResponse();
+      },
+    });
+    storage.setItem(ACCESS_TOKEN_KEY, "valid-token");
+    await client.validateSession();
+    const updatedProfile = {
+      id: 3,
+      user_id: 1,
+      name: "User",
+      phone: "",
+      address: "Valencia",
+    };
+    const published = [];
+    const unsubscribe = client.subscribe((session) => published.push(session));
+
+    client.updateProfile(updatedProfile);
+
+    assert.deepEqual(client.getSession().user.profile, updatedProfile);
+    assert.equal(client.getSession().status, "authenticated");
+    assert.equal(requestCount, 1);
+    assert.equal(published.length, 1);
+    assert.deepEqual(published[0].user.profile, updatedProfile);
+    unsubscribe();
+  });
+
   it("clears the session and redirects once when concurrent protected requests return 401", async () => {
     const storage = new MemoryStorage();
     storage.setItem(ACCESS_TOKEN_KEY, "expired-token");

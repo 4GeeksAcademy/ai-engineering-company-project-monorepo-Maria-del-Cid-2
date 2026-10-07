@@ -1,4 +1,4 @@
-import type { AuthenticatedUser, SessionSnapshot } from "@/types/auth";
+import type { AuthenticatedUser, SessionSnapshot, UserProfile } from "@/types/auth";
 
 const configuredApiBase = process.env.NEXT_PUBLIC_NEXOVA_API_BASE?.trim();
 export const NEXOVA_API_BASE = (
@@ -161,6 +161,15 @@ export class NexovaApiClient {
     }
     this.expirationHandled = false;
     this.publish({ status: "unauthenticated", user: null, error: null });
+  }
+
+  updateProfile(profile: UserProfile): void {
+    if (this.session.status !== "authenticated" || !this.session.user) return;
+
+    this.publish({
+      ...this.session,
+      user: { ...this.session.user, profile },
+    });
   }
 
   async validateSession(): Promise<SessionSnapshot> {

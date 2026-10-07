@@ -55,6 +55,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 >
                   Supplier Directory
                 </Link>
+                <span className="text-sm text-brand-lightgray">·</span>
+                <Link
+                  href="/account/profile"
+                  aria-label="Mi perfil de usuario"
+                  className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite/70 transition-colors hover:text-brand-anthracite"
+                >
+                  Mi perfil
+                </Link>
               </nav>
             </div>
           </header>

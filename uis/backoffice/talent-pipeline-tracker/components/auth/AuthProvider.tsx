@@ -3,10 +3,11 @@
 import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { nexovaApi } from "@/lib/nexova-api";
-import type { SessionSnapshot } from "@/types/auth";
+import type { SessionSnapshot, UserProfile } from "@/types/auth";
 
 interface AuthContextValue extends SessionSnapshot {
   setAccessToken: (token: string) => void;
+  updateProfile: (profile: UserProfile) => void;
   validateSession: () => Promise<SessionSnapshot>;
   logout: () => void;
 }
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     ...session,
     setAccessToken: (token) => nexovaApi.setAccessToken(token),
+    updateProfile: (profile) => nexovaApi.updateProfile(profile),
     validateSession: () => nexovaApi.validateSession(),
     logout: () => nexovaApi.logout(),
   };
