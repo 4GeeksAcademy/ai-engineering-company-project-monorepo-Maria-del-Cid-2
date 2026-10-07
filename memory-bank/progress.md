@@ -147,6 +147,24 @@ se instalaron temporalmente fuera del repo; no se añadieron dependencias.
 No se modificó backend ni `services/data/`, ni se ejecutaron seeders,
 commits o push.
 
+### Password reset — Fase 2 frontend
+
+Implementadas las pantallas `/forgot-password`, `/reset-password` y
+`/account/change-password` en `uis/backoffice/talent-pipeline-tracker`.
+El token de recuperación se lee desde `searchParams` y no se guarda en
+localStorage ni en `AuthProvider`. Las peticiones públicas no envían Bearer;
+el cambio de contraseña reutiliza el cliente autenticado y cierra la sesión
+local tras completarse, porque el backend invalida el JWT.
+
+Se añadió `PasswordResetForm` con validación, mensajes genéricos, estados de
+éxito/error y prevención de envíos concurrentes. `/account/change-password`
+queda protegido por el `AuthShell` existente y el login incluye el enlace de
+recuperación.
+
+Verificación realizada: 41 tests frontend, `npx tsc --noEmit`. Pendientes de
+ejecutar en esta fase: lint y build. No se modificó backend, `services/data/`,
+`uis/website`, ni se creó commit o push.
+
 ### Fase 6 — Auditoría final previa a la entrega
 
 Backend: 222 tests, 212 correctos. Los 10 fallos restantes provienen de un

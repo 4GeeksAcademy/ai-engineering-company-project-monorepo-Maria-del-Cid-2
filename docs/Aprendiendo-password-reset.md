@@ -96,8 +96,37 @@ PASSWORD_RESET_TOKEN_EXPIRE_MINUTES=30
 
 La API key todavía no se configura ni se usa durante los tests. Los tests inyectan un servicio de email falso y no realizan llamadas externas.
 
+## Fase 2 — Frontend
+
+### 1. Separar los tres casos de uso
+
+El frontend presenta tres formularios diferentes sobre el mismo contrato de auth:
+
+- `forgot-password` pide solo el email y muestra siempre un resultado genérico.
+- `reset-password` recibe el token desde el query string y pide la nueva contraseña dos veces.
+- `change-password` es una pantalla protegida, pide la contraseña actual y usa la sesión existente.
+
+La validación local mejora la experiencia, pero no sustituye la validación del backend. Las reglas de longitud y confirmación se repiten en la interfaz para evitar peticiones innecesarias y se vuelven a aplicar en la API.
+
+### 2. Query string y límites de estado
+
+El enlace del email termina en `/reset-password?token=...`. La página servidor lee `searchParams` y pasa el token al componente cliente. El token no se guarda en `localStorage`, `AuthProvider` ni en un estado global; solo se utiliza para construir la petición de reset.
+
+Después de un reset correcto, la interfaz vuelve a `/login?reset=1`. Después de un cambio autenticado, cierra la sesión local y vuelve a `/login?changed=1`, porque el backend ha invalidado el JWT al incrementar `credentials_version`.
+
+### 3. Errores, privacidad y navegación
+
+El formulario de forgot no revela si el email existe. Los errores de token inválido o caducado se muestran como un mensaje único, y el error de contraseña actual se presenta solo en el flujo autenticado. Las peticiones públicas desactivan explícitamente el Bearer; solo `change-password` usa la opción autenticada del cliente.
+
+La protección de `/account/change-password` se añade al `AuthShell` existente. No se crea middleware ni un proveedor de sesión paralelo: la autorización real continúa siendo responsabilidad de la API.
+
+## Aplicación en Nexova — Fase 2
+
+La aplicación `uis/backoffice/talent-pipeline-tracker` incorpora un helper compartido para validaciones, llamadas a los tres endpoints y traducción de errores. `PasswordResetForm` reutiliza los componentes `Input`, `Button` y `AuthSubmissionGate` para mantener estados accesibles, evitar envíos concurrentes y permitir reintentos.
+
+Las rutas añadidas son `/forgot-password`, `/reset-password` y `/account/change-password`. La suite frontend verifica validaciones, payloads, flags de autenticación, token ausente, errores principales y el guard de rutas.
+
 ## Próximas actualizaciones
 
-- **Fase 2:** formularios, navegación, estados de UI, query string y redirección.
 - **Fase 3:** user enumeration, replay, logs, URLs, API keys y seguridad de sesiones.
 - **Fase 4:** rate limiting, audit log, plantillas HTML, reintentos y conclusiones.

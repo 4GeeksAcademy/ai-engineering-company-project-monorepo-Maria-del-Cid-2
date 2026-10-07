@@ -6,6 +6,7 @@ import {
   NexovaApiError,
 } from "../lib/nexova-api.ts";
 import {
+  getAccountNavigationLinks,
   logoutAndRedirect,
   requiresAuthentication,
   shouldShowLogout,
@@ -404,9 +405,26 @@ describe("NexovaApiClient", () => {
     assert.equal(shouldShowLogout("error"), false);
   });
 
-  it("requires authentication only for profile and supplier routes", () => {
+  it("shows public account links only when unauthenticated", () => {
+    assert.deepEqual(getAccountNavigationLinks("unauthenticated"), [
+      { label: "Login", href: "/login" },
+      { label: "Create Account", href: "/register" },
+    ]);
+    assert.deepEqual(getAccountNavigationLinks("authenticated"), [
+      { label: "My Profile", href: "/account/profile" },
+      { label: "Change Password", href: "/account/change-password" },
+    ]);
+  });
+
+  it("hides account links while the session is loading or has an error", () => {
+    assert.deepEqual(getAccountNavigationLinks("loading"), []);
+    assert.deepEqual(getAccountNavigationLinks("error"), []);
+  });
+
+  it("requires authentication for account and supplier routes", () => {
     assert.equal(requiresAuthentication("/account/profile"), true);
     assert.equal(requiresAuthentication("/account/profile/edit"), true);
+    assert.equal(requiresAuthentication("/account/change-password"), true);
     assert.equal(requiresAuthentication("/suppliers"), true);
     assert.equal(requiresAuthentication("/suppliers/"), true);
     assert.equal(requiresAuthentication("/"), false);
