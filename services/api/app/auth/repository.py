@@ -7,7 +7,7 @@ tabla por defecto.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Any
 
@@ -15,6 +15,8 @@ from tinydb import Query, TinyDB
 from tinydb.table import Document, Table
 
 from .database import (
+    get_password_reset_audit_log_table,
+    get_password_reset_rate_limits_table,
     get_password_reset_tokens_table,
     get_profiles_table,
     get_users_table,
@@ -291,3 +293,75 @@ class PasswordResetTokenRepository:
                 doc_ids=[token_id],
             )
             return True
+
+
+class PasswordResetRateLimitRepository:
+    """TinyDB persistence for the deliberately small email rate limiter."""
+
+    def __init__(self, database: TinyDB) -> None:
+        self._db = database
+
+    @property
+    def _table(self) -> Table:
+        return get_password_reset_rate_limits_table(self._db)
+
+    def allow(
+        self,
+        email: str,
+        requested_at: datetime,
+        limit: int,
+        window: timedelta,
+    ) -> bool:
+        with _password_reset_lock:
+            cutoff = requested_at - window
+            recent_count = 0
+            for record in self._table.all():
+                if record.get("email") != email:
+                    continue
+                recorded_at = datetime.fromisoformat(record["requested_at"])
+                if recorded_at > cutoff:
+                    recent_count += 1
+
+            request_id = max((doc.doc_id for doc in self._table), default=0) + 1
+            self._table.insert(
+                Document(
+                    {
+                        "email": email,
+                        "requested_at": requested_at.isoformat(),
+                    },
+                    doc_id=request_id,
+                )
+            )
+            return recent_count < limit
+
+
+class PasswordResetAuditLogRepository:
+    """Store reset events without secrets or credentials."""
+
+    def __init__(self, database: TinyDB) -> None:
+        self._db = database
+
+    @property
+    def _table(self) -> Table:
+        return get_password_reset_audit_log_table(self._db)
+
+    def record(
+        self,
+        event_type: str,
+        timestamp: datetime,
+        ip_address: str | None,
+        email: str | None = None,
+    ) -> None:
+        with _password_reset_lock:
+            event_id = max((doc.doc_id for doc in self._table), default=0) + 1
+            self._table.insert(
+                Document(
+                    {
+                        "event_type": event_type,
+                        "timestamp": timestamp.isoformat(),
+                        "ip_address": ip_address,
+                        "email": email,
+                    },
+                    doc_id=event_id,
+                )
+            )

@@ -431,6 +431,15 @@ de concluir que la base está vacía o de ejecutar un seed. En la inspección
 actual, el archivo por defecto existe y contiene 15 proveedores; no se debe
 asumir que otras instalaciones tienen los mismos datos.
 
+## 21. Decisiones de persistencia de la Fase 4
+
+Password reset dispone además de una plantilla HTML generada en backend, un
+límite local de 3 solicitudes por email cada hora y dos tablas TinyDB auxiliares
+(`password_reset_rate_limits` y `password_reset_audit_log`). La auditoría
+registra timestamp, IP, email cuando procede y tipo de evento, nunca tokens ni
+credenciales. Estas extensiones son opcionales y los locks solo coordinan un
+proceso.
+
 ## 20. Hallazgos de diagnóstico frontend
 
 El cliente Nexova conserva fetchers inyectados para tests y enlaza el fetch

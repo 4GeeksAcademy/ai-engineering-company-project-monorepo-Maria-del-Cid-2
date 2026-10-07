@@ -183,6 +183,15 @@ Verificación focalizada: 11 tests backend de password reset correctos. La
 limitación de TinyDB multi-worker queda documentada: los locks solo coordinan
 un proceso y no sustituyen una base de datos transaccional distribuida.
 
+### Password reset — Fase 4 extensiones opcionales
+
+Implementadas las tres extensiones no evaluables: plantilla HTML sencilla para
+el email mediante `EmailSender`, rate limiting de 3 solicitudes por email en
+una ventana de una hora y auditoría TinyDB de solicitudes/resultados con
+timestamp, IP, email cuando procede y tipo de evento. No se guardan secretos,
+contraseñas, tokens ni JWT. Los tests usan `FakeEmailSender`; Resend no se ha
+activado ni modificado operativamente.
+
 ### Fase 6 — Auditoría final previa a la entrega
 
 Backend: 222 tests, 212 correctos. Los 10 fallos restantes provienen de un

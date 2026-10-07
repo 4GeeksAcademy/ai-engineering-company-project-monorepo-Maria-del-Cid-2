@@ -63,6 +63,13 @@ No introduzcas la API key en el código, en `services/data/`, en el frontend ni
 en variables `NEXT_PUBLIC_*`. Los tests usan un email sender falso y no realizan
 llamadas a Resend.
 
+Como extensiones opcionales, el email incluye una versión HTML generada por el
+adaptador, `forgot-password` limita a 3 solicitudes por email en una ventana de
+una hora y los eventos de solicitud/reset se guardan en la tabla TinyDB
+`password_reset_audit_log` con timestamp, IP, email cuando está disponible y
+tipo de evento. No se guardan tokens ni contraseñas. Estas extensiones solo
+coordinan dentro de un proceso.
+
 ## Supplier Directory
 
 Todas las rutas de proveedores requieren JWT Bearer:

@@ -26,14 +26,24 @@ from app.auth.database import create_database
 
 class FakeEmailSender:
     def __init__(self) -> None:
-        self.messages: list[tuple[str, str]] = []
+        self.messages: list[tuple[str, str, str]] = []
 
-    def send_password_reset(self, recipient: str, reset_url: str) -> None:
-        self.messages.append((recipient, reset_url))
+    def send_password_reset(
+        self,
+        recipient: str,
+        reset_url: str,
+        html_body: str | None = None,
+    ) -> None:
+        self.messages.append((recipient, reset_url, html_body or ""))
 
 
 class FailingEmailSender:
-    def send_password_reset(self, recipient: str, reset_url: str) -> None:
+    def send_password_reset(
+        self,
+        recipient: str,
+        reset_url: str,
+        html_body: str | None = None,
+    ) -> None:
         raise EmailDeliveryError("provider unavailable")
 
 
@@ -70,6 +80,56 @@ class PasswordResetApiTests(unittest.TestCase):
         self.assertEqual(missing.status_code, 200)
         self.assertEqual(existing.json(), missing.json())
         self.assertEqual(len(self.email_sender.messages), 1)
+
+    def test_reset_email_contains_html_content_and_link(self) -> None:
+        self.service.request_reset("alice@example.com")
+
+        _, reset_url, html_body = self.email_sender.messages[0]
+        self.assertIn(reset_url, html_body)
+        self.assertIn("restablecer tu contraseña", html_body.lower())
+        self.assertIn("expirará en", html_body)
+        self.assertIn("no realizaste esta solicitud", html_body.lower())
+
+    def test_forgot_password_rate_limit_allows_three_requests_per_hour(self) -> None:
+        for _ in range(3):
+            self.service.request_reset("alice@example.com")
+        self.service.request_reset("alice@example.com")
+
+        self.assertEqual(len(self.email_sender.messages), 3)
+
+    def test_rate_limit_has_own_counter_per_email_and_expires_after_one_hour(self) -> None:
+        current_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        service = PasswordResetService(
+            self.users,
+            self.tokens,
+            self.email_sender,
+            now=lambda: current_time,
+        )
+        self.users.create(
+            UserCreate(email="other@example.com", password="othersecret123"),
+            hash_password("othersecret123"),
+        )
+        for _ in range(3):
+            service.request_reset("alice@example.com")
+        service.request_reset("alice@example.com")
+        service.request_reset("other@example.com")
+        current_time += timedelta(hours=1, seconds=1)
+        service.request_reset("alice@example.com")
+
+        self.assertEqual(len(self.email_sender.messages), 5)
+
+    def test_audit_log_records_request_and_success_without_secrets(self) -> None:
+        self.service.request_reset("alice@example.com", "203.0.113.10")
+        token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        self.service.reset_password(token, "newsecret123", "203.0.113.10")
+
+        events = self.database.table("password_reset_audit_log").all()
+        self.assertEqual(events[0]["event_type"], "forgot_password_requested")
+        self.assertEqual(events[0]["ip_address"], "203.0.113.10")
+        self.assertEqual(events[1]["event_type"], "reset_password_succeeded")
+        self.assertIn("timestamp", events[1])
+        self.assertNotIn(token, str(events))
+        self.assertNotIn("newsecret123", str(events))
 
     def test_forgot_password_is_generic_for_inactive_accounts_too(self) -> None:
         inactive = self.users.create(

@@ -6,7 +6,7 @@ autenticación.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.auth.dependencies import (
@@ -91,12 +91,16 @@ def read_current_user(
 
 @router.post("/forgot-password", response_model=GenericMessageResponse)
 def forgot_password(
+    request: Request,
     payload: ForgotPasswordRequest,
     service: PasswordResetService = Depends(get_password_reset_service),
 ) -> GenericMessageResponse:
     """Request a reset email without revealing whether the account exists."""
     try:
-        service.request_reset(str(payload.email))
+        service.request_reset(
+            str(payload.email),
+            request.client.host if request.client else None,
+        )
     except EmailDeliveryError:
         # The public response remains identical for existing and unknown emails.
         pass
@@ -105,11 +109,16 @@ def forgot_password(
 
 @router.post("/reset-password", response_model=GenericMessageResponse)
 def reset_password(
+    request: Request,
     payload: PasswordResetRequest,
     service: PasswordResetService = Depends(get_password_reset_service),
 ) -> GenericMessageResponse:
     try:
-        service.reset_password(payload.token, payload.new_password)
+        service.reset_password(
+            payload.token,
+            payload.new_password,
+            request.client.host if request.client else None,
+        )
     except PasswordResetError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

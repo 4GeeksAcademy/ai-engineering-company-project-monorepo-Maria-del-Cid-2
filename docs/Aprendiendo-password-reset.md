@@ -164,6 +164,35 @@ TinyDB no ofrece las garantías de transacción, unicidad y coordinación entre 
 
 La auditoría añadió pruebas de paridad de `forgot-password`, tokens válidos, expirados, usados, reemplazados y consumidos concurrentemente, ausencia del token claro en TinyDB, hashes bcrypt, invalidación de JWT, login posterior, respuestas sin datos sensibles, CORS explícito y redirección fija. No fue necesario cambiar el algoritmo bcrypt, la configuración CORS ni la integración de Resend porque ya cumplían estos límites.
 
-## Próximas actualizaciones
+## FASE 4 — EXTENSIONES OPCIONALES
 
-- **Fase 4:** rate limiting, audit log, plantillas HTML, reintentos y conclusiones.
+Estas tres funcionalidades son extensiones opcionales del ejercicio. No forman
+parte de los requisitos obligatorios evaluables de las fases anteriores.
+
+### Email HTML
+
+Además del texto plano, el adaptador de email genera una plantilla HTML sencilla
+con estilos inline. Incluye el enlace de reset, la expiración del token y una
+indicación para ignorar el mensaje si la persona no realizó la solicitud. La
+abstracción `EmailSender` sigue aislando al proveedor y los tests usan
+`FakeEmailSender`.
+
+### Rate limiting
+
+Se limita `forgot-password` a **3 solicitudes por dirección de email durante una
+ventana de una hora**. El contador se guarda en una tabla TinyDB separada y
+también cuenta emails desconocidos, por lo que la respuesta pública continúa
+siendo idéntica y no revela si una cuenta existe. Una dirección diferente tiene
+su propio contador.
+
+### Registro de auditoría
+
+Los eventos se guardan en otra tabla TinyDB con timestamp, dirección IP, email
+cuando puede conocerse y tipo de evento (`forgot_password_requested`,
+`reset_password_succeeded` o `reset_password_failed`). No se guardan
+contraseñas, tokens, JWT ni API keys.
+
+La implementación es intencionadamente sencilla y está coordinada por los
+locks de proceso ya existentes. TinyDB no ofrece coordinación entre varios
+workers, por lo que este registro y el rate limiting no son una solución
+distribuida o empresarial.

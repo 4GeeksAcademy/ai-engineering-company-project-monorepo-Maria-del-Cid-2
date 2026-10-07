@@ -130,7 +130,11 @@ def get_password_reset_service():
     """Provide password reset orchestration with one shared auth DB handle."""
     from .email import ResendEmailSender
     from .password_reset import PasswordResetService
-    from .repository import PasswordResetTokenRepository
+    from .repository import (
+        PasswordResetAuditLogRepository,
+        PasswordResetRateLimitRepository,
+        PasswordResetTokenRepository,
+    )
 
     database = get_database()
     try:
@@ -138,6 +142,8 @@ def get_password_reset_service():
             UserRepository(database),
             PasswordResetTokenRepository(database),
             ResendEmailSender(),
+            rate_limits=PasswordResetRateLimitRepository(database),
+            audit_log=PasswordResetAuditLogRepository(database),
         )
     finally:
         database.close()

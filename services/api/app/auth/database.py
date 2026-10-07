@@ -62,3 +62,15 @@ def get_password_reset_tokens_table(database: TinyDB | None = None) -> TinyDB.ta
 
     db = database if database is not None else get_database()
     return db.table("password_reset_tokens")
+
+
+def get_password_reset_rate_limits_table(database: TinyDB | None = None) -> TinyDB.table_class:
+    """Return request timestamps used by the simple email rate limiter."""
+    db = database if database is not None else get_database()
+    return db.table("password_reset_rate_limits")
+
+
+def get_password_reset_audit_log_table(database: TinyDB | None = None) -> TinyDB.table_class:
+    """Return audit events for password reset requests and outcomes."""
+    db = database if database is not None else get_database()
+    return db.table("password_reset_audit_log")
