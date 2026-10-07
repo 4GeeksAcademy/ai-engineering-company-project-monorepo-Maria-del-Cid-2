@@ -65,9 +65,9 @@ def update_my_profile(
     """
     existing = profile_repository.get_by_user_id(current_user.id)
     if existing is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile not found. Create a profile via POST /api/users with profile data.",
+        return profile_repository.create(
+            current_user.id,
+            ProfileCreate(**payload.model_dump()),
         )
 
     updated = profile_repository.update(current_user.id, payload)

@@ -16,6 +16,14 @@ Este archivo NO sustituye a:
 
 Cuando exista una discrepancia, debe prevalecer la información más específica y actualizada, especialmente el código y la documentación específica del módulo que se está modificando.
 
+Las rutas y estados funcionales descritos en documentos históricos pueden haber
+cambiado. La ubicación vigente del backoffice es
+`uis/backoffice/talent-pipeline-tracker`; para contratos actuales de Incident
+Analysis, auth y Supplier Directory consulta `memory-bank/techContext.md` y
+`services/api/README.md`. No uses una observación aislada (por ejemplo, una lista
+vacía) como prueba de causa raíz sin comprobar request, estado HTTP y persistencia
+efectiva.
+
 ---
 
 # 2. Contexto de negocio — Nexova
@@ -157,15 +165,15 @@ Si existe un `AGENTS.md` dentro de una aplicación, sus instrucciones son especi
 
 ## Ubicación
 
-La aplicación se encuentra directamente en:
+La aplicación se encuentra en:
 
-`uis/talent-pipeline-tracker/`
+`uis/backoffice/talent-pipeline-tracker/`
 
 IMPORTANTE:
 
 `uis/prueba/` existe actualmente como carpeta independiente y está vacía.
 
-`talent-pipeline-tracker` NO está dentro de `uis/prueba/`.
+`talent-pipeline-tracker` no está dentro de `uis/prueba/`.
 
 ---
 
@@ -181,7 +189,7 @@ La aplicación permite centralizar y gestionar las candidaturas recibidas durant
 
 El contexto funcional específico se encuentra también en:
 
-`uis/talent-pipeline-tracker/context.md`
+`uis/backoffice/talent-pipeline-tracker/context.md`
 
 ---
 

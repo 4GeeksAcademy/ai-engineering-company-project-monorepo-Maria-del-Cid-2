@@ -72,6 +72,95 @@ Se ha revisado y confirmado la existencia y funcionamiento previsto de:
 - tipos TypeScript;
 - constantes para estados y etapas.
 
+### Autenticación del backoffice — AUTH-02, fase 2
+
+Implementada la infraestructura frontend de cliente Nexova y sesión JWT en
+`uis/backoffice/talent-pipeline-tracker`:
+
+- cliente compartido con token Bearer opt-in, almacenamiento local, validación
+  de sesión mediante `/auth/me`, cierre local e invalidación ante `401`;
+- el fetch nativo se almacena enlazado a `globalThis`, manteniendo fetchers
+  inyectados para tests y evitando invocarlo con receptor incorrecto;
+- tipos de usuario/sesión y `AuthProvider` compatible con SSR;
+- integración autenticada de Supplier Directory; Tracker e Incident Analysis
+  permanecen separados;
+- configuración `NEXT_PUBLIC_NEXOVA_API_BASE` y pruebas nativas del cliente.
+
+Esta fase no añade pantallas de autenticación ni protección global de rutas.
+Verificación: 12 tests, TypeScript, lint focalizado y build pasan. El lint global
+sigue reportando errores React preexistentes en `app/page.tsx`,
+`hooks/useRecord.ts` y `hooks/useRecords.ts`.
+
+### Autenticación del backoffice — AUTH-02, fase 3
+
+Implementadas las rutas `/login` y `/register` con un formulario compartido,
+validación en español, estados de envío, prevención de peticiones duplicadas y
+controles accesibles. El login envía el formulario OAuth2 esperado, guarda el
+JWT mediante el cliente compartido, valida `/auth/me` y redirige a `/`; el
+registro envía únicamente email y contraseña, y ofrece continuar al login sin
+crear sesión. No se añadieron guards ni se protegieron rutas existentes.
+
+Verificación: 21 tests frontend, 64 tests backend de auth, TypeScript, lint
+focalizado, build y comprobación HTTP SSR completados. El lint global sigue
+fallando solo por los tres errores React preexistentes indicados en fase 2.
+
+### Autenticación del backoffice — fases 4 y 5
+
+La fase 4 se considera verificada por el usuario: registro, login, perfil,
+Supplier Directory, Incident Analysis, menú `My Profile` y logout funcional.
+
+En fase 5 se revisaron el proveedor, almacenamiento/token, cliente, logout,
+layout, rutas y requisitos backend. Ya existía `AuthShell`: protege
+`/suppliers` y `/account/profile` y sus subrutas; login/registro son públicos.
+Tracker e Incident Analysis mantienen sus clientes separados y acceso público.
+Se reutilizó este guard, sin crear middleware ni otro `PrivateRoute`.
+
+Se reprodujo y corrigió una carrera: una respuesta pendiente de `/auth/me`
+podía restaurar `authenticated` después del logout. El cliente ahora descarta
+resultados obsoletos y evita que un `401` anterior invalide una sesión nueva.
+Se mantiene la expiración existente por `401` y el reintento ante errores de
+red/servidor, que bloquean contenido sin eliminar el token.
+
+Verificación: 34 tests frontend, TypeScript, lint focalizado, build de Next y
+`git diff --check` pasan. Persiste el aviso de múltiples lockfiles. Chromium
+completó 18 escenarios en escritorio (1440px) y móvil (390px), con API simulada
+y peticiones externas bloqueadas: acceso privado sin sesión, login/registro,
+acceso autenticado a perfil/proveedores, logout y reentrada denegada, token
+rechazado por `401` y validación fallida por red/503. Se revisaron capturas.
+No equivale a un nuevo E2E contra la API real. Las herramientas de navegador
+se instalaron temporalmente fuera del repo; no se añadieron dependencias.
+No se modificó backend ni `services/data/`, ni se ejecutaron seeders,
+commits o push.
+
+### Fase 6 — Auditoría final previa a la entrega
+
+Backend: 222 tests, 212 correctos. Los 10 fallos restantes provienen de un
+único fixture ausente, `scripts/incidents-nexova.csv`, que nunca estuvo
+versionado; afectan a Incident Analysis (`test_analysis`, `test_csv_reader`,
+`test_export`, `test_cli`, `test_api`, `test_results_export_api`) y no a
+autenticación. Auth, perfiles, CORS y Supplier Directory pasan por completo.
+La suite se ejecutó sobre una copia aislada en `/tmp` porque
+`AuthSemanticTests`/`IncidentsPublicTests` abren la BD por defecto.
+
+Frontend: 34 tests, TypeScript, build y los 18 escenarios de navegador pasan.
+El lint global mantiene 3 errores y 5 avisos preexistentes de React en
+`app/page.tsx`, `hooks/useRecord.ts`, `hooks/useRecords.ts` y dos componentes
+del Tracker; ningún archivo de autenticación aparece afectado.
+
+Hallazgo de seguridad corregido: `services/data/` no estaba ignorado y
+`git add -A` habría subido `auth.json` (emails y hashes bcrypt) y
+`suppliers.json`. Se añadió al `.gitignore` raíz junto a `.env.local.save`.
+Los archivos no se leyeron ni modificaron.
+
+Pendientes resueltos tras la auditoría: `httpx` se declara en el extra `test`
+de `services/api/pyproject.toml` (y `uv.lock`); `ConfigTests`
+(`test_auth_unit1`) carga una copia aislada de `config.py` y ya no depende del
+orden de importación. Sigue pendiente restaurar el fixture CSV: existe como
+archivo sin seguimiento dentro del stash `stash@{1}` (`git show
+stash@{1}^3:scripts/incidents-nexova.csv`); con él, la suite completa (233
+ejecuciones) pasa en una copia aislada y `analyze.py` reproduce los valores
+esperados (100 filas, 96 válidas, media 3.84).
+
 ---
 
 ## 3. Estado actual del Talent Pipeline Tracker
@@ -99,69 +188,35 @@ La aplicación está ubicada actualmente en `uis/backoffice/talent-pipeline-trac
 - Validación visual: comprobadas correctamente la website pública y el backoffice mediante las previsualizaciones de Codespaces.
 ---
 
-## 4. Pendiente en este ejercicio
+## 4. Hallazgos y pendientes confirmados
 
-El objetivo inmediato es completar la infraestructura de soporte para agentes de desarrollo.
+- La ruta predeterminada de Supplier es `services/data/suppliers.json`; no se
+  detectó override en el entorno inspeccionado y el archivo existe con 15
+  entradas. Esto no demuestra qué ruta usó un proceso histórico ni por qué se
+  observó `[]` anteriormente.
+- Sin token, Supplier responde `401 Not authenticated`; con token inválido,
+  `401 Invalid credentials`. El registro no inicia sesión automáticamente.
+- No hay archivos CSV en el workspace, aunque las pruebas hacen referencia a
+  `scripts/incidents-nexova.csv`. La causa y el efecto sobre pruebas/demos
+  dependen de confirmar o recuperar ese fixture; no se generó uno.
+- La causa exacta de los errores de hidratación observados no está confirmada.
+  La solución actual evita renderizar el formulario antes de hidratar, pero se
+  debe completar la validación de login/registro en Chrome.
+- El README de `services/api` estaba desactualizado respecto a Supplier y se
+  sincronizó con la implementación actual.
 
-Pendiente:
+## 5. Siguiente trabajo
 
-- crear el `AGENTS.md` global del repositorio;
-- definir reglas en `.agents/rules/`;
-- crear al menos una skill reutilizable en `.agents/skills/`;
-- completar la estructura de aplicaciones indicada por la plantilla:
-  - `uis/website`
-  - `uis/backoffice`;
-- proporcionar una estructura inicial visible para `backoffice`;
-- comprobar que la estructura resultante respeta las instrucciones del monorepo;
-- revisar los cambios realizados;
-- ejecutar las comprobaciones necesarias;
-- preparar commit y PR.
+1. Validar manualmente login, registro, persistencia de sesión y acceso a
+   Supplier Directory en Chrome con API/base URL y CORS correctos.
+2. Confirmar la disponibilidad y ubicación esperada del CSV de pruebas de
+   Incident Analysis.
+3. Si reaparece una respuesta vacía de Supplier, registrar URL/base efectiva,
+   estado HTTP, presencia/validez del token (nunca su valor) y ruta DB del
+   proceso antes de atribuir una causa.
 
----
-
-## 5. Estructura de agentes pendiente
-
-Debe existir una separación clara entre:
-
-### Configuración de agentes de desarrollo
-
-`.agents/`
-
-Incluye:
-
-- reglas;
-- skills reutilizables para el agente de desarrollo.
-
-### Código de producto relacionado con IA
-
-`agents/`
-
-Contiene los agentes que forman parte del producto Nexova.
-
-### Skills de producto
-
-`skills/`
-
-Contiene las skills que forman parte del producto Nexova.
-
-Estas tres áreas no deben mezclarse.
-
----
-
-## 6. Próximos pasos
-
-Orden previsto:
-
-1. Crear `AGENTS.md` en la raíz.
-2. Crear las reglas necesarias en `.agents/rules/`.
-3. Crear una skill reutilizable en `.agents/skills/`.
-4. Crear o completar `uis/website` según las instrucciones del ejercicio.
-5. Crear `uis/backoffice` con su estructura inicial y vista de entrada.
-6. Mantener los servicios backend dentro de `services/`.
-7. Ejecutar las comprobaciones del proyecto.
-8. Revisar `git diff` y `git status`.
-9. Crear el commit.
-10. Preparar la PR.
+No se ejecutaron tests, seeders ni scripts de análisis durante esta actualización
+documental para evitar efectos sobre datos locales.
 
 ---
 

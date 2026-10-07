@@ -138,11 +138,15 @@ Actualmente la aplicación permite:
 
 La aplicación existente se encuentra actualmente en:
 
-`uis/talent-pipeline-tracker`
+`uis/backoffice/talent-pipeline-tracker`
 
 Su contexto funcional específico está documentado en:
 
-`uis/talent-pipeline-tracker/context.md`
+`uis/backoffice/talent-pipeline-tracker/context.md`
+
+El backoffice también contiene clientes frontend para Incident Analysis,
+autenticación Nexova y Supplier Directory. Sus contratos y estado técnico se
+describen en `memory-bank/techContext.md` y en el README del servicio API.
 
 ---
 

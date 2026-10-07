@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import os
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 from tempfile import TemporaryDirectory
 
 # ── Env vars MUST be set before auth imports ────────────────────────────────
@@ -27,7 +29,11 @@ from fastapi.testclient import TestClient
 from app.auth.database import create_database
 from app.auth.dependencies import get_current_user, get_profile_repository, get_repository
 from app.auth.models import ProfileCreate, User, UserCreate, UserRole
-from app.auth.repository import ProfileRepository, UserRepository
+from app.auth.repository import (
+    DuplicateEmailError,
+    ProfileRepository,
+    UserRepository,
+)
 from app.auth.routers.auth_router import router as auth_router
 from app.auth.routers.profiles_router import router as profiles_router
 from app.auth.routers.users_router import router as users_router
@@ -320,14 +326,53 @@ class CreateUserTests(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["role"], "user")
 
-    def test_create_user_with_custom_role(self) -> None:
-        """Se puede especificar role."""
-        response = self.client.post(
+    def test_public_registration_rejects_role_and_active_overrides(self) -> None:
+        """El registro público no permite elevar privilegios ni desactivar usuarios."""
+        payloads = [
+            {"email": "admin@example.com", "password": "pass123", "role": "admin"},
+            {"email": "inactive@example.com", "password": "pass123", "is_active": False},
+        ]
+
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post("/api/users", json=payload)
+                self.assertEqual(response.status_code, 422)
+                self.assertIsNone(self.repo.get_by_email(payload["email"]))
+
+    def test_duplicate_registration_returns_409_without_creating_user(self) -> None:
+        first = self.client.post(
             "/api/users",
-            json={"email": "admin@example.com", "password": "pass123", "role": "admin"},
+            json={"email": "duplicate@example.com", "password": "first-pass"},
         )
-        data = response.json()
-        self.assertEqual(data["role"], "admin")
+        self.assertEqual(first.status_code, 201)
+        user_count = len(self.repo.list())
+
+        duplicate = self.client.post(
+            "/api/users",
+            json={"email": "duplicate@example.com", "password": "second-pass"},
+        )
+
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(len(self.repo.list()), user_count)
+
+    def test_concurrent_duplicate_registration_is_serialized_in_one_process(self) -> None:
+        barrier = Barrier(2)
+
+        def register() -> bool:
+            payload = UserCreate(email="race@example.com", password="pass123")
+            hashed = hash_password("pass123")
+            barrier.wait()
+            try:
+                self.repo.create_if_email_available(payload, hashed)
+                return True
+            except DuplicateEmailError:
+                return False
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            created = list(executor.map(lambda _: register(), range(2)))
+
+        self.assertEqual(created.count(True), 1)
+        self.assertEqual(len(self.repo.list()), 1)
 
     def test_create_user_with_profile(self) -> None:
         """Crear usuario con Profile opcional."""
@@ -883,14 +928,20 @@ class UpdateProfileMeTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
-    def test_update_profile_without_profile_returns_404(self) -> None:
-        """Sin Profile → 404."""
+    def test_update_profile_without_profile_creates_it(self) -> None:
+        """PUT crea el Profile asociado al usuario autenticado si falta."""
         response = self.client.put(
             "/api/profiles/me",
             headers=_auth_header(self.token_no_profile),
-            json={"name": "Ghost"},
+            json={"name": "Ghost", "phone": "+999", "address": "New address"},
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["user_id"], self.user_no_profile.id)
+        self.assertEqual(data["name"], "Ghost")
+        self.assertEqual(data["phone"], "+999")
+        self.assertEqual(data["address"], "New address")
+        self.assertIsNotNone(self.profile_repo.get_by_user_id(self.user_no_profile.id))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

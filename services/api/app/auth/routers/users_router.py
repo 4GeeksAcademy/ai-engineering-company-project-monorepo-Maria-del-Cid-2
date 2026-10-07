@@ -13,7 +13,7 @@ from app.auth.dependencies import (
     get_repository,
 )
 from app.auth.models import User, UserCreate, UserRole, UserUpdate
-from app.auth.repository import ProfileRepository, UserRepository
+from app.auth.repository import DuplicateEmailError, ProfileRepository, UserRepository
 from app.auth.schemas import UserCreateRequest, UserResponse, UserUpdateRequest
 from app.auth.security import hash_password
 
@@ -56,12 +56,13 @@ def create_user(
 
     # 2. Usar payload como UserCreate
     user_create = UserCreate(email=payload.email, password=payload.password)
-    user = repository.create_with_attrs(
-        user_create,
-        hashed,
-        is_active=payload.is_active,
-        role=payload.role,
-    )
+    try:
+        user = repository.create_if_email_available(user_create, hashed)
+    except DuplicateEmailError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        ) from exc
 
     # 3. Crear Profile si se proporcionó
     if payload.profile is not None:

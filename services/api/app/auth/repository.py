@@ -8,6 +8,7 @@ tabla por defecto.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any
 
 from tinydb import Query, TinyDB
@@ -15,6 +16,12 @@ from tinydb.table import Document, Table
 
 from .database import get_profiles_table, get_users_table
 from .models import Profile, ProfileCreate, ProfileUpdate, User, UserCreate, UserRole, UserUpdate
+
+_user_creation_lock = Lock()
+
+
+class DuplicateEmailError(Exception):
+    """Raised when a user email is already registered."""
 
 
 class UserRepository:
@@ -56,6 +63,21 @@ class UserRepository:
             Document(user.model_dump(mode="json"), doc_id=user_id)
         )
         return user
+
+    def create_if_email_available(
+        self,
+        payload: UserCreate,
+        hashed_password: str,
+    ) -> User:
+        """Create a standard user atomically with respect to this process.
+
+        The process-wide lock prevents duplicate registrations when the API
+        runs with a single worker. It does not coordinate multiple processes.
+        """
+        with _user_creation_lock:
+            if self.get_by_email(str(payload.email)) is not None:
+                raise DuplicateEmailError
+            return self.create(payload, hashed_password)
 
     def get(self, user_id: int) -> User | None:
         record = self._table.get(doc_id=user_id)

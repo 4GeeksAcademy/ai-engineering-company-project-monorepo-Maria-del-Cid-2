@@ -32,6 +32,69 @@ header manually, and only handles aggregate analysis results or the exported
 CSV blob. Sensitive incident fields such as customer emails are not part of the
 client types or responses.
 
+## Nexova API client and session
+
+The authenticated Nexova client uses `NEXT_PUBLIC_NEXOVA_API_BASE`, defaulting
+to `http://localhost:8000/api` for local development. In Codespaces, set it to
+the forwarded API origin (port 8000) plus `/api`; the frontend origin must also
+be included in the API's `CORS_ORIGINS` allowlist. This public URL is not a
+secret; never put API keys or signing secrets in `NEXT_PUBLIC_*` variables.
+
+Protected Nexova requests opt into Bearer authentication through the shared
+client. The existing candidate Tracker and Incident Analysis clients remain
+separate and do not receive the session token.
+
+Supplier Directory requests opt into Bearer authentication. A `401` should be
+diagnosed by checking that login completed, a token is present, and the request
+uses the Nexova API base; successful registration alone does not create a
+session. Keep the Nexova and Incident Analysis clients separate from the
+4Geeks Tracker client.
+
+The Nexova client binds the native `globalThis.fetch` before storing it as a
+method, while preserving injected fetchers used by tests. Keep this binding if
+the client is changed. The auth form also renders a stable pre-hydration
+placeholder; do not infer the cause of earlier browser DOM mutations from that
+mitigation alone. Validate login and registration in a browser in addition to
+automated client checks.
+
+Run the shared client tests with `npm test` from this application directory.
+
+## Route access and session lifecycle
+
+`AuthProvider` subscribes to the shared Nexova client and validates a saved
+token with `/auth/me`. The root layout wraps pages in the existing `AuthShell`;
+there is no separate `PrivateRoute` or authentication middleware.
+
+| Routes | Access |
+| --- | --- |
+| `/suppliers`, `/account/profile` and their subroutes | Authenticated session required |
+| `/login`, `/register` | Public |
+| `/`, `/new`, `/candidates/[id]`, `/incidents` | Public under the current separate-client architecture |
+
+Protected page content is not mounted while the session is loading,
+unauthenticated, or in error. An unauthenticated visitor is redirected to
+`/login`; validation errors show a retry action without treating network/5xx
+errors as expired credentials. Public pages remain accessible in every state.
+
+`Logout` uses the existing client handler: it removes the local token, publishes
+`unauthenticated` immediately, and navigates to login. A `401` from a protected
+request also clears the session and navigates to `/login?expired=1`. Expiration
+is handled through API responses, not a second JWT timer or refresh mechanism.
+Late validation results and `401` responses from a previous session cannot
+restore a logged-out session or invalidate a newer one.
+
+This is a client-side UI guard, not an API authorization boundary. The backend
+already validates credentials for supplier/profile requests; middleware cannot
+read the JWT stored in browser local storage.
+
+`npm test` covers missing tokens, successful validation, expiry, logout races,
+replacement sessions, and the existing login/register/profile workflows.
+Phase 5 was also checked in Chromium at 1440px and 390px using intercepted API
+responses: direct private access without a token, public login/register, valid
+session navigation, logout and denied re-entry, validation/protected-request
+`401`, and network/503 validation errors. These checks did not contact the live
+backend and do not replace end-to-end verification against a deployed API.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
