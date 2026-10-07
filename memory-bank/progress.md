@@ -165,6 +165,24 @@ Verificación realizada: 41 tests frontend, `npx tsc --noEmit`. Pendientes de
 ejecutar en esta fase: lint y build. No se modificó backend, `services/data/`,
 `uis/website`, ni se creó commit o push.
 
+### Password reset — Fase 3 seguridad
+
+Auditado y reforzado el flujo completo de password reset. `forgot-password`
+mantiene respuestas homogéneas para cuentas existentes, inexistentes e
+inactivas. Los tokens usan fuente criptográficamente segura, solo se persiste
+su hash, tienen expiración, uso único y rotación; la rotación y el consumo
+quedan protegidos por locks de proceso. La actualización de contraseña también
+serializa el incremento de `credentials_version`.
+
+El frontend redirige a `/login?reset=1` tras un reset correcto, eliminando el
+token de la URL mediante una ruta fija. No se introdujeron almacenamientos,
+logs ni redirects controlados por el usuario. Resend sigue siendo backend-only,
+CORS continúa usando origins explícitos y bcrypt no se ha sustituido.
+
+Verificación focalizada: 11 tests backend de password reset correctos. La
+limitación de TinyDB multi-worker queda documentada: los locks solo coordinan
+un proceso y no sustituyen una base de datos transaccional distribuida.
+
 ### Fase 6 — Auditoría final previa a la entrega
 
 Backend: 222 tests, 212 correctos. Los 10 fallos restantes provienen de un

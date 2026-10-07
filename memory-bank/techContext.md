@@ -405,6 +405,9 @@ Nexova ni con el Tracker de 4Geeks.
 - Los JWT incluyen `credentials_version`. Al cambiar o restablecer una contraseña se incrementa esa versión y `get_current_user` rechaza tokens anteriores; no se usa una segunda estrategia `password_changed_at`.
 - El envío de recuperación depende de la interfaz `EmailSender` y su adaptador Resend. `RESEND_API_KEY` y `RESEND_FROM_EMAIL` son configuración exclusiva del backend en `services/api/.env`; los tests inyectan un fake y no contactan con Resend.
 - El frontend concentra las validaciones y peticiones de password reset en `lib/password-reset.ts` y reutiliza `PasswordResetForm` para forgot, reset y change. `/reset-password` recibe el token mediante `searchParams`; no se persiste en localStorage ni en `AuthProvider`. Forgot y reset usan `auth: false`; change usa `auth: true` y cierra la sesión local después del éxito.
+- La auditoría de seguridad mantiene `forgot-password` homogéneo para emails existentes, inexistentes e inactivos. El token usa `secrets.token_urlsafe(32)`, solo se almacena su SHA-256, expira, se consume una vez y se reemplaza al solicitar otro. El repositorio serializa rotación y consumo; `UserRepository.update_password` serializa el incremento de `credentials_version`.
+- Tras un reset correcto el frontend usa `router.replace("/login?reset=1")`, una redirección fija que evita conservar el token en la URL. No hay redirect arbitrario ni logs de password, token, JWT o API key en el flujo auditado.
+- TinyDB sigue siendo una persistencia de un solo proceso: los locks no coordinan varios workers o instancias. La operación segura multi-worker requeriría una base con transacciones/operaciones atómicas; no forma parte de esta fase.
 
 ## 18. Incident Analysis
 

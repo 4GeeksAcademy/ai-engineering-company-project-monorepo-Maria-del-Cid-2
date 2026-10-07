@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import unittest
+from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import parse_qs, urlparse
 
 os.environ["SECRET_KEY"] = "test-secret-key-for-password-reset"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
@@ -13,7 +16,7 @@ from fastapi.testclient import TestClient
 from app.auth.dependencies import get_password_reset_service, get_repository
 from app.auth.email import EmailDeliveryError
 from app.auth.models import UserCreate
-from app.auth.password_reset import PasswordResetService
+from app.auth.password_reset import PasswordResetError, PasswordResetService
 from app.auth.repository import PasswordResetTokenRepository, UserRepository
 from app.auth.security import hash_password
 from app.auth.service import AuthService
@@ -68,6 +71,45 @@ class PasswordResetApiTests(unittest.TestCase):
         self.assertEqual(existing.json(), missing.json())
         self.assertEqual(len(self.email_sender.messages), 1)
 
+    def test_forgot_password_is_generic_for_inactive_accounts_too(self) -> None:
+        inactive = self.users.create(
+            UserCreate(email="inactive@example.com", password="inactive123"),
+            hash_password("inactive123"),
+        )
+        self.users._table.update({"is_active": False}, doc_ids=[inactive.id])
+
+        existing = self.client.post(
+            "/api/auth/forgot-password",
+            json={"email": "alice@example.com"},
+        )
+        inactive_response = self.client.post(
+            "/api/auth/forgot-password",
+            json={"email": "inactive@example.com"},
+        )
+        missing = self.client.post(
+            "/api/auth/forgot-password",
+            json={"email": "missing@example.com"},
+        )
+
+        self.assertEqual(
+            {existing.status_code, inactive_response.status_code, missing.status_code},
+            {200},
+        )
+        self.assertEqual(existing.json(), inactive_response.json())
+        self.assertEqual(existing.json(), missing.json())
+        self.assertNotIn("alice@example.com", existing.text)
+        self.assertNotIn("inactive@example.com", inactive_response.text)
+        self.assertNotIn("missing@example.com", missing.text)
+
+    def test_reset_tokens_are_long_and_distinct(self) -> None:
+        self.service.request_reset("alice@example.com")
+        self.service.request_reset("alice@example.com")
+        first = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        second = parse_qs(urlparse(self.email_sender.messages[1][1]).query)["token"][0]
+
+        self.assertGreaterEqual(len(first), 40)
+        self.assertNotEqual(first, second)
+
     def test_forgot_password_stays_generic_when_email_provider_fails(self) -> None:
         app.dependency_overrides[get_password_reset_service] = lambda: PasswordResetService(
             self.users,
@@ -120,6 +162,69 @@ class PasswordResetApiTests(unittest.TestCase):
             self.user.id,
         )
 
+    def test_expired_token_is_rejected(self) -> None:
+        current_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        service = PasswordResetService(
+            self.users,
+            self.tokens,
+            self.email_sender,
+            now=lambda: current_time,
+        )
+        service.request_reset("alice@example.com")
+        token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        current_time += timedelta(hours=1)
+
+        with self.assertRaisesRegex(PasswordResetError, "Invalid or expired reset token"):
+            service.reset_password(
+                token,
+                "newsecret123",
+            )
+
+    def test_new_reset_token_invalidates_the_previous_token(self) -> None:
+        self.service.request_reset("alice@example.com")
+        first_token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        self.service.request_reset("alice@example.com")
+        second_token = parse_qs(urlparse(self.email_sender.messages[1][1]).query)["token"][0]
+
+        with self.assertRaisesRegex(PasswordResetError, "Invalid or expired reset token"):
+            self.service.reset_password(first_token, "newsecret123")
+        self.service.reset_password(second_token, "newsecret123")
+
+    def test_concurrent_consumption_allows_only_one_reset(self) -> None:
+        self.service.request_reset("alice@example.com")
+        token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+
+        def consume(password: str) -> str:
+            try:
+                self.service.reset_password(token, password)
+                return "success"
+            except PasswordResetError:
+                return "rejected"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(
+                executor.map(consume, ["newsecret123", "anothersecret123"])
+            )
+
+        self.assertEqual(results.count("success"), 1)
+        self.assertEqual(results.count("rejected"), 1)
+
+    def test_reset_response_does_not_expose_token_or_password(self) -> None:
+        self.service.request_reset("alice@example.com")
+        token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        response = self.client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": token,
+                "new_password": "newsecret123",
+                "confirm_password": "newsecret123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(token, response.text)
+        self.assertNotIn("newsecret123", response.text)
+
     def test_reset_invalidates_existing_jwt(self) -> None:
         old_jwt = AuthService(self.users).create_token(self.user)
         self.service.request_reset("alice@example.com")
@@ -139,6 +244,19 @@ class PasswordResetApiTests(unittest.TestCase):
             headers={"Authorization": f"Bearer {old_jwt}"},
         )
         self.assertEqual(response.status_code, 401)
+
+        new_login = self.client.post(
+            "/api/auth/login",
+            data={"username": "alice@example.com", "password": "newsecret123"},
+        )
+        self.assertEqual(new_login.status_code, 200)
+        self.assertEqual(
+            self.client.get(
+                "/api/auth/me",
+                headers={"Authorization": f"Bearer {new_login.json()['access_token']}"},
+            ).status_code,
+            200,
+        )
 
     def test_change_password_requires_current_password_and_invalidates_jwt(self) -> None:
         old_jwt = AuthService(self.users).create_token(self.user)
@@ -174,6 +292,12 @@ class PasswordResetApiTests(unittest.TestCase):
             ).status_code,
             401,
         )
+        self.assertNotEqual(self.users.get(self.user.id).hashed_password, "newsecret123")
+        new_login = self.client.post(
+            "/api/auth/login",
+            data={"username": "alice@example.com", "password": "newsecret123"},
+        )
+        self.assertEqual(new_login.status_code, 200)
 
 
 if __name__ == "__main__":

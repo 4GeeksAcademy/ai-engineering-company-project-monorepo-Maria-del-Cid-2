@@ -126,7 +126,44 @@ La aplicación `uis/backoffice/talent-pipeline-tracker` incorpora un helper comp
 
 Las rutas añadidas son `/forgot-password`, `/reset-password` y `/account/change-password`. La suite frontend verifica validaciones, payloads, flags de autenticación, token ausente, errores principales y el guard de rutas.
 
+## Fase 3 — Seguridad
+
+### 1. Evitar user enumeration
+
+El endpoint `forgot-password` devuelve el mismo HTTP 200 y el mismo mensaje tanto si el email existe como si no. Tampoco devuelve el email ni genera errores distintos para una cuenta inexistente o inactiva. Así, quien llama a la API no puede construir una lista de usuarios registrados a partir de las respuestas.
+
+La validación de formato sigue pudiendo devolver 422 para una entrada que no es un email válido: eso valida el contrato del request, no revela la existencia de una cuenta.
+
+### 2. Tokens opacos, expiración y replay attacks
+
+El reset usa un token opaco generado con `secrets.token_urlsafe(32)`. El valor tiene suficiente aleatoriedad para que adivinarlo no sea una estrategia viable. TinyDB guarda únicamente su hash SHA-256, nunca el token utilizable.
+
+El token tiene fecha de expiración y `used_at`. El consumo comprueba ambos campos dentro del lock del repositorio, por lo que dos solicitudes simultáneas solo pueden aceptar una. Una solicitud nueva invalida el token anterior antes de crear el reemplazo. Un token usado, expirado o reemplazado produce el mismo error genérico.
+
+Un replay attack consiste en reutilizar un secreto capturado. La expiración limita su ventana temporal y `used_at` limita su número de usos. El hash reduce el impacto de una lectura de la base de datos, aunque el token debe seguir tratándose como un secreto mientras esté activo.
+
+### 3. Sesiones, contraseñas y secretos
+
+Reset y change pasan las nuevas contraseñas por bcrypt; nunca se guardan en texto plano ni se incluyen en respuestas. Al actualizar la contraseña se incrementa `credentials_version`, de modo que los JWT anteriores dejan de ser válidos. Un login posterior crea un JWT con la versión nueva.
+
+`RESEND_API_KEY` solo se lee en el backend desde `services/api/.env`. No se usa en variables `NEXT_PUBLIC_*`, frontend, respuestas ni logs. Los archivos `.env` y las bases locales están ignorados por Git; la documentación solo contiene placeholders.
+
+### 4. Query strings y logs
+
+El frontend acepta únicamente `token` en `/reset-password` y no usa parámetros de redirección proporcionados por el usuario. Tras un reset correcto hace `router.replace("/login?reset=1")`, una URL fija que elimina el token del historial visible. Si el token es inválido o falla el reset, permanece disponible para permitir el reintento.
+
+El backend no registra passwords, tokens, JWT, API keys ni emails de recuperación. Los errores públicos son genéricos: el usuario recibe una explicación útil sin recibir secretos o detalles internos.
+
+### 5. CORS y TinyDB
+
+CORS mantiene una lista explícita de origins y rechaza `*`. Los endpoints de password reset pasan por el mismo middleware que el resto de la API.
+
+TinyDB no ofrece las garantías de transacción, unicidad y coordinación entre procesos de una base de datos relacional. En esta implementación los locks protegen la rotación, el consumo de tokens y la versión de credenciales dentro de un único proceso. Para varios workers o despliegues distribuidos se necesitaría una persistencia con operaciones atómicas; esta fase no convierte TinyDB en una base de datos multi-worker.
+
+### Aplicación en Nexova
+
+La auditoría añadió pruebas de paridad de `forgot-password`, tokens válidos, expirados, usados, reemplazados y consumidos concurrentemente, ausencia del token claro en TinyDB, hashes bcrypt, invalidación de JWT, login posterior, respuestas sin datos sensibles, CORS explícito y redirección fija. No fue necesario cambiar el algoritmo bcrypt, la configuración CORS ni la integración de Resend porque ya cumplían estos límites.
+
 ## Próximas actualizaciones
 
-- **Fase 3:** user enumeration, replay, logs, URLs, API keys y seguridad de sesiones.
 - **Fase 4:** rate limiting, audit log, plantillas HTML, reintentos y conclusiones.

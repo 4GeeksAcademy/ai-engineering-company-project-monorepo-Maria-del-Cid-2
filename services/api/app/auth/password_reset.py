@@ -41,8 +41,7 @@ class PasswordResetService:
 
         now = self._now()
         raw_token = create_password_reset_token()
-        self._tokens.invalidate_for_user(user.id)
-        self._tokens.create(
+        self._tokens.replace_for_user(
             user.id,
             hash_password_reset_token(raw_token),
             now,

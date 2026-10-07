@@ -19,6 +19,8 @@ export interface GenericMessageResponse {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+export const PASSWORD_RESET_SUCCESS_REDIRECT = "/login?reset=1";
+
 export function validateForgotPasswordFields(email: string): PasswordResetFieldErrors {
   const normalizedEmail = email.trim();
   if (!normalizedEmail) return { email: "El correo electrónico es obligatorio." };

@@ -32,6 +32,7 @@ from .models import (
 
 _user_creation_lock = Lock()
 _password_reset_lock = Lock()
+_password_update_lock = Lock()
 
 
 class DuplicateEmailError(Exception):
@@ -94,13 +95,15 @@ class UserRepository:
             return self.create(payload, hashed_password)
 
     def get(self, user_id: int) -> User | None:
-        record = self._table.get(doc_id=user_id)
-        return User.model_validate(record) if record is not None else None
+        with _password_reset_lock:
+            record = self._table.get(doc_id=user_id)
+            return User.model_validate(record) if record is not None else None
 
     def get_by_email(self, email: str) -> User | None:
-        UserQuery = Query()
-        record = self._table.get(UserQuery.email == email)
-        return User.model_validate(record) if record is not None else None
+        with _password_reset_lock:
+            UserQuery = Query()
+            record = self._table.get(UserQuery.email == email)
+            return User.model_validate(record) if record is not None else None
 
     def list(self) -> list[User]:
         return [User.model_validate(doc) for doc in self._table.all()]
@@ -124,18 +127,19 @@ class UserRepository:
 
     def update_password(self, user_id: int, hashed_password: str) -> User | None:
         """Replace a password and invalidate all previously issued JWTs."""
-        user = self.get(user_id)
-        if user is None:
-            return None
+        with _password_update_lock:
+            user = self.get(user_id)
+            if user is None:
+                return None
 
-        self._table.update(
-            {
-                "hashed_password": hashed_password,
-                "credentials_version": user.credentials_version + 1,
-            },
-            doc_ids=[user_id],
-        )
-        return self.get(user_id)
+            self._table.update(
+                {
+                    "hashed_password": hashed_password,
+                    "credentials_version": user.credentials_version + 1,
+                },
+                doc_ids=[user_id],
+            )
+            return self.get(user_id)
 
     def delete(self, user_id: int) -> bool:
         """Elimina el usuario por su ID.
@@ -233,22 +237,54 @@ class PasswordResetTokenRepository:
         self._table.insert(Document(token.model_dump(mode="json"), doc_id=token_id))
         return token
 
-    def invalidate_for_user(self, user_id: int) -> None:
+    def replace_for_user(
+        self,
+        user_id: int,
+        token_hash: str,
+        created_at: datetime,
+        expires_at: datetime,
+    ) -> PasswordResetToken:
+        """Invalidate prior tokens and create the replacement atomically in-process."""
+        with _password_reset_lock:
+            self._invalidate_for_user(user_id, created_at)
+            return self.create(user_id, token_hash, created_at, expires_at)
+
+    def invalidate_for_user(
+        self,
+        user_id: int,
+        invalidated_at: datetime | None = None,
+    ) -> None:
+        with _password_reset_lock:
+            self._invalidate_for_user(user_id, invalidated_at)
+
+    def _invalidate_for_user(
+        self,
+        user_id: int,
+        invalidated_at: datetime | None = None,
+    ) -> None:
         query = Query()
         self._table.update(
-            {"used_at": datetime.now(timezone.utc).isoformat()},
+            {
+                "used_at": (
+                    invalidated_at or datetime.now(timezone.utc)
+                ).isoformat()
+            },
             (query.user_id == user_id) & (query.used_at == None),  # noqa: E711
         )
 
     def get_by_hash(self, token_hash: str) -> PasswordResetToken | None:
-        query = Query()
-        record = self._table.get(query.token_hash == token_hash)
-        return PasswordResetToken.model_validate(record) if record is not None else None
+        with _password_reset_lock:
+            query = Query()
+            record = self._table.get(query.token_hash == token_hash)
+            return PasswordResetToken.model_validate(record) if record is not None else None
 
     def consume(self, token_id: int, consumed_at: datetime) -> bool:
         with _password_reset_lock:
             record = self._table.get(doc_id=token_id)
-            if record is None or record.get("used_at") is not None:
+            if record is None:
+                return False
+            token = PasswordResetToken.model_validate(record)
+            if token.used_at is not None or token.expires_at <= consumed_at:
                 return False
             self._table.update(
                 {"used_at": consumed_at.isoformat()},

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   getPasswordResetErrorMessage,
+  PASSWORD_RESET_SUCCESS_REDIRECT,
   requestChangePassword,
   requestForgotPassword,
   requestResetPassword,
@@ -107,5 +110,27 @@ describe("password reset errors", () => {
       getPasswordResetErrorMessage(new NexovaApiError("network", null, "offline"), "forgot"),
       /No se pudo conectar/,
     );
+  });
+
+  it("uses a fixed safe redirect after reset", () => {
+    assert.equal(PASSWORD_RESET_SUCCESS_REDIRECT, "/login?reset=1");
+    assert.equal(PASSWORD_RESET_SUCCESS_REDIRECT.includes("token"), false);
+  });
+
+  it("keeps reset frontend code free of persistent token and provider secrets", () => {
+    const files = [
+      "../app/reset-password/page.tsx",
+      "../components/auth/PasswordResetForm.tsx",
+      "../lib/password-reset.ts",
+    ];
+    const source = files
+      .map((file) => readFileSync(fileURLToPath(new URL(file, import.meta.url)), "utf8"))
+      .join("\n");
+
+    assert.equal(source.includes("RESEND_API_KEY"), false);
+    assert.equal(source.includes("localStorage"), false);
+    assert.equal(source.includes("sessionStorage"), false);
+    assert.equal(source.includes("document.cookie"), false);
+    assert.equal(source.includes("console.log"), false);
   });
 });

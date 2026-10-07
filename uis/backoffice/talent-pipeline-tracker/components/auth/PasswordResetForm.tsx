@@ -8,6 +8,7 @@ import { AuthSubmissionGate } from "@/lib/auth-forms";
 import { nexovaApi } from "@/lib/nexova-api";
 import {
   getPasswordResetErrorMessage,
+  PASSWORD_RESET_SUCCESS_REDIRECT,
   requestChangePassword,
   requestForgotPassword,
   requestResetPassword,
@@ -84,6 +85,8 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
         await requestForgotPassword(nexovaApi, email);
       } else if (mode === "reset") {
         await requestResetPassword(nexovaApi, token, newPassword, confirmPassword);
+        router.replace(PASSWORD_RESET_SUCCESS_REDIRECT);
+        return;
       } else {
         await requestChangePassword(
           nexovaApi,
