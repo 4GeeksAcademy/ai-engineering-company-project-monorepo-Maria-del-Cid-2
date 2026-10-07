@@ -9,6 +9,10 @@ out/
 .env
 .env.local
 .env.*.local
+.env.local.save
+
+# bases de datos TinyDB locales (contienen emails y hashes de usuarios)
+services/data/
 
 # Python bytecode cache
 __pycache__/

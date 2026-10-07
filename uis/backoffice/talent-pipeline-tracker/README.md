@@ -59,6 +59,42 @@ automated client checks.
 
 Run the shared client tests with `npm test` from this application directory.
 
+## Route access and session lifecycle
+
+`AuthProvider` subscribes to the shared Nexova client and validates a saved
+token with `/auth/me`. The root layout wraps pages in the existing `AuthShell`;
+there is no separate `PrivateRoute` or authentication middleware.
+
+| Routes | Access |
+| --- | --- |
+| `/suppliers`, `/account/profile` and their subroutes | Authenticated session required |
+| `/login`, `/register` | Public |
+| `/`, `/new`, `/candidates/[id]`, `/incidents` | Public under the current separate-client architecture |
+
+Protected page content is not mounted while the session is loading,
+unauthenticated, or in error. An unauthenticated visitor is redirected to
+`/login`; validation errors show a retry action without treating network/5xx
+errors as expired credentials. Public pages remain accessible in every state.
+
+`Logout` uses the existing client handler: it removes the local token, publishes
+`unauthenticated` immediately, and navigates to login. A `401` from a protected
+request also clears the session and navigates to `/login?expired=1`. Expiration
+is handled through API responses, not a second JWT timer or refresh mechanism.
+Late validation results and `401` responses from a previous session cannot
+restore a logged-out session or invalidate a newer one.
+
+This is a client-side UI guard, not an API authorization boundary. The backend
+already validates credentials for supplier/profile requests; middleware cannot
+read the JWT stored in browser local storage.
+
+`npm test` covers missing tokens, successful validation, expiry, logout races,
+replacement sessions, and the existing login/register/profile workflows.
+Phase 5 was also checked in Chromium at 1440px and 390px using intercepted API
+responses: direct private access without a token, public login/register, valid
+session navigation, logout and denied re-entry, validation/protected-request
+`401`, and network/503 validation errors. These checks did not contact the live
+backend and do not replace end-to-end verification against a deployed API.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

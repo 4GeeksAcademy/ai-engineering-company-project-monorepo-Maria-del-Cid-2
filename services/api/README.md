@@ -61,8 +61,29 @@ inválido la API responde `401`, no una lista vacía.
 Desde la raíz del repositorio:
 
 ```bash
-PYTHONPATH=services/api python -m unittest discover -s services/api/tests -p 'test_*.py'
+PYTHONPATH=services/api \
+SECRET_KEY=... \
+AUTH_DB_PATH=$(mktemp -d)/auth.json \
+SUPPLIER_DIRECTORY_DB_PATH=$(mktemp -d)/suppliers.json \
+python -m unittest discover -s services/api/tests -p 'test_*.py'
 ```
+
+`SECRET_KEY` es obligatoria: `app/auth/config.py` falla al importarse sin ella.
+Las rutas TinyDB temporales son necesarias porque `AuthSemanticTests` e
+`IncidentsPublicTests` (`tests/test_auth_unit5.py`) construyen la app real sin
+aislar la base de datos y, por defecto, abrirían `services/data/auth.json`.
+
+`TestClient` necesita `httpx`, declarado en el extra `test` de
+`pyproject.toml`. Instálalo con `pip install -e "services/api[test]"` (o
+`uv sync --extra test`). Starlette emite un aviso de deprecación a favor de
+`httpx2`; no afecta a los resultados.
+
+Estado conocido: con el fixture `scripts/incidents-nexova.csv` presente, la
+suite completa pasa (verificado en una copia aislada). Sin él, fallan los tests
+de Incident Analysis (`test_analysis`, `test_csv_reader`, `test_export`,
+`test_cli`, `test_api`, `test_results_export_api`) porque el fixture, entregado
+como adjunto del enunciado, nunca se versionó en el historial. La cobertura de
+autenticación, perfiles, CORS y Supplier Directory pasa en ambos casos.
 
 Al ejecutar tests, seeders o scripts que abran TinyDB, confirma que usan rutas
 temporales/aisladas cuando no se pretende modificar `services/data`.

@@ -397,6 +397,9 @@ Nexova ni con el Tracker de 4Geeks.
 - `GET /api/auth/me` valida el JWT de la sesión.
 - El frontend guarda el token bajo `nexova_access_token`; el cliente solo envía `Authorization: Bearer` cuando la operación opta explícitamente por auth. Un `401` en una solicitud protegida invalida la sesión local.
 - Login y registro son públicos. Supplier Directory requiere autenticación; Incident Analysis no la requiere. El registro por sí solo no habilita solicitudes protegidas.
+- `AuthShell`, dentro de `AuthProvider` en el layout raíz, protege `/suppliers` y `/account/profile`, incluidas sus subrutas. No monta contenido privado en estados `loading`, `unauthenticated` o `error`; redirige al login sin sesión y ofrece reintentar si falla la validación. Tracker e Incident Analysis siguen públicos con sus clientes separados.
+- Logout reutiliza el cliente compartido y publica `unauthenticated` inmediatamente. La expiración se gestiona con `401` y `/login?expired=1`, sin un temporizador JWT adicional. Una revisión de sesión evita que validaciones o `401` tardíos de una sesión anterior restauren el acceso o invaliden una nueva sesión.
+- El guard es de UI, no una barrera de autorización de la API. No hay middleware de auth; el JWT vive en localStorage y el backend valida las solicitudes protegidas.
 - Auth usa TinyDB en `services/data/auth.json` por defecto o `AUTH_DB_PATH`. La serialización de registro es un lock dentro del proceso, no entre workers; el README del API documenta esa limitación.
 
 ## 18. Incident Analysis

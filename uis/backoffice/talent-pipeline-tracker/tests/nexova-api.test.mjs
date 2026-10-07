@@ -5,6 +5,11 @@ import {
   NexovaApiClient,
   NexovaApiError,
 } from "../lib/nexova-api.ts";
+import {
+  logoutAndRedirect,
+  requiresAuthentication,
+  shouldShowLogout,
+} from "../lib/auth-navigation.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -198,6 +203,89 @@ describe("NexovaApiClient", () => {
     unsubscribe();
   });
 
+  it("does not restore access when validation finishes after logout", async () => {
+    let resolveFetch;
+    const client = makeClient({
+      fetcher: () => new Promise((resolve) => { resolveFetch = resolve; }),
+    });
+    client.setAccessToken("valid-token");
+    const validation = client.validateSession();
+
+    client.logout();
+    assert.equal(client.getSession().status, "unauthenticated");
+    resolveFetch(userResponse());
+    await validation;
+
+    assert.equal(client.getAccessToken(), null);
+    assert.equal(client.getSession().status, "unauthenticated");
+  });
+
+  it("ignores validation failures arriving after logout", async () => {
+    for (const status of [401, 503]) {
+      let resolveFetch;
+      const redirects = [];
+      const client = makeClient({
+        redirect: (url) => redirects.push(url),
+        fetcher: () => new Promise((resolve) => { resolveFetch = resolve; }),
+      });
+      client.setAccessToken("valid-token");
+      const validation = client.validateSession();
+      client.logout();
+      resolveFetch(Response.json({ detail: "Request failed" }, { status }));
+      await validation;
+
+      assert.equal(client.getSession().status, "unauthenticated");
+      assert.deepEqual(redirects, []);
+    }
+  });
+
+  it("does not let an old validation overwrite or expire a new session", async () => {
+    for (const status of [200, 401]) {
+      const pending = [];
+      const redirects = [];
+      const client = makeClient({
+        redirect: (url) => redirects.push(url),
+        fetcher: () => new Promise((resolve) => { pending.push(resolve); }),
+      });
+      client.setAccessToken("old-token");
+      const oldValidation = client.validateSession();
+      client.logout();
+      client.setAccessToken("new-token");
+      const newValidation = client.validateSession();
+      assert.equal(pending.length, 2);
+
+      pending[0](status === 200 ? userResponse() : Response.json({}, { status }));
+      await oldValidation;
+      assert.equal(client.getSession().status, "loading");
+      const sharedValidation = client.validateSession();
+      assert.equal(pending.length, 2);
+      pending[1](userResponse());
+      await Promise.all([newValidation, sharedValidation]);
+
+      assert.equal(client.getSession().status, "authenticated");
+      assert.equal(client.getAccessToken(), "new-token");
+      assert.deepEqual(redirects, []);
+    }
+  });
+
+  it("invalidates an expired token during initial session validation", async () => {
+    const storage = new MemoryStorage();
+    storage.setItem(ACCESS_TOKEN_KEY, "expired-token");
+    const redirects = [];
+    const client = makeClient({
+      storage,
+      redirect: (url) => redirects.push(url),
+      fetcher: async () => Response.json({ detail: "Invalid credentials" }, { status: 401 }),
+    });
+
+    const session = await client.validateSession();
+
+    assert.equal(session.status, "unauthenticated");
+    assert.equal(session.user, null);
+    assert.equal(client.getAccessToken(), null);
+    assert.deepEqual(redirects, ["/login?expired=1"]);
+  });
+
   it("clears the session and redirects once when concurrent protected requests return 401", async () => {
     const storage = new MemoryStorage();
     storage.setItem(ACCESS_TOKEN_KEY, "expired-token");
@@ -307,5 +395,30 @@ describe("NexovaApiClient", () => {
 
     assert.equal(client.getAccessToken(), null);
     assert.equal(client.getSession().status, "unauthenticated");
+  });
+
+  it("shows Logout only for an authenticated session", () => {
+    assert.equal(shouldShowLogout("authenticated"), true);
+    assert.equal(shouldShowLogout("loading"), false);
+    assert.equal(shouldShowLogout("unauthenticated"), false);
+    assert.equal(shouldShowLogout("error"), false);
+  });
+
+  it("requires authentication only for profile and supplier routes", () => {
+    assert.equal(requiresAuthentication("/account/profile"), true);
+    assert.equal(requiresAuthentication("/account/profile/edit"), true);
+    assert.equal(requiresAuthentication("/suppliers"), true);
+    assert.equal(requiresAuthentication("/suppliers/"), true);
+    assert.equal(requiresAuthentication("/"), false);
+    assert.equal(requiresAuthentication("/incidents"), false);
+    assert.equal(requiresAuthentication("/login"), false);
+    assert.equal(requiresAuthentication("/register"), false);
+  });
+
+  it("logs out through the existing handler before redirecting to login", () => {
+    const calls = [];
+    logoutAndRedirect(() => calls.push("logout"), (path) => calls.push(path));
+
+    assert.deepEqual(calls, ["logout", "/login"]);
   });
 });

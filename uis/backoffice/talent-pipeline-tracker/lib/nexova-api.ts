@@ -116,6 +116,7 @@ export class NexovaApiClient {
   private readonly listeners = new Set<(session: SessionSnapshot) => void>();
   private session: SessionSnapshot = initialSession;
   private validationPromise: Promise<SessionSnapshot> | null = null;
+  private sessionRevision = 0;
   private expirationHandled = false;
 
   constructor(options: NexovaApiClientOptions = {}) {
@@ -149,11 +150,15 @@ export class NexovaApiClient {
     if (!storage) throw new Error("Browser storage is unavailable");
 
     storage.setItem(ACCESS_TOKEN_KEY, token);
+    this.sessionRevision += 1;
+    this.validationPromise = null;
     this.expirationHandled = false;
     this.publish({ status: "loading", user: null, error: null });
   }
 
   logout(): void {
+    this.sessionRevision += 1;
+    this.validationPromise = null;
     try {
       this.getStorage()?.removeItem(ACCESS_TOKEN_KEY);
     } catch {
@@ -182,13 +187,21 @@ export class NexovaApiClient {
       return this.session;
     }
 
+    const revision = this.sessionRevision;
+    const token = this.getAccessToken();
     this.publish({ status: "loading", user: null, error: null });
     const validation = this.request<AuthenticatedUser>("/auth/me", { auth: true })
       .then((user) => {
+        if (revision !== this.sessionRevision || token !== this.getAccessToken()) {
+          return this.session;
+        }
         this.publish({ status: "authenticated", user, error: null });
         return this.session;
       })
       .catch((error: unknown) => {
+        if (revision !== this.sessionRevision || token !== this.getAccessToken()) {
+          return this.session;
+        }
         if (!(error instanceof NexovaApiError && error.isUnauthorized)) {
           this.publish({
             status: "error",
@@ -199,7 +212,7 @@ export class NexovaApiClient {
         return this.session;
       })
       .finally(() => {
-        this.validationPromise = null;
+        if (this.validationPromise === validation) this.validationPromise = null;
       });
 
     this.validationPromise = validation;
@@ -211,6 +224,7 @@ export class NexovaApiClient {
     options: NexovaRequestOptions = {},
   ): Promise<T> {
     const { auth = false, body: inputBody, headers: inputHeaders, json, ...init } = options;
+    const revision = this.sessionRevision;
     const headers = new Headers(inputHeaders);
     let body = inputBody;
 
@@ -254,7 +268,9 @@ export class NexovaApiClient {
 
     const responseBody = await readResponseBody(response);
     if (!response.ok) {
-      if (response.status === 401 && auth) this.handleUnauthorized();
+      if (response.status === 401 && auth && revision === this.sessionRevision) {
+        this.handleUnauthorized();
+      }
       throw new NexovaApiError(
         "http",
         response.status,
@@ -280,6 +296,8 @@ export class NexovaApiClient {
   private handleUnauthorized(): void {
     if (this.expirationHandled) return;
     this.expirationHandled = true;
+    this.sessionRevision += 1;
+    this.validationPromise = null;
 
     try {
       this.getStorage()?.removeItem(ACCESS_TOKEN_KEY);

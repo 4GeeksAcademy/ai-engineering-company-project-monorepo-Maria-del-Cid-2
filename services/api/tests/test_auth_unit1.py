@@ -10,9 +10,11 @@ endpoints HTTP ni base de datos). Se centran en:
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest import mock
 
 # ── Establecer variables de entorno antes de importar los módulos ──
 # config.py lee las variables en el momento de la importación.
@@ -33,17 +35,32 @@ from app.auth.security import (
 class ConfigTests(unittest.TestCase):
     """Tests sobre la lectura de variables de entorno."""
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        # Copia aislada de config.py: evita depender de qué módulo importó
+        # app.auth.config antes ni del SECRET_KEY del entorno.
+        env = {
+            "SECRET_KEY": "test-secret-key-for-unit-tests",
+            "ACCESS_TOKEN_EXPIRE_MINUTES": "60",
+        }
+        spec = importlib.util.spec_from_file_location(
+            "_config_under_test", auth_config.__file__
+        )
+        cls.config = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(os.environ, env):
+            spec.loader.exec_module(cls.config)
+
     def test_config_reads_secret_key_from_environment(self) -> None:
-        self.assertEqual(auth_config.SECRET_KEY, "test-secret-key-for-unit-tests")
+        self.assertEqual(self.config.SECRET_KEY, "test-secret-key-for-unit-tests")
 
     def test_config_reads_expire_minutes_from_environment(self) -> None:
-        self.assertEqual(auth_config.ACCESS_TOKEN_EXPIRE_MINUTES, 60)
+        self.assertEqual(self.config.ACCESS_TOKEN_EXPIRE_MINUTES, 60)
 
     def test_config_creates_expire_delta(self) -> None:
-        self.assertEqual(auth_config.ACCESS_TOKEN_EXPIRE_DELTA, timedelta(minutes=60))
+        self.assertEqual(self.config.ACCESS_TOKEN_EXPIRE_DELTA, timedelta(minutes=60))
 
     def test_config_algorithm_is_hs256(self) -> None:
-        self.assertEqual(auth_config.ALGORITHM, "HS256")
+        self.assertEqual(self.config.ALGORITHM, "HS256")
 
 
 class PasswordHashingTests(unittest.TestCase):
