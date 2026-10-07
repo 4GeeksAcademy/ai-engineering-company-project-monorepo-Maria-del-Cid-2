@@ -401,6 +401,9 @@ Nexova ni con el Tracker de 4Geeks.
 - Logout reutiliza el cliente compartido y publica `unauthenticated` inmediatamente. La expiración se gestiona con `401` y `/login?expired=1`, sin un temporizador JWT adicional. Una revisión de sesión evita que validaciones o `401` tardíos de una sesión anterior restauren el acceso o invaliden una nueva sesión.
 - El guard es de UI, no una barrera de autorización de la API. No hay middleware de auth; el JWT vive en localStorage y el backend valida las solicitudes protegidas.
 - Auth usa TinyDB en `services/data/auth.json` por defecto o `AUTH_DB_PATH`. La serialización de registro es un lock dentro del proceso, no entre workers; el README del API documenta esa limitación.
+- Password reset reutiliza el dominio `app/auth`: tokens opacos aleatorios con solo su hash en la tabla `password_reset_tokens`, expiración y consumo único. `POST /api/auth/forgot-password` responde siempre `200` con mensaje genérico.
+- Los JWT incluyen `credentials_version`. Al cambiar o restablecer una contraseña se incrementa esa versión y `get_current_user` rechaza tokens anteriores; no se usa una segunda estrategia `password_changed_at`.
+- El envío de recuperación depende de la interfaz `EmailSender` y su adaptador Resend. `RESEND_API_KEY` y `RESEND_FROM_EMAIL` son configuración exclusiva del backend en `services/api/.env`; los tests inyectan un fake y no contactan con Resend.
 
 ## 18. Incident Analysis
 

@@ -14,10 +14,24 @@ from typing import Any
 from tinydb import Query, TinyDB
 from tinydb.table import Document, Table
 
-from .database import get_profiles_table, get_users_table
-from .models import Profile, ProfileCreate, ProfileUpdate, User, UserCreate, UserRole, UserUpdate
+from .database import (
+    get_password_reset_tokens_table,
+    get_profiles_table,
+    get_users_table,
+)
+from .models import (
+    PasswordResetToken,
+    Profile,
+    ProfileCreate,
+    ProfileUpdate,
+    User,
+    UserCreate,
+    UserRole,
+    UserUpdate,
+)
 
 _user_creation_lock = Lock()
+_password_reset_lock = Lock()
 
 
 class DuplicateEmailError(Exception):
@@ -108,6 +122,21 @@ class UserRepository:
         self._table.update(updates, doc_ids=[user_id])
         return self.get(user_id)
 
+    def update_password(self, user_id: int, hashed_password: str) -> User | None:
+        """Replace a password and invalidate all previously issued JWTs."""
+        user = self.get(user_id)
+        if user is None:
+            return None
+
+        self._table.update(
+            {
+                "hashed_password": hashed_password,
+                "credentials_version": user.credentials_version + 1,
+            },
+            doc_ids=[user_id],
+        )
+        return self.get(user_id)
+
     def delete(self, user_id: int) -> bool:
         """Elimina el usuario por su ID.
 
@@ -174,3 +203,55 @@ class ProfileRepository:
         """Elimina el Profile asociado a un user_id."""
         ProfileQuery = Query()
         return bool(self._table.remove(ProfileQuery.user_id == user_id))
+
+
+class PasswordResetTokenRepository:
+    """Persistence adapter for one-time password reset metadata."""
+
+    def __init__(self, database: TinyDB) -> None:
+        self._db = database
+
+    @property
+    def _table(self) -> Table:
+        return get_password_reset_tokens_table(self._db)
+
+    def create(
+        self,
+        user_id: int,
+        token_hash: str,
+        created_at: datetime,
+        expires_at: datetime,
+    ) -> PasswordResetToken:
+        token_id = max((doc.doc_id for doc in self._table), default=0) + 1
+        token = PasswordResetToken(
+            id=token_id,
+            user_id=user_id,
+            token_hash=token_hash,
+            created_at=created_at,
+            expires_at=expires_at,
+        )
+        self._table.insert(Document(token.model_dump(mode="json"), doc_id=token_id))
+        return token
+
+    def invalidate_for_user(self, user_id: int) -> None:
+        query = Query()
+        self._table.update(
+            {"used_at": datetime.now(timezone.utc).isoformat()},
+            (query.user_id == user_id) & (query.used_at == None),  # noqa: E711
+        )
+
+    def get_by_hash(self, token_hash: str) -> PasswordResetToken | None:
+        query = Query()
+        record = self._table.get(query.token_hash == token_hash)
+        return PasswordResetToken.model_validate(record) if record is not None else None
+
+    def consume(self, token_id: int, consumed_at: datetime) -> bool:
+        with _password_reset_lock:
+            record = self._table.get(doc_id=token_id)
+            if record is None or record.get("used_at") is not None:
+                return False
+            self._table.update(
+                {"used_at": consumed_at.isoformat()},
+                doc_ids=[token_id],
+            )
+            return True

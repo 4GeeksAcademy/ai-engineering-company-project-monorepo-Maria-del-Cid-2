@@ -10,6 +10,21 @@ Ya existe una base de aplicaciones y documentación, y se está incorporando una
 
 ## 2. Completado
 
+### Password reset — Fase 1 backend
+
+Implementado el flujo backend de recuperación y cambio de contraseña bajo el
+dominio de auth existente:
+
+- `POST /api/auth/forgot-password` responde siempre HTTP 200 con mensaje genérico.
+- `POST /api/auth/reset-password` usa tokens opacos aleatorios, hash SHA-256,
+  expiración y uso único en una tabla TinyDB separada.
+- `POST /api/auth/change-password` exige JWT y contraseña actual correcta.
+- `credentials_version` invalida los JWT existentes después de reset o cambio.
+- Resend está aislado mediante `EmailSender`; no se ha configurado ninguna API key
+  real ni se han enviado emails.
+- Tests específicos y suite de autenticación ejecutados con TinyDB temporal.
+- Documentación del API y primera fase de `docs/Aprendiendo-password-reset.md` añadidas.
+
 ### Contexto y documentación
 
 - `CONTEXT.es.md` contiene el contexto general de negocio de Nexova.

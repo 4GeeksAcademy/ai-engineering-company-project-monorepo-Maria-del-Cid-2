@@ -55,3 +55,10 @@ def get_profiles_table(database: TinyDB | None = None) -> TinyDB.table_class:
 
     db = database if database is not None else get_database()
     return db.table("profiles")
+
+
+def get_password_reset_tokens_table(database: TinyDB | None = None) -> TinyDB.table_class:
+    """Return the password reset token table from the auth database."""
+
+    db = database if database is not None else get_database()
+    return db.table("password_reset_tokens")

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.auth.models import Profile, ProfileCreate, UserRole
 
@@ -83,10 +83,52 @@ class UserUpdateRequest(BaseModel):
     role: UserRole | None = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8)
+    confirm_password: str = Field(min_length=8)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
+
+
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8)
+    confirm_password: str = Field(min_length=8)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
+
+
+class GenericMessageResponse(BaseModel):
+    message: str
+
+
 __all__ = [
     "TokenResponse",
     "UserMeResponse",
     "UserResponse",
     "UserCreateRequest",
     "UserUpdateRequest",
+    "ForgotPasswordRequest",
+    "PasswordResetRequest",
+    "ChangePasswordRequest",
+    "GenericMessageResponse",
 ]
