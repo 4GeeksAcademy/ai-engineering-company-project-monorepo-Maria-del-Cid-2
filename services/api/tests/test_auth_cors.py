@@ -23,11 +23,14 @@ def _get_app():
     return app
 
 
+APP = _get_app()
+
+
 class CorsConfigurationTests(unittest.TestCase):
     def test_cors_origins_are_trimmed_from_environment(self) -> None:
         with patch.dict(
             os.environ,
-            {"CORS_ORIGINS": " https://nexova.example, http://localhost:3100 "},
+            {"CORS_ORIGINS": " https://nexova.example/, http://localhost:3100/ "},
         ):
             self.assertEqual(
                 _get_cors_origins(),
@@ -44,7 +47,7 @@ class CorsConfigurationTests(unittest.TestCase):
         if not origins:
             self.skipTest("CORS_ORIGINS is empty")
 
-        response = TestClient(_get_app()).options(
+        response = TestClient(APP).options(
             "/api/profiles/me",
             headers={
                 "Origin": origins[0],
@@ -60,8 +63,27 @@ class CorsConfigurationTests(unittest.TestCase):
         self.assertIn("authorization", allowed_headers)
         self.assertIn("content-type", allowed_headers)
 
+    def test_user_post_preflight_allows_origin_without_trailing_slash(self) -> None:
+        origins = _get_cors_origins()
+        if not origins:
+            self.skipTest("CORS_ORIGINS is empty")
+
+        response = TestClient(APP).options(
+            "/api/users",
+            headers={
+                "Origin": origins[0].rstrip("/"),
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["access-control-allow-origin"], origins[0])
+        self.assertIn("POST", response.headers["access-control-allow-methods"])
+        self.assertIn("content-type", response.headers["access-control-allow-headers"].lower())
+
     def test_profile_put_preflight_rejects_unauthorized_origin(self) -> None:
-        response = TestClient(_get_app()).options(
+        response = TestClient(APP).options(
             "/api/profiles/me",
             headers={
                 "Origin": "https://unauthorized.example.test",

@@ -29,7 +29,11 @@ def get_cors_origins() -> list[str]:
     """Return explicit browser origins from CORS_ORIGINS or development defaults."""
     configured_origins = os.getenv("CORS_ORIGINS")
     origins = (
-        [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+        [
+            origin.strip().rstrip("/")
+            for origin in configured_origins.split(",")
+            if origin.strip().rstrip("/")
+        ]
         if configured_origins is not None
         else list(_DEFAULT_CORS_ORIGINS)
     )
