@@ -28,3 +28,4 @@ __pycache__/
 # documentación personal de aprendizaje
 docs/Aprendiendo-*.md
 !docs/Aprendiendo-password-reset.mdbuild/
+/packages/shared/python/build/
