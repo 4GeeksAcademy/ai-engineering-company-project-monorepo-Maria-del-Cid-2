@@ -8,6 +8,7 @@ incluyen explícitamente el prefijo `/api`.
 
 ```bash
 cd services/api
+python -m pip install -e ../../packages/shared/python
 python -m pip install -e .
 uvicorn app.main:app --reload
 ```
@@ -25,6 +26,33 @@ del frontend. Permite los headers `Authorization` y `Content-Type`.
     compartido entre workers. No se guardan ni devuelven filas originales o
     `customer_email`.
 - La CLI está en `scripts/analyze.py`; puede exportar resultados agregados de forma interactiva. Revisa el destino antes de ejecutarla porque puede crear un archivo en el directorio de trabajo.
+
+## Incident Manager
+
+El gestor persistente utiliza TinyDB en `services/data/incidents.json` por
+defecto o en la ruta indicada por `INCIDENTS_DB_PATH`. Sus tablas están
+separadas del resultado temporal de Incident Analysis.
+
+- `POST /api/incidents` crea una incidencia.
+- `GET /api/incidents` lista y filtra por `status`, `origin`, `branch` y
+    `category`.
+- `GET /api/incidents/{id}` obtiene el detalle.
+- `PATCH /api/incidents/{id}/status` aplica únicamente transiciones válidas.
+- `GET /api/incidents/summary` devuelve totales por estado, categoría, origen y
+    sede, incluyendo ceros cuando la base está vacía.
+
+El seed histórico se ejecuta explícitamente desde la raíz:
+
+```bash
+INCIDENTS_DB_PATH=/tmp/nexova-incidents.json \
+PYTHONPATH=packages/shared/python/src:services/api python scripts/seed_incidents.py
+```
+
+Lee exclusivamente `scripts/incidents-nexova.csv`, aplica las transformaciones
+definidas en `CONTEXT-INCIDENT-MANAGER.md`, informa de las filas descartadas y
+comprueba los conteos transformados esperados. Las claves de `ticket_id` se
+conservan solo en una tabla técnica de idempotencia; nunca forman parte del
+modelo ni de la respuesta API.
 
 ## Autenticación
 
@@ -93,7 +121,7 @@ inválido la API responde `401`, no una lista vacía.
 Desde la raíz del repositorio:
 
 ```bash
-PYTHONPATH=services/api \
+PYTHONPATH=packages/shared/python/src:services/api \
 SECRET_KEY=... \
 AUTH_DB_PATH=$(mktemp -d)/auth.json \
 SUPPLIER_DIRECTORY_DB_PATH=$(mktemp -d)/suppliers.json \

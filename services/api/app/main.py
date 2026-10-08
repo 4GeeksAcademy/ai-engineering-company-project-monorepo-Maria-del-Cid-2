@@ -6,14 +6,17 @@ import io
 import os
 from io import StringIO
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .incidents.analysis import analyze_incidents
 from .incidents.csv_reader import CsvReadError, read_incidents_csv
 from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
+from .incidents.manager_router import router as incident_manager_router
 from .suppliers.router import router as suppliers_router
 from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
@@ -53,7 +56,47 @@ app.include_router(suppliers_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)
+app.include_router(incident_manager_router)
 _latest_result: IncidentAnalysisResult | None = None
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    """Return user-safe 400 validation errors for Incident Manager requests."""
+
+    manager_path = request.url.path == "/api/incidents" or request.url.path.startswith(
+        "/api/incidents/"
+    )
+    analysis_path = request.url.path in {
+        "/api/incidents/analyze",
+        "/api/incidents/results/export",
+    }
+    if not manager_path or analysis_path:
+        return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
+
+    first_error = exc.errors()[0]
+    location = first_error.get("loc", ())
+    field = next((str(item) for item in reversed(location) if isinstance(item, str)), "request")
+    return JSONResponse(
+        status_code=400,
+        content={
+            "field": field,
+            "message": "El valor indicado no es válido.",
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(_request: Request, _exc: Exception) -> JSONResponse:
+    """Never expose implementation details from an unexpected server error."""
+
+    return JSONResponse(
+        status_code=500,
+        content={"message": "No se pudo completar la operación. Inténtalo de nuevo."},
+    )
 
 
 @app.post("/api/incidents/analyze")

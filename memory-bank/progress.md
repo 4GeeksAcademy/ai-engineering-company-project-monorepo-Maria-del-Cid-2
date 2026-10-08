@@ -225,6 +225,22 @@ esperados (100 filas, 96 válidas, media 3.84).
 
 ## 3. Estado actual del Talent Pipeline Tracker
 
+## Fase 1 — Gestor de Incidencias Centralizado
+
+Implementados el dominio persistente del gestor en TinyDB, sus endpoints
+CRUD/summary y la validación de transiciones de estado. El modelo del gestor es
+independiente del dominio existente de Incident Analysis. También se añadió
+`scripts/seed_incidents.py`, que transforma exclusivamente
+`scripts/incidents-nexova.csv`, descarta las filas inválidas y controla
+duplicados sin almacenar `ticket_id` en `Incident`.
+
+Verificación de seed en base temporal: 96 inserciones iniciales, 0 inserciones
+en la segunda ejecución, 4 filas descartadas (`18`, `44`, `87`, `91`), estados
+`open=27`, `resolved=56`, `discarded=13` y categorías
+`technical_failure=49`, `process_error=35`, `client_complaint=12`. El API del
+gestor tiene 4 tests focalizados correctos. La fase frontend queda pendiente de
+confirmación explícita.
+
 El Talent Pipeline Tracker dispone actualmente de una estructura funcional completa para el caso de uso de gestión de candidaturas.
 
 La arquitectura conocida es:
