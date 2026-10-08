@@ -84,6 +84,9 @@ class ResendEmailSender:
             headers={
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
+                #
+                #
+                "User-Agent": "nexova-api/0.1",
             },
             method="POST",
         )

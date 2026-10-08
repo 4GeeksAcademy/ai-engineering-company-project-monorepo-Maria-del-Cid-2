@@ -25,7 +25,7 @@ class PasswordResetError(Exception):
     """Expected reset failure that should have a generic public message."""
 
 
-PASSWORD_RESET_REQUEST_LIMIT = 100
+PASSWORD_RESET_REQUEST_LIMIT = 5
 PASSWORD_RESET_RATE_LIMIT_WINDOW = timedelta(hours=0)
 
 
