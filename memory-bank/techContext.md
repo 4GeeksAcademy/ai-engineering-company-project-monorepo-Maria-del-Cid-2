@@ -397,10 +397,17 @@ Nexova ni con el Tracker de 4Geeks.
 - `GET /api/auth/me` valida el JWT de la sesión.
 - El frontend guarda el token bajo `nexova_access_token`; el cliente solo envía `Authorization: Bearer` cuando la operación opta explícitamente por auth. Un `401` en una solicitud protegida invalida la sesión local.
 - Login y registro son públicos. Supplier Directory requiere autenticación; Incident Analysis no la requiere. El registro por sí solo no habilita solicitudes protegidas.
-- `AuthShell`, dentro de `AuthProvider` en el layout raíz, protege `/suppliers` y `/account/profile`, incluidas sus subrutas. No monta contenido privado en estados `loading`, `unauthenticated` o `error`; redirige al login sin sesión y ofrece reintentar si falla la validación. Tracker e Incident Analysis siguen públicos con sus clientes separados.
+- `AuthShell`, dentro de `AuthProvider` en el layout raíz, protege `/suppliers`, `/account/profile` y `/account/change-password`, incluidas sus subrutas. No monta contenido privado en estados `loading`, `unauthenticated` o `error`; redirige al login sin sesión y ofrece reintentar si falla la validación. Tracker e Incident Analysis siguen públicos con sus clientes separados.
 - Logout reutiliza el cliente compartido y publica `unauthenticated` inmediatamente. La expiración se gestiona con `401` y `/login?expired=1`, sin un temporizador JWT adicional. Una revisión de sesión evita que validaciones o `401` tardíos de una sesión anterior restauren el acceso o invaliden una nueva sesión.
 - El guard es de UI, no una barrera de autorización de la API. No hay middleware de auth; el JWT vive en localStorage y el backend valida las solicitudes protegidas.
 - Auth usa TinyDB en `services/data/auth.json` por defecto o `AUTH_DB_PATH`. La serialización de registro es un lock dentro del proceso, no entre workers; el README del API documenta esa limitación.
+- Password reset reutiliza el dominio `app/auth`: tokens opacos aleatorios con solo su hash en la tabla `password_reset_tokens`, expiración y consumo único. `POST /api/auth/forgot-password` responde siempre `200` con mensaje genérico.
+- Los JWT incluyen `credentials_version`. Al cambiar o restablecer una contraseña se incrementa esa versión y `get_current_user` rechaza tokens anteriores; no se usa una segunda estrategia `password_changed_at`.
+- El envío de recuperación depende de la interfaz `EmailSender` y su adaptador Resend. `RESEND_API_KEY` y `RESEND_FROM_EMAIL` son configuración exclusiva del backend en `services/api/.env`; los tests inyectan un fake y no contactan con Resend.
+- El frontend concentra las validaciones y peticiones de password reset en `lib/password-reset.ts` y reutiliza `PasswordResetForm` para forgot, reset y change. `/reset-password` recibe el token mediante `searchParams`; no se persiste en localStorage ni en `AuthProvider`. Forgot y reset usan `auth: false`; change usa `auth: true` y cierra la sesión local después del éxito.
+- La auditoría de seguridad mantiene `forgot-password` homogéneo para emails existentes, inexistentes e inactivos. El token usa `secrets.token_urlsafe(32)`, solo se almacena su SHA-256, expira, se consume una vez y se reemplaza al solicitar otro. El repositorio serializa rotación y consumo; `UserRepository.update_password` serializa el incremento de `credentials_version`.
+- Tras un reset correcto el frontend usa `router.replace("/login?reset=1")`, una redirección fija que evita conservar el token en la URL. No hay redirect arbitrario ni logs de password, token, JWT o API key en el flujo auditado.
+- TinyDB sigue siendo una persistencia de un solo proceso: los locks no coordinan varios workers o instancias. La operación segura multi-worker requeriría una base con transacciones/operaciones atómicas; no forma parte de esta fase.
 
 ## 18. Incident Analysis
 
@@ -423,6 +430,15 @@ no se ejecuta al iniciar FastAPI. Comprueba la ruta efectiva del proceso antes
 de concluir que la base está vacía o de ejecutar un seed. En la inspección
 actual, el archivo por defecto existe y contiene 15 proveedores; no se debe
 asumir que otras instalaciones tienen los mismos datos.
+
+## 21. Decisiones de persistencia de la Fase 4
+
+Password reset dispone además de una plantilla HTML generada en backend, un
+límite local de 3 solicitudes por email cada hora y dos tablas TinyDB auxiliares
+(`password_reset_rate_limits` y `password_reset_audit_log`). La auditoría
+registra timestamp, IP, email cuando procede y tipo de evento, nunca tokens ni
+credenciales. Estas extensiones son opcionales y los locks solo coordinan un
+proceso.
 
 ## 20. Hallazgos de diagnóstico frontend
 

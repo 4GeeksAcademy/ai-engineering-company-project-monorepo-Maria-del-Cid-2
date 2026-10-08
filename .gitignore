@@ -27,3 +27,4 @@ __pycache__/
 
 # documentación personal de aprendizaje
 docs/Aprendiendo-*.md
+!docs/Aprendiendo-password-reset.md

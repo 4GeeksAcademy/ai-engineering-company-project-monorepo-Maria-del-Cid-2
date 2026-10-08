@@ -6,16 +6,34 @@ autenticación.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.auth.dependencies import get_current_user, get_profile_repository, get_repository
+from app.auth.dependencies import (
+    get_current_user,
+    get_password_reset_service,
+    get_profile_repository,
+    get_repository,
+)
+from app.auth.email import EmailDeliveryError
 from app.auth.models import Profile, User
 from app.auth.repository import ProfileRepository, UserRepository
-from app.auth.schemas import TokenResponse, UserMeResponse
+from app.auth.password_reset import PasswordResetError, PasswordResetService
+from app.auth.schemas import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    GenericMessageResponse,
+    PasswordResetRequest,
+    TokenResponse,
+    UserMeResponse,
+)
 from app.auth.service import AuthService, AuthenticationError
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+_FORGOT_PASSWORD_MESSAGE = (
+    "Si existe una cuenta asociada, recibirás instrucciones para restablecer la contraseña."
+)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -69,3 +87,61 @@ def read_current_user(
         created_at=current_user.created_at,
         profile=profile,
     )
+
+
+@router.post("/forgot-password", response_model=GenericMessageResponse)
+def forgot_password(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    service: PasswordResetService = Depends(get_password_reset_service),
+) -> GenericMessageResponse:
+    """Request a reset email without revealing whether the account exists."""
+    try:
+        service.request_reset(
+            str(payload.email),
+            request.client.host if request.client else None,
+        )
+    except EmailDeliveryError:
+        # The public response remains identical for existing and unknown emails.
+        pass
+    return GenericMessageResponse(message=_FORGOT_PASSWORD_MESSAGE)
+
+
+@router.post("/reset-password", response_model=GenericMessageResponse)
+def reset_password(
+    request: Request,
+    payload: PasswordResetRequest,
+    service: PasswordResetService = Depends(get_password_reset_service),
+) -> GenericMessageResponse:
+    try:
+        service.reset_password(
+            payload.token,
+            payload.new_password,
+            request.client.host if request.client else None,
+        )
+    except PasswordResetError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        ) from exc
+    return GenericMessageResponse(message="Password reset successfully")
+
+
+@router.post("/change-password", response_model=GenericMessageResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    service: PasswordResetService = Depends(get_password_reset_service),
+) -> GenericMessageResponse:
+    try:
+        service.change_password(
+            current_user.id,
+            payload.current_password,
+            payload.new_password,
+        )
+    except PasswordResetError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        ) from exc
+    return GenericMessageResponse(message="Password changed successfully")

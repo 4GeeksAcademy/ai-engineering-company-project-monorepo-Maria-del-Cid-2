@@ -105,6 +105,13 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if payload.get("credentials_version") != user.credentials_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
 
 
@@ -115,5 +122,28 @@ def get_profile_repository() -> ProfileRepository:
     database = get_database()
     try:
         yield ProfileRepository(database)
+    finally:
+        database.close()
+
+
+def get_password_reset_service():
+    """Provide password reset orchestration with one shared auth DB handle."""
+    from .email import ResendEmailSender
+    from .password_reset import PasswordResetService
+    from .repository import (
+        PasswordResetAuditLogRepository,
+        PasswordResetRateLimitRepository,
+        PasswordResetTokenRepository,
+    )
+
+    database = get_database()
+    try:
+        yield PasswordResetService(
+            UserRepository(database),
+            PasswordResetTokenRepository(database),
+            ResendEmailSender(),
+            rate_limits=PasswordResetRateLimitRepository(database),
+            audit_log=PasswordResetAuditLogRepository(database),
+        )
     finally:
         database.close()

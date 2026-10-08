@@ -10,6 +10,21 @@ Ya existe una base de aplicaciones y documentación, y se está incorporando una
 
 ## 2. Completado
 
+### Password reset — Fase 1 backend
+
+Implementado el flujo backend de recuperación y cambio de contraseña bajo el
+dominio de auth existente:
+
+- `POST /api/auth/forgot-password` responde siempre HTTP 200 con mensaje genérico.
+- `POST /api/auth/reset-password` usa tokens opacos aleatorios, hash SHA-256,
+  expiración y uso único en una tabla TinyDB separada.
+- `POST /api/auth/change-password` exige JWT y contraseña actual correcta.
+- `credentials_version` invalida los JWT existentes después de reset o cambio.
+- Resend está aislado mediante `EmailSender`; no se ha configurado ninguna API key
+  real ni se han enviado emails.
+- Tests específicos y suite de autenticación ejecutados con TinyDB temporal.
+- Documentación del API y primera fase de `docs/Aprendiendo-password-reset.md` añadidas.
+
 ### Contexto y documentación
 
 - `CONTEXT.es.md` contiene el contexto general de negocio de Nexova.
@@ -131,6 +146,51 @@ No equivale a un nuevo E2E contra la API real. Las herramientas de navegador
 se instalaron temporalmente fuera del repo; no se añadieron dependencias.
 No se modificó backend ni `services/data/`, ni se ejecutaron seeders,
 commits o push.
+
+### Password reset — Fase 2 frontend
+
+Implementadas las pantallas `/forgot-password`, `/reset-password` y
+`/account/change-password` en `uis/backoffice/talent-pipeline-tracker`.
+El token de recuperación se lee desde `searchParams` y no se guarda en
+localStorage ni en `AuthProvider`. Las peticiones públicas no envían Bearer;
+el cambio de contraseña reutiliza el cliente autenticado y cierra la sesión
+local tras completarse, porque el backend invalida el JWT.
+
+Se añadió `PasswordResetForm` con validación, mensajes genéricos, estados de
+éxito/error y prevención de envíos concurrentes. `/account/change-password`
+queda protegido por el `AuthShell` existente y el login incluye el enlace de
+recuperación.
+
+Verificación realizada: 41 tests frontend, `npx tsc --noEmit`. Pendientes de
+ejecutar en esta fase: lint y build. No se modificó backend, `services/data/`,
+`uis/website`, ni se creó commit o push.
+
+### Password reset — Fase 3 seguridad
+
+Auditado y reforzado el flujo completo de password reset. `forgot-password`
+mantiene respuestas homogéneas para cuentas existentes, inexistentes e
+inactivas. Los tokens usan fuente criptográficamente segura, solo se persiste
+su hash, tienen expiración, uso único y rotación; la rotación y el consumo
+quedan protegidos por locks de proceso. La actualización de contraseña también
+serializa el incremento de `credentials_version`.
+
+El frontend redirige a `/login?reset=1` tras un reset correcto, eliminando el
+token de la URL mediante una ruta fija. No se introdujeron almacenamientos,
+logs ni redirects controlados por el usuario. Resend sigue siendo backend-only,
+CORS continúa usando origins explícitos y bcrypt no se ha sustituido.
+
+Verificación focalizada: 11 tests backend de password reset correctos. La
+limitación de TinyDB multi-worker queda documentada: los locks solo coordinan
+un proceso y no sustituyen una base de datos transaccional distribuida.
+
+### Password reset — Fase 4 extensiones opcionales
+
+Implementadas las tres extensiones no evaluables: plantilla HTML sencilla para
+el email mediante `EmailSender`, rate limiting de 3 solicitudes por email en
+una ventana de una hora y auditoría TinyDB de solicitudes/resultados con
+timestamp, IP, email cuando procede y tipo de evento. No se guardan secretos,
+contraseñas, tokens ni JWT. Los tests usan `FakeEmailSender`; Resend no se ha
+activado ni modificado operativamente.
 
 ### Fase 6 — Auditoría final previa a la entrega
 

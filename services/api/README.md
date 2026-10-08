@@ -30,6 +30,9 @@ del frontend. Permite los headers `Authorization` y `Content-Type`.
 
 - `POST /api/auth/login`: formulario OAuth2 URL-encoded; `username` contiene el email y se envía también `password`.
 - `GET /api/auth/me`: valida la identidad del JWT Bearer.
+- `POST /api/auth/forgot-password`: solicita un enlace de recuperación. Siempre responde `200` con un mensaje genérico, exista o no la cuenta y aunque el proveedor de email no esté disponible.
+- `POST /api/auth/reset-password`: consume un token temporal de un solo uso y actualiza la contraseña.
+- `POST /api/auth/change-password`: ruta protegida; verifica la contraseña actual y actualiza la nueva contraseña.
 - `POST /api/users`: recibe JSON con `email` y `password`; responde `201` al crear, `409` si el email ya existe y `422` si falla la validación. El registro no inicia sesión.
 - Las rutas de perfiles están en el router registrado desde `app/main.py`.
 
@@ -37,6 +40,35 @@ La autenticación usa TinyDB en `services/data/auth.json` por defecto o la ruta
 de `AUTH_DB_PATH`. El lock de registro protege solo dentro de un proceso; usa un
 único worker con esta persistencia. Varios workers requieren una persistencia
 con unicidad atómica de email.
+
+Los tokens de recuperación se guardan únicamente como hash en la tabla
+`password_reset_tokens` de la misma BD de auth. Caducan, se invalidan al emitir
+uno nuevo y solo pueden consumirse una vez. Al cambiar o restablecer una
+contraseña se incrementa `credentials_version`; los JWT emitidos con la versión
+anterior dejan de ser válidos.
+
+### Email de recuperación
+
+La API usa un adaptador aislado para Resend. Para activar el envío real, crea
+`services/api/.env` (archivo local ignorado por git) y añade:
+
+```text
+RESEND_API_KEY=tu_api_key_de_resend
+RESEND_FROM_EMAIL=Nexova <tu-remitente-verificado@example.com>
+PASSWORD_RESET_FRONTEND_URL=http://localhost:3000/reset-password
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES=30
+```
+
+No introduzcas la API key en el código, en `services/data/`, en el frontend ni
+en variables `NEXT_PUBLIC_*`. Los tests usan un email sender falso y no realizan
+llamadas a Resend.
+
+Como extensiones opcionales, el email incluye una versión HTML generada por el
+adaptador, `forgot-password` limita a 3 solicitudes por email en una ventana de
+una hora y los eventos de solicitud/reset se guardan en la tabla TinyDB
+`password_reset_audit_log` con timestamp, IP, email cuando está disponible y
+tipo de evento. No se guardan tokens ni contraseñas. Estas extensiones solo
+coordinan dentro de un proceso.
 
 ## Supplier Directory
 

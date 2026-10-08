@@ -25,6 +25,10 @@ load_dotenv(dotenv_path=_dotenv_path)
 
 _SECRET_KEY_ENV = "SECRET_KEY"
 _EXPIRE_MINUTES_ENV = "ACCESS_TOKEN_EXPIRE_MINUTES"
+_PASSWORD_RESET_EXPIRE_MINUTES_ENV = "PASSWORD_RESET_TOKEN_EXPIRE_MINUTES"
+_PASSWORD_RESET_FRONTEND_URL_ENV = "PASSWORD_RESET_FRONTEND_URL"
+_RESEND_API_KEY_ENV = "RESEND_API_KEY"
+_RESEND_FROM_EMAIL_ENV = "RESEND_FROM_EMAIL"
 
 # ── Clave de firma JWT ──────────────────────────────────────────────────────
 # La clave debe establecerse mediante la variable de entorno SECRET_KEY.
@@ -50,4 +54,20 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
 
 ACCESS_TOKEN_EXPIRE_DELTA: timedelta = timedelta(
     minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+)
+
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(
+    os.environ.get(_PASSWORD_RESET_EXPIRE_MINUTES_ENV, "30")
+)
+PASSWORD_RESET_TOKEN_EXPIRE_DELTA: timedelta = timedelta(
+    minutes=PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+)
+PASSWORD_RESET_FRONTEND_URL: str = os.environ.get(
+    _PASSWORD_RESET_FRONTEND_URL_ENV,
+    "http://localhost:3000/reset-password",
+).rstrip("/")
+RESEND_API_KEY: str = os.environ.get(_RESEND_API_KEY_ENV, "")
+RESEND_FROM_EMAIL: str = os.environ.get(
+    _RESEND_FROM_EMAIL_ENV,
+    "Nexova <onboarding@resend.dev>",
 )

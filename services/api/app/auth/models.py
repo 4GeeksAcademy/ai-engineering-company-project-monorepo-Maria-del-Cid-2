@@ -63,6 +63,7 @@ class User(BaseModel):
     is_active: bool = True
     role: UserRole = UserRole.USER
     created_at: datetime
+    credentials_version: int = Field(default=0, ge=0)
 
     @classmethod
     def from_create(
@@ -154,6 +155,19 @@ class Profile(BaseModel):
         )
 
 
+class PasswordResetToken(BaseModel):
+    """Persisted metadata for a reset token; the raw token is never stored."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int = Field(gt=0)
+    user_id: int = Field(gt=0)
+    token_hash: str
+    created_at: datetime
+    expires_at: datetime
+    used_at: datetime | None = None
+
+
 __all__ = [
     "UserRole",
     "UserCreate",
@@ -162,4 +176,5 @@ __all__ = [
     "ProfileCreate",
     "ProfileUpdate",
     "Profile",
+    "PasswordResetToken",
 ]

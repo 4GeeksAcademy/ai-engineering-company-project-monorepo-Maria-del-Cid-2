@@ -18,13 +18,15 @@ import type { AuthFieldErrors, AuthFormMode } from "@/lib/auth-forms";
 interface AuthFormProps {
   mode: AuthFormMode;
   expired?: boolean;
+  reset?: boolean;
+  changed?: boolean;
 }
 
 const subscribeToNothing = () => () => {};
 const getClientHydrationSnapshot = () => true;
 const getServerHydrationSnapshot = () => false;
 
-export function AuthForm({ mode, expired = false }: AuthFormProps) {
+export function AuthForm({ mode, expired = false, reset = false, changed = false }: AuthFormProps) {
   const router = useRouter();
   const isHydrated = useSyncExternalStore(
     subscribeToNothing,
@@ -118,6 +120,17 @@ export function AuthForm({ mode, expired = false }: AuthFormProps) {
                 className="mt-6 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
               >
                 Tu sesión ha expirado. Inicia sesión de nuevo para continuar.
+              </p>
+            )}
+
+            {(reset || changed) && isLogin && (
+              <p
+                role="status"
+                className="mt-6 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800"
+              >
+                {reset
+                  ? "Tu contraseña se ha restablecido correctamente."
+                  : "Tu contraseña se ha cambiado correctamente. Inicia sesión de nuevo."}
               </p>
             )}
 
@@ -217,6 +230,15 @@ export function AuthForm({ mode, expired = false }: AuthFormProps) {
                   </Button>
                 </fieldset>
               </form>
+            )}
+
+            {isLogin && !registered && (
+              <Link
+                href="/forgot-password"
+                className="mt-5 inline-flex text-sm font-semibold text-brand-orange underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
+              >
+                ¿Has olvidado tu contraseña?
+              </Link>
             )}
 
             {!registered && (

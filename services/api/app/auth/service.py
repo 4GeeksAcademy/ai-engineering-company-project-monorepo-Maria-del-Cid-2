@@ -69,6 +69,12 @@ class AuthService:
 
         El token contiene:
         - ``sub``: ID del usuario (str) — identificador principal
+        - ``credentials_version``: versión actual de las credenciales
         - ``exp``: timestamp de expiración (manejado por create_access_token)
         """
-        return create_access_token(data={"sub": str(user.id)})
+        return create_access_token(
+            data={
+                "sub": str(user.id),
+                "credentials_version": user.credentials_version,
+            }
+        )

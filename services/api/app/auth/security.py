@@ -8,6 +8,8 @@ sin importar directamente librerías criptográficas.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 
 from jose import JWTError, jwt
 from passlib.hash import bcrypt
@@ -32,6 +34,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Devuelve ``True`` si coinciden, ``False`` en cualquier otro caso.
     """
     return bcrypt.verify(plain_password, hashed_password)
+
+
+def create_password_reset_token() -> str:
+    """Generate an opaque, high-entropy token for a password reset link."""
+
+    return secrets.token_urlsafe(32)
+
+
+def hash_password_reset_token(token: str) -> str:
+    """Return the only representation of a reset token stored by the API."""
+
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 # ── JWT ─────────────────────────────────────────────────────────────────────

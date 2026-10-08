@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button, Spinner } from "@/components/ui";
 import {
+  getAccountNavigationLinks,
   logoutAndRedirect,
   requiresAuthentication,
   shouldShowLogout,
@@ -17,6 +18,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { status, logout, validateSession } = useAuth();
   const protectedRoute = requiresAuthentication(pathname);
+  const accountNavigationLinks = getAccountNavigationLinks(status);
 
   useEffect(() => {
     if (protectedRoute && status === "unauthenticated") {
@@ -60,13 +62,17 @@ export function AuthShell({ children }: { children: ReactNode }) {
             >
               Supplier Directory
             </Link>
-            <span className="text-sm text-brand-lightgray" aria-hidden="true">·</span>
-            <Link
-              href="/account/profile"
-              className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite/70 transition-colors hover:text-brand-anthracite"
-            >
-              My Profile
-            </Link>
+            {accountNavigationLinks.map(({ label, href }) => (
+              <span key={href} className="contents">
+                <span className="text-sm text-brand-lightgray" aria-hidden="true">·</span>
+                <Link
+                  href={href}
+                  className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite/70 transition-colors hover:text-brand-anthracite"
+                >
+                  {label}
+                </Link>
+              </span>
+            ))}
           </nav>
           {shouldShowLogout(status) && (
             <Button
