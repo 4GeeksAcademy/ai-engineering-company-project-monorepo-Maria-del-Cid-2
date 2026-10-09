@@ -15,25 +15,11 @@ Ya existe una base de aplicaciones y documentación, y se está incorporando una
 Implementado el flujo backend de recuperación y cambio de contraseña bajo el
 dominio de auth existente:
 
-- `POST /api/auth/forgot-password` responde siempre HTTP 200 con mensaje genérico.
-- `POST /api/auth/reset-password` usa tokens opacos aleatorios, hash SHA-256,
   expiración y uso único en una tabla TinyDB separada.
-- `POST /api/auth/change-password` exige JWT y contraseña actual correcta.
-- `credentials_version` invalida los JWT existentes después de reset o cambio.
-- Resend está aislado mediante `EmailSender`; no se ha configurado ninguna API key
   real ni se han enviado emails.
-- Tests específicos y suite de autenticación ejecutados con TinyDB temporal.
-- Documentación del API y primera fase de `docs/Aprendiendo-password-reset.md` añadidas.
 
 ### Contexto y documentación
 
-- `CONTEXT.es.md` contiene el contexto general de negocio de Nexova.
-- Se ha revisado el README general del monorepo.
-- Se ha revisado `uis/README.md`.
-- Se ha revisado `services/README.md`.
-- Se ha revisado la documentación específica del Talent Pipeline Tracker.
-- Se ha creado el `memory-bank` del proyecto.
-- Se han creado:
   - `memory-bank/projectbrief.md`
   - `memory-bank/techContext.md`
   - `memory-bank/progress.md`
@@ -42,13 +28,6 @@ dominio de auth existente:
 
 La web pública de Nexova está desarrollada e incluye:
 
-- información corporativa;
-- oficinas;
-- servicios;
-- referencias/clientes;
-- contacto;
-- formulario para empresas;
-- formulario para candidatos/trabajadores.
 
 ### Talent Pipeline Tracker
 
@@ -58,48 +37,20 @@ La aplicación está ubicada actualmente en:
 
 Funcionalidades implementadas y verificadas:
 
-- listado de candidaturas;
-- búsqueda;
-- filtro por estado;
-- filtro por etapa;
-- paginación;
-- creación de candidaturas;
-- detalle de candidatura;
-- actualización de estado;
-- actualización de etapa;
-- consulta de notas;
-- creación de notas;
-- eliminación de notas;
-- eliminación de candidaturas;
-- acceso a LinkedIn cuando existe;
-- acceso al CV cuando existe.
 
 ### Arquitectura técnica verificada
 
 Se ha revisado y confirmado la existencia y funcionamiento previsto de:
 
-- páginas de Next.js;
-- componentes;
-- hooks;
-- cliente API;
-- operaciones de candidaturas;
-- operaciones de notas;
-- tipos TypeScript;
-- constantes para estados y etapas.
 
 ### Autenticación del backoffice — AUTH-02, fase 2
 
 Implementada la infraestructura frontend de cliente Nexova y sesión JWT en
 `uis/backoffice/talent-pipeline-tracker`:
 
-- cliente compartido con token Bearer opt-in, almacenamiento local, validación
   de sesión mediante `/auth/me`, cierre local e invalidación ante `401`;
-- el fetch nativo se almacena enlazado a `globalThis`, manteniendo fetchers
   inyectados para tests y evitando invocarlo con receptor incorrecto;
-- tipos de usuario/sesión y `AuthProvider` compatible con SSR;
-- integración autenticada de Supplier Directory; Tracker e Incident Analysis
   permanecen separados;
-- configuración `NEXT_PUBLIC_NEXOVA_API_BASE` y pruebas nativas del cliente.
 
 Esta fase no añade pantallas de autenticación ni protección global de rutas.
 Verificación: 12 tests, TypeScript, lint focalizado y build pasan. El lint global
@@ -221,7 +172,6 @@ stash@{1}^3:scripts/incidents-nexova.csv`); con él, la suite completa (233
 ejecuciones) pasa en una copia aislada y `analyze.py` reproduce los valores
 esperados (100 filas, 96 válidas, media 3.84).
 
----
 
 ## 3. Estado actual del Talent Pipeline Tracker
 
@@ -240,6 +190,24 @@ en la segunda ejecución, 4 filas descartadas (`18`, `44`, `87`, `91`), estados
 `technical_failure=49`, `process_error=35`, `client_complaint=12`. El API del
 gestor tiene 4 tests focalizados correctos. La fase frontend queda pendiente de
 confirmación explícita.
+confirmación explícita.
+
+## Fase 2 — Frontend del Gestor de Incidencias
+
+Implementado el frontend del gestor en `/incidents/manager`, manteniendo
+`/incidents` para Incident Analysis. Incluye creación de incidentes, filtros por
+estado/origen/sede/categoría, resumen por estado, listado y transiciones de
+estado válidas. La ruta del manager queda protegida por el `AuthShell` y se
+añadió al menú principal.
+
+Se añadieron contratos TypeScript, cliente API autenticado y propagación de
+errores estructurados con campo. La validación de navegación y del parser de
+errores queda cubierta por la suite frontend.
+
+Verificación: 46 tests frontend correctos, TypeScript y build de Next.js
+correctos. El lint global sigue fallando únicamente por los tres errores React
+preexistentes en `app/page.tsx`, `hooks/useRecord.ts` y `hooks/useRecords.ts`,
+con cinco avisos preexistentes. No se modificó backend en esta fase.
 
 El Talent Pipeline Tracker dispone actualmente de una estructura funcional completa para el caso de uso de gestión de candidaturas.
 

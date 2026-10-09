@@ -368,6 +368,19 @@ describe("NexovaApiClient", () => {
     }
   });
 
+  it("preserves structured field errors from the API", async () => {
+    const client = makeClient({
+      fetcher: async () => Response.json({ field: "status", message: "Transition not allowed" }, { status: 400 }),
+    });
+
+    await assert.rejects(client.request("/incidents/1/status", { method: "PATCH", auth: true }), (error) => {
+      assert.ok(error instanceof NexovaApiError);
+      assert.equal(error.field, "status");
+      assert.equal(error.message, "Transition not allowed");
+      return true;
+    });
+  });
+
   it("classifies network failures without clearing the session", async () => {
     const storage = new MemoryStorage();
     storage.setItem(ACCESS_TOKEN_KEY, "valid-token");
@@ -427,6 +440,8 @@ describe("NexovaApiClient", () => {
     assert.equal(requiresAuthentication("/account/change-password"), true);
     assert.equal(requiresAuthentication("/suppliers"), true);
     assert.equal(requiresAuthentication("/suppliers/"), true);
+    assert.equal(requiresAuthentication("/incidents/manager"), true);
+    assert.equal(requiresAuthentication("/incidents/manager/"), true);
     assert.equal(requiresAuthentication("/"), false);
     assert.equal(requiresAuthentication("/incidents"), false);
     assert.equal(requiresAuthentication("/login"), false);

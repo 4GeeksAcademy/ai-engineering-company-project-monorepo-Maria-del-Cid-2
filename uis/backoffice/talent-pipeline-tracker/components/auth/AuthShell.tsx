@@ -57,6 +57,13 @@ export function AuthShell({ children }: { children: ReactNode }) {
             </Link>
             <span className="text-sm text-brand-lightgray" aria-hidden="true">·</span>
             <Link
+              href="/incidents/manager"
+              className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite/70 transition-colors hover:text-brand-anthracite"
+            >
+              Incident Manager
+            </Link>
+            <span className="text-sm text-brand-lightgray" aria-hidden="true">·</span>
+            <Link
               href="/suppliers"
               className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-anthracite/70 transition-colors hover:text-brand-anthracite"
             >

@@ -32,16 +32,19 @@ export type NexovaApiErrorKind = "http" | "network";
 export class NexovaApiError extends Error {
   readonly kind: NexovaApiErrorKind;
   readonly status: number | null;
+  readonly field: string | null;
 
   constructor(
     kind: NexovaApiErrorKind,
     status: number | null,
     message: string,
+    field: string | null = null,
   ) {
     super(message);
     this.name = "NexovaApiError";
     this.kind = kind;
     this.status = status;
+    this.field = field;
   }
 
   get isUnauthorized(): boolean {
@@ -72,25 +75,31 @@ function browserStorage(): TokenStorage | null {
   }
 }
 
-function getErrorMessage(body: unknown, fallback: string): string {
-  if (typeof body === "string" && body) return body;
-  if (typeof body !== "object" || body === null || !("detail" in body)) {
-    return fallback;
+function getErrorDetails(body: unknown, fallback: string): { message: string; field: string | null } {
+  if (typeof body === "string" && body) return { message: body, field: null };
+  if (typeof body !== "object" || body === null) {
+    return { message: fallback, field: null };
+  }
+  if ("field" in body && "message" in body && typeof body.field === "string" && typeof body.message === "string") {
+    return { message: body.message, field: body.field };
+  }
+  if (!("detail" in body)) {
+    return { message: fallback, field: null };
   }
 
   const detail = body.detail;
-  if (typeof detail === "string") return detail;
+  if (typeof detail === "string") return { message: detail, field: null };
   if (Array.isArray(detail)) {
-    return detail
+    return { message: detail
       .map((item: unknown) => {
         if (typeof item === "object" && item !== null && "msg" in item) {
           return String(item.msg);
         }
         return String(item);
       })
-      .join("; ");
+        .join("; "), field: null };
   }
-  return fallback;
+      return { message: fallback, field: null };
 }
 
 async function readResponseBody(response: Response): Promise<unknown> {
@@ -271,10 +280,12 @@ export class NexovaApiClient {
       if (response.status === 401 && auth && revision === this.sessionRevision) {
         this.handleUnauthorized();
       }
+      const errorDetails = getErrorDetails(responseBody, `Nexova API error ${response.status}`);
       throw new NexovaApiError(
         "http",
         response.status,
-        getErrorMessage(responseBody, `Nexova API error ${response.status}`),
+        errorDetails.message,
+        errorDetails.field,
       );
     }
 

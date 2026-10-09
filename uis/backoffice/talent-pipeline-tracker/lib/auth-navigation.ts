@@ -1,6 +1,11 @@
 import type { SessionStatus } from "@/types/auth";
 
-const protectedRoutes = ["/suppliers", "/account/profile", "/account/change-password"];
+const protectedRoutes = [
+  "/suppliers",
+  "/incidents/manager",
+  "/account/profile",
+  "/account/change-password",
+];
 
 export interface AccountNavigationLink {
   label: string;
