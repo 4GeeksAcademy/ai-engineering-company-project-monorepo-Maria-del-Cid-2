@@ -26,7 +26,7 @@ class PasswordResetError(Exception):
 
 
 PASSWORD_RESET_REQUEST_LIMIT = 5
-PASSWORD_RESET_RATE_LIMIT_WINDOW = timedelta(hours=0)
+PASSWORD_RESET_RATE_LIMIT_WINDOW = timedelta(minutes=30)
 
 
 class PasswordResetService:
