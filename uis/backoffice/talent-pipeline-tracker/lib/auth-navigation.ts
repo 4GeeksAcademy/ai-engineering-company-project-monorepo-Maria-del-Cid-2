@@ -1,6 +1,11 @@
 import type { SessionStatus } from "@/types/auth";
 
-const protectedRoutes = ["/suppliers", "/account/profile", "/account/change-password"];
+const protectedRoutes = [
+  "/suppliers",
+  "/incidents/manager",
+  "/account/profile",
+  "/account/change-password",
+];
 
 export interface AccountNavigationLink {
   label: string;
@@ -10,6 +15,7 @@ export interface AccountNavigationLink {
 const unauthenticatedLinks: AccountNavigationLink[] = [
   { label: "Login", href: "/login" },
   { label: "Create Account", href: "/register" },
+  { label: "Reset Password", href: "/forgot-password" },
 ];
 
 const authenticatedLinks: AccountNavigationLink[] = [
@@ -24,9 +30,11 @@ export function shouldShowLogout(status: SessionStatus): boolean {
 export function getAccountNavigationLinks(
   status: SessionStatus,
 ): AccountNavigationLink[] {
-  if (status === "unauthenticated") return unauthenticatedLinks;
+  if (status === "unauthenticated" || status === "loading" || status === "error") {
+    return unauthenticatedLinks;
+  }
   if (status === "authenticated") return authenticatedLinks;
-  return [];
+  return unauthenticatedLinks;
 }
 
 export function requiresAuthentication(pathname: string): boolean {

@@ -368,6 +368,19 @@ describe("NexovaApiClient", () => {
     }
   });
 
+  it("preserves structured field errors from the API", async () => {
+    const client = makeClient({
+      fetcher: async () => Response.json({ field: "status", message: "Transition not allowed" }, { status: 400 }),
+    });
+
+    await assert.rejects(client.request("/incidents/1/status", { method: "PATCH", auth: true }), (error) => {
+      assert.ok(error instanceof NexovaApiError);
+      assert.equal(error.field, "status");
+      assert.equal(error.message, "Transition not allowed");
+      return true;
+    });
+  });
+
   it("classifies network failures without clearing the session", async () => {
     const storage = new MemoryStorage();
     storage.setItem(ACCESS_TOKEN_KEY, "valid-token");
@@ -409,6 +422,7 @@ describe("NexovaApiClient", () => {
     assert.deepEqual(getAccountNavigationLinks("unauthenticated"), [
       { label: "Login", href: "/login" },
       { label: "Create Account", href: "/register" },
+      { label: "Reset Password", href: "/forgot-password" },
     ]);
     assert.deepEqual(getAccountNavigationLinks("authenticated"), [
       { label: "My Profile", href: "/account/profile" },
@@ -416,9 +430,14 @@ describe("NexovaApiClient", () => {
     ]);
   });
 
-  it("hides account links while the session is loading or has an error", () => {
-    assert.deepEqual(getAccountNavigationLinks("loading"), []);
-    assert.deepEqual(getAccountNavigationLinks("error"), []);
+  it("keeps public authentication links discoverable before session validation", () => {
+    const publicLinks = [
+      { label: "Login", href: "/login" },
+      { label: "Create Account", href: "/register" },
+      { label: "Reset Password", href: "/forgot-password" },
+    ];
+    assert.deepEqual(getAccountNavigationLinks("loading"), publicLinks);
+    assert.deepEqual(getAccountNavigationLinks("error"), publicLinks);
   });
 
   it("requires authentication for account and supplier routes", () => {
@@ -427,6 +446,8 @@ describe("NexovaApiClient", () => {
     assert.equal(requiresAuthentication("/account/change-password"), true);
     assert.equal(requiresAuthentication("/suppliers"), true);
     assert.equal(requiresAuthentication("/suppliers/"), true);
+    assert.equal(requiresAuthentication("/incidents/manager"), true);
+    assert.equal(requiresAuthentication("/incidents/manager/"), true);
     assert.equal(requiresAuthentication("/"), false);
     assert.equal(requiresAuthentication("/incidents"), false);
     assert.equal(requiresAuthentication("/login"), false);

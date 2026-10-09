@@ -15,25 +15,11 @@ Ya existe una base de aplicaciones y documentación, y se está incorporando una
 Implementado el flujo backend de recuperación y cambio de contraseña bajo el
 dominio de auth existente:
 
-- `POST /api/auth/forgot-password` responde siempre HTTP 200 con mensaje genérico.
-- `POST /api/auth/reset-password` usa tokens opacos aleatorios, hash SHA-256,
   expiración y uso único en una tabla TinyDB separada.
-- `POST /api/auth/change-password` exige JWT y contraseña actual correcta.
-- `credentials_version` invalida los JWT existentes después de reset o cambio.
-- Resend está aislado mediante `EmailSender`; no se ha configurado ninguna API key
   real ni se han enviado emails.
-- Tests específicos y suite de autenticación ejecutados con TinyDB temporal.
-- Documentación del API y primera fase de `docs/Aprendiendo-password-reset.md` añadidas.
 
 ### Contexto y documentación
 
-- `CONTEXT.es.md` contiene el contexto general de negocio de Nexova.
-- Se ha revisado el README general del monorepo.
-- Se ha revisado `uis/README.md`.
-- Se ha revisado `services/README.md`.
-- Se ha revisado la documentación específica del Talent Pipeline Tracker.
-- Se ha creado el `memory-bank` del proyecto.
-- Se han creado:
   - `memory-bank/projectbrief.md`
   - `memory-bank/techContext.md`
   - `memory-bank/progress.md`
@@ -42,13 +28,6 @@ dominio de auth existente:
 
 La web pública de Nexova está desarrollada e incluye:
 
-- información corporativa;
-- oficinas;
-- servicios;
-- referencias/clientes;
-- contacto;
-- formulario para empresas;
-- formulario para candidatos/trabajadores.
 
 ### Talent Pipeline Tracker
 
@@ -58,48 +37,20 @@ La aplicación está ubicada actualmente en:
 
 Funcionalidades implementadas y verificadas:
 
-- listado de candidaturas;
-- búsqueda;
-- filtro por estado;
-- filtro por etapa;
-- paginación;
-- creación de candidaturas;
-- detalle de candidatura;
-- actualización de estado;
-- actualización de etapa;
-- consulta de notas;
-- creación de notas;
-- eliminación de notas;
-- eliminación de candidaturas;
-- acceso a LinkedIn cuando existe;
-- acceso al CV cuando existe.
 
 ### Arquitectura técnica verificada
 
 Se ha revisado y confirmado la existencia y funcionamiento previsto de:
 
-- páginas de Next.js;
-- componentes;
-- hooks;
-- cliente API;
-- operaciones de candidaturas;
-- operaciones de notas;
-- tipos TypeScript;
-- constantes para estados y etapas.
 
 ### Autenticación del backoffice — AUTH-02, fase 2
 
 Implementada la infraestructura frontend de cliente Nexova y sesión JWT en
 `uis/backoffice/talent-pipeline-tracker`:
 
-- cliente compartido con token Bearer opt-in, almacenamiento local, validación
   de sesión mediante `/auth/me`, cierre local e invalidación ante `401`;
-- el fetch nativo se almacena enlazado a `globalThis`, manteniendo fetchers
   inyectados para tests y evitando invocarlo con receptor incorrecto;
-- tipos de usuario/sesión y `AuthProvider` compatible con SSR;
-- integración autenticada de Supplier Directory; Tracker e Incident Analysis
   permanecen separados;
-- configuración `NEXT_PUBLIC_NEXOVA_API_BASE` y pruebas nativas del cliente.
 
 Esta fase no añade pantallas de autenticación ni protección global de rutas.
 Verificación: 12 tests, TypeScript, lint focalizado y build pasan. El lint global
@@ -221,9 +172,91 @@ stash@{1}^3:scripts/incidents-nexova.csv`); con él, la suite completa (233
 ejecuciones) pasa en una copia aislada y `analyze.py` reproduce los valores
 esperados (100 filas, 96 válidas, media 3.84).
 
----
 
 ## 3. Estado actual del Talent Pipeline Tracker
+
+## Fase 1 — Gestor de Incidencias Centralizado
+
+Implementados el dominio persistente del gestor en TinyDB, sus endpoints
+CRUD/summary y la validación de transiciones de estado. El modelo del gestor es
+independiente del dominio existente de Incident Analysis. También se añadió
+`scripts/seed_incidents.py`, que transforma exclusivamente
+`scripts/incidents-nexova.csv`, descarta las filas inválidas y controla
+duplicados sin almacenar `ticket_id` en `Incident`.
+
+Verificación de seed en base temporal: 96 inserciones iniciales, 0 inserciones
+en la segunda ejecución, 4 filas descartadas (`18`, `44`, `87`, `91`), estados
+`open=27`, `resolved=56`, `discarded=13` y categorías
+`technical_failure=49`, `process_error=35`, `client_complaint=12`. El API del
+gestor tiene 4 tests focalizados correctos. La fase frontend queda pendiente de
+confirmación explícita.
+confirmación explícita.
+
+## Fase 2 — Frontend del Gestor de Incidencias
+
+Implementado el frontend del gestor en `/incidents/manager`, manteniendo
+`/incidents` para Incident Analysis. Incluye creación de incidentes, filtros por
+estado/origen/sede/categoría, resumen por estado, listado y transiciones de
+estado válidas. La ruta del manager queda protegida por el `AuthShell` y se
+añadió al menú principal.
+
+Se añadieron contratos TypeScript, cliente API autenticado y propagación de
+errores estructurados con campo. La validación de navegación y del parser de
+errores queda cubierta por la suite frontend.
+
+Verificación: 46 tests frontend correctos, TypeScript y build de Next.js
+correctos. El lint global sigue fallando únicamente por los tres errores React
+preexistentes en `app/page.tsx`, `hooks/useRecord.ts` y `hooks/useRecords.ts`,
+con cinco avisos preexistentes. No se modificó backend en esta fase.
+
+## Fase 3 — Integración, documentación y validación final
+
+El backend del Incident Manager quedó protegido con JWT Bearer mediante la
+dependencia común de autenticación. Se actualizaron los tests focalizados para
+cubrir `401` sin credenciales y se documentaron API, configuración CORS,
+`INCIDENTS_DB_PATH`, ubicación del CSV, seed idempotente, ejecución y pruebas en
+los README del servicio y del frontend.
+
+Validación aislada del seed: 96 inserciones en la primera ejecución, 0 en la
+segunda, con TinyDB temporal. La suite focalizada del manager pasa: 5 tests.
+La suite backend completa ejecuta 253 tests: 251 pasan y 2 fallan únicamente en
+los tests ajenos de rate-limit de password reset, debido al cambio existente en
+`services/api/app/auth/password_reset.py` que no se modificó.
+
+Frontend: 46 tests, TypeScript y build pasan. El lint global conserva los tres
+errores y cinco avisos preexistentes del Tracker. `git diff --check` pasa.
+
+La API se reinició en `localhost:8000` con `CORS_ORIGINS` explícito para
+localhost y `https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev`,
+además de TinyDB temporales. Se comprobó el preflight HTTPS (`200`), el login
+válido (`200` con CORS), el login inválido (`401` con CORS) y el manager sin
+token (`401`). El default de `app/main.py` también deriva el origen exacto de
+Codespaces desde `CODESPACE_NAME`, sin permitir wildcard. La navegación vuelve a
+mostrar Login, registro y recuperación mientras no hay sesión validada, y
+mantiene perfil/cambio de contraseña para sesiones autenticadas.
+
+La suite focalizada de CORS, auth y manager pasa: 75 tests. Frontend: 46 tests,
+TypeScript y build pasan. Los dos fallos de password reset y los tres errores de
+ESLint del Tracker siguen siendo preexistentes y ajenos; no se modificó
+`services/api/app/auth/password_reset.py`.
+
+La validación visual interactiva en navegador no se realizó porque no hay una
+herramienta de navegador automatizado disponible en este entorno. Para la
+revisión manual, abrir `http://localhost:3000/login`, iniciar sesión con un
+usuario válido y comprobar `/incidents/manager` en escritorio y móvil; verificar
+también que `/incidents` continúa mostrando Incident Analysis.
+
+### Header responsive del backoffice
+
+`AuthShell` ahora ofrece navegación horizontal con dropdowns accesibles para
+Incidents y Account/Profile en escritorio, y un menú hamburguesa compacto en
+móvil. Los menús se cierran al seleccionar un enlace, pulsar Escape, hacer
+click fuera o cerrar sesión; se mantienen las rutas existentes, el guard de
+autenticación y el logout compartido.
+
+Verificación: 46 tests frontend, TypeScript y build pasan; `git diff --check`
+también pasa. El lint global mantiene los 3 errores y 5 avisos preexistentes
+del Tracker. No se realizó validación visual automatizada en navegador.
 
 El Talent Pipeline Tracker dispone actualmente de una estructura funcional completa para el caso de uso de gestión de candidaturas.
 

@@ -50,6 +50,41 @@ uses the Nexova API base; successful registration alone does not create a
 session. Keep the Nexova and Incident Analysis clients separate from the
 4Geeks Tracker client.
 
+## Incident Manager
+
+The protected `/incidents/manager` route uses the same Nexova client and API
+base as Supplier Directory. Set `NEXT_PUBLIC_NEXOVA_API_BASE` to the FastAPI
+origin plus `/api` when the API is not available at its local default:
+
+```bash
+NEXT_PUBLIC_NEXOVA_API_BASE=http://localhost:8000/api npm run dev
+```
+
+The manager supports creating incidents, filtering by status, origin, branch
+and category, viewing status totals, and applying only the transitions allowed
+by the backend. The API requires a valid Bearer token; the frontend route is
+also protected by `AuthShell`. The existing public `/incidents` route remains
+the separate Incident Analysis screen.
+
+The historical CSV required by the seed must be at
+`scripts/incidents-nexova.csv`. The seed is idempotent and reports discarded
+rows. It does not store `ticket_id`, customer emails, or raw CSV-only fields in
+manager API responses.
+
+Run frontend checks from this directory:
+
+```bash
+npm test
+./node_modules/.bin/tsc --noEmit
+npm run lint
+npm run build
+```
+
+The current repository has pre-existing global lint errors in the candidate
+Tracker (`app/page.tsx`, `hooks/useRecord.ts`, and `hooks/useRecords.ts`); they
+are unrelated to the Incident Manager. TypeScript, tests, and production build
+must still pass before review.
+
 The Nexova client binds the native `globalThis.fetch` before storing it as a
 method, while preserving injected fetchers used by tests. Keep this binding if
 the client is changed. The auth form also renders a stable pre-hydration
@@ -67,7 +102,7 @@ there is no separate `PrivateRoute` or authentication middleware.
 
 | Routes | Access |
 | --- | --- |
-| `/suppliers`, `/account/profile` and their subroutes | Authenticated session required |
+| `/suppliers`, `/incidents/manager`, `/account/profile` and their subroutes | Authenticated session required |
 | `/login`, `/register` | Public |
 | `/`, `/new`, `/candidates/[id]`, `/incidents` | Public under the current separate-client architecture |
 
@@ -83,9 +118,9 @@ is handled through API responses, not a second JWT timer or refresh mechanism.
 Late validation results and `401` responses from a previous session cannot
 restore a logged-out session or invalidate a newer one.
 
-This is a client-side UI guard, not an API authorization boundary. The backend
-already validates credentials for supplier/profile requests; middleware cannot
-read the JWT stored in browser local storage.
+The frontend guard is not the API authorization boundary. The backend validates
+Bearer credentials for supplier, profile, and Incident Manager requests;
+middleware cannot read the JWT stored in browser local storage.
 
 `npm test` covers missing tokens, successful validation, expiry, logout races,
 replacement sessions, and the existing login/register/profile workflows.

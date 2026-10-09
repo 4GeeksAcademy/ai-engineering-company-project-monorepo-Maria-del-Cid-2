@@ -6,3 +6,9 @@ This folder contains **helper scripts** for the monorepo: development automation
 - **Recommendation**: document each script (what it does, parameters, requirements, usage examples) and keep them reproducible (and safe) across environments.
 
 > _Spanish version: [README.es.md](./README.es.md)._
+
+## Incident Manager
+
+`seed_incidents.py` carga el histórico oficial de `incidents-nexova.csv` en el
+gestor persistente. El script no genera ni sustituye el CSV y debe ejecutarse
+con `INCIDENTS_DB_PATH` apuntando a una base aislada cuando se está validando.

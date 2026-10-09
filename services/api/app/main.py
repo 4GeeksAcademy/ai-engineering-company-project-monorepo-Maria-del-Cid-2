@@ -6,23 +6,35 @@ import io
 import os
 from io import StringIO
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .incidents.analysis import analyze_incidents
 from .incidents.csv_reader import CsvReadError, read_incidents_csv
 from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
+from .incidents.manager_router import router as incident_manager_router
 from .suppliers.router import router as suppliers_router
 from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
 from .auth.routers.profiles_router import router as profiles_router
 
-_DEFAULT_CORS_ORIGINS = (
-    "http://localhost:3000",
-    "https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev",
-)
+_DEFAULT_CORS_ORIGINS = ("http://localhost:3000",)
+
+
+def get_default_cors_origins() -> list[str]:
+    """Return local and, when available, the exact current Codespaces origin."""
+    origins = list(_DEFAULT_CORS_ORIGINS)
+    codespace_name = os.getenv("CODESPACE_NAME", "").strip()
+    forwarding_domain = os.getenv(
+        "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev"
+    ).strip().strip("/")
+    if codespace_name and forwarding_domain:
+        origins.append(f"https://{codespace_name}-3000.{forwarding_domain}")
+    return origins
 
 
 def get_cors_origins() -> list[str]:
@@ -35,7 +47,7 @@ def get_cors_origins() -> list[str]:
             if origin.strip().rstrip("/")
         ]
         if configured_origins is not None
-        else list(_DEFAULT_CORS_ORIGINS)
+        else get_default_cors_origins()
     )
     if "*" in origins:
         raise ValueError("CORS_ORIGINS must contain explicit origins, not '*'")
@@ -53,7 +65,47 @@ app.include_router(suppliers_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)
+app.include_router(incident_manager_router)
 _latest_result: IncidentAnalysisResult | None = None
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    """Return user-safe 400 validation errors for Incident Manager requests."""
+
+    manager_path = request.url.path == "/api/incidents" or request.url.path.startswith(
+        "/api/incidents/"
+    )
+    analysis_path = request.url.path in {
+        "/api/incidents/analyze",
+        "/api/incidents/results/export",
+    }
+    if not manager_path or analysis_path:
+        return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
+
+    first_error = exc.errors()[0]
+    location = first_error.get("loc", ())
+    field = next((str(item) for item in reversed(location) if isinstance(item, str)), "request")
+    return JSONResponse(
+        status_code=400,
+        content={
+            "field": field,
+            "message": "El valor indicado no es válido.",
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(_request: Request, _exc: Exception) -> JSONResponse:
+    """Never expose implementation details from an unexpected server error."""
+
+    return JSONResponse(
+        status_code=500,
+        content={"message": "No se pudo completar la operación. Inténtalo de nuevo."},
+    )
 
 
 @app.post("/api/incidents/analyze")

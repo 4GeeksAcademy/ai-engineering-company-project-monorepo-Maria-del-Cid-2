@@ -8,14 +8,24 @@ incluyen explícitamente el prefijo `/api`.
 
 ```bash
 cd services/api
+python -m pip install -e ../../packages/shared/python
 python -m pip install -e .
 uvicorn app.main:app --reload
 ```
 
 Configura `CORS_ORIGINS` como una lista separada por comas de orígenes exactos
-(esquema, host y puerto), sin `*`. Si no se define, se usan los orígenes de
-desarrollo indicados en `app/main.py`. En Codespaces, añade el origen reenviado
-del frontend. Permite los headers `Authorization` y `Content-Type`.
+(esquema, host y puerto), sin `*`. Si no se define, se incluye `localhost:3000`
+y, cuando existe `CODESPACE_NAME`, el origen exacto
+`https://<CODESPACE_NAME>-3000.<GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN>`.
+En Codespaces, conserva ambos orígenes explícitamente al arrancar la API, por
+ejemplo:
+
+```bash
+CORS_ORIGINS=http://localhost:3000,https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev \
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+No uses `*`. Permite los headers `Authorization` y `Content-Type`.
 
 ## Incident Analysis
 
@@ -25,6 +35,43 @@ del frontend. Permite los headers `Authorization` y `Content-Type`.
     compartido entre workers. No se guardan ni devuelven filas originales o
     `customer_email`.
 - La CLI está en `scripts/analyze.py`; puede exportar resultados agregados de forma interactiva. Revisa el destino antes de ejecutarla porque puede crear un archivo en el directorio de trabajo.
+
+## Incident Manager
+
+El gestor persistente utiliza TinyDB en `services/data/incidents.json` por
+defecto o en la ruta indicada por `INCIDENTS_DB_PATH`. Sus tablas están
+separadas del resultado temporal de Incident Analysis.
+
+Todos los endpoints del gestor requieren un JWT Bearer válido, igual que
+Supplier Directory. La interfaz obtiene el token mediante `/api/auth/login` y
+lo envía automáticamente en las peticiones protegidas.
+
+- `POST /api/incidents` crea una incidencia.
+- `GET /api/incidents` lista y filtra por `status`, `origin`, `branch` y
+    `category`.
+- `GET /api/incidents/{id}` obtiene el detalle.
+- `PATCH /api/incidents/{id}/status` aplica únicamente transiciones válidas.
+- `GET /api/incidents/summary` devuelve totales por estado, categoría, origen y
+    sede, incluyendo ceros cuando la base está vacía.
+
+El seed histórico se ejecuta explícitamente desde la raíz:
+
+```bash
+INCIDENTS_DB_PATH=/tmp/nexova-incidents.json \
+PYTHONPATH=packages/shared/python/src:services/api python scripts/seed_incidents.py
+```
+
+Lee exclusivamente `scripts/incidents-nexova.csv`, aplica las transformaciones
+definidas en `CONTEXT-INCIDENT-MANAGER.md`, informa de las filas descartadas y
+comprueba los conteos transformados esperados. Las claves de `ticket_id` se
+conservan solo en una tabla técnica de idempotencia; nunca forman parte del
+modelo ni de la respuesta API.
+
+El CSV debe estar disponible exactamente en `scripts/incidents-nexova.csv`. Si
+no está presente, el seed no puede ejecutarse y los tests históricos que
+dependen de ese fixture fallan. El seed no se ejecuta al arrancar FastAPI y
+debe usar `INCIDENTS_DB_PATH` temporal para validaciones que no deban modificar
+`services/data`.
 
 ## Autenticación
 
@@ -93,7 +140,7 @@ inválido la API responde `401`, no una lista vacía.
 Desde la raíz del repositorio:
 
 ```bash
-PYTHONPATH=services/api \
+PYTHONPATH=packages/shared/python/src:services/api \
 SECRET_KEY=... \
 AUTH_DB_PATH=$(mktemp -d)/auth.json \
 SUPPLIER_DIRECTORY_DB_PATH=$(mktemp -d)/suppliers.json \
