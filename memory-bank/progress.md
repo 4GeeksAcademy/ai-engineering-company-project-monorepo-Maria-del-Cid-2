@@ -209,6 +209,55 @@ correctos. El lint global sigue fallando únicamente por los tres errores React
 preexistentes en `app/page.tsx`, `hooks/useRecord.ts` y `hooks/useRecords.ts`,
 con cinco avisos preexistentes. No se modificó backend en esta fase.
 
+## Fase 3 — Integración, documentación y validación final
+
+El backend del Incident Manager quedó protegido con JWT Bearer mediante la
+dependencia común de autenticación. Se actualizaron los tests focalizados para
+cubrir `401` sin credenciales y se documentaron API, configuración CORS,
+`INCIDENTS_DB_PATH`, ubicación del CSV, seed idempotente, ejecución y pruebas en
+los README del servicio y del frontend.
+
+Validación aislada del seed: 96 inserciones en la primera ejecución, 0 en la
+segunda, con TinyDB temporal. La suite focalizada del manager pasa: 5 tests.
+La suite backend completa ejecuta 253 tests: 251 pasan y 2 fallan únicamente en
+los tests ajenos de rate-limit de password reset, debido al cambio existente en
+`services/api/app/auth/password_reset.py` que no se modificó.
+
+Frontend: 46 tests, TypeScript y build pasan. El lint global conserva los tres
+errores y cinco avisos preexistentes del Tracker. `git diff --check` pasa.
+
+La API se reinició en `localhost:8000` con `CORS_ORIGINS` explícito para
+localhost y `https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev`,
+además de TinyDB temporales. Se comprobó el preflight HTTPS (`200`), el login
+válido (`200` con CORS), el login inválido (`401` con CORS) y el manager sin
+token (`401`). El default de `app/main.py` también deriva el origen exacto de
+Codespaces desde `CODESPACE_NAME`, sin permitir wildcard. La navegación vuelve a
+mostrar Login, registro y recuperación mientras no hay sesión validada, y
+mantiene perfil/cambio de contraseña para sesiones autenticadas.
+
+La suite focalizada de CORS, auth y manager pasa: 75 tests. Frontend: 46 tests,
+TypeScript y build pasan. Los dos fallos de password reset y los tres errores de
+ESLint del Tracker siguen siendo preexistentes y ajenos; no se modificó
+`services/api/app/auth/password_reset.py`.
+
+La validación visual interactiva en navegador no se realizó porque no hay una
+herramienta de navegador automatizado disponible en este entorno. Para la
+revisión manual, abrir `http://localhost:3000/login`, iniciar sesión con un
+usuario válido y comprobar `/incidents/manager` en escritorio y móvil; verificar
+también que `/incidents` continúa mostrando Incident Analysis.
+
+### Header responsive del backoffice
+
+`AuthShell` ahora ofrece navegación horizontal con dropdowns accesibles para
+Incidents y Account/Profile en escritorio, y un menú hamburguesa compacto en
+móvil. Los menús se cierran al seleccionar un enlace, pulsar Escape, hacer
+click fuera o cerrar sesión; se mantienen las rutas existentes, el guard de
+autenticación y el logout compartido.
+
+Verificación: 46 tests frontend, TypeScript y build pasan; `git diff --check`
+también pasa. El lint global mantiene los 3 errores y 5 avisos preexistentes
+del Tracker. No se realizó validación visual automatizada en navegador.
+
 El Talent Pipeline Tracker dispone actualmente de una estructura funcional completa para el caso de uso de gestión de candidaturas.
 
 La arquitectura conocida es:

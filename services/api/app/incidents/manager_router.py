@@ -7,6 +7,8 @@ from collections.abc import Generator
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
+from app.auth.dependencies import get_current_user
+
 from .manager_database import get_database
 from .manager_models import (
     Incident,
@@ -20,7 +22,11 @@ from .manager_models import (
 )
 from .manager_repository import IncidentRepository
 
-router = APIRouter(prefix="/api/incidents", tags=["incident-manager"])
+router = APIRouter(
+    prefix="/api/incidents",
+    tags=["incident-manager"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def get_repository() -> Generator[IncidentRepository, None, None]:

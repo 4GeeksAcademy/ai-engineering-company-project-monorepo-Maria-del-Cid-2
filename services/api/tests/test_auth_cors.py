@@ -42,6 +42,20 @@ class CorsConfigurationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 _get_cors_origins()
 
+    def test_default_cors_includes_exact_codespaces_frontend_origin(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "CODESPACE_NAME": "nexova-dev",
+                "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN": "app.github.dev",
+            },
+        ), patch.dict(os.environ, {"CORS_ORIGINS": ""}, clear=False):
+            os.environ.pop("CORS_ORIGINS", None)
+            origins = _get_cors_origins()
+
+        self.assertIn("https://nexova-dev-3000.app.github.dev", origins)
+        self.assertNotIn("*", origins)
+
     def test_profile_put_preflight_allows_authorized_origin(self) -> None:
         origins = _get_cors_origins()
         if not origins:

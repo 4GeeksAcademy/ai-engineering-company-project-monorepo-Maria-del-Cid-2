@@ -23,6 +23,7 @@ class IncidentManagerApiTests(unittest.TestCase):
             yield IncidentRepository(database)
 
         app.dependency_overrides[manager_router.get_repository] = override_repository
+        app.dependency_overrides[manager_router.get_current_user] = lambda: None
         self.client = TestClient(app)
         self.database = database
 
@@ -30,6 +31,13 @@ class IncidentManagerApiTests(unittest.TestCase):
         app.dependency_overrides.clear()
         self.database.close()
         self.temp_dir.cleanup()
+
+    def test_manager_requires_authentication(self) -> None:
+        app.dependency_overrides.pop(manager_router.get_current_user)
+
+        response = self.client.get("/api/incidents/summary")
+
+        self.assertEqual(response.status_code, 401)
 
     def payload(self, **changes: object) -> dict[str, object]:
         value: dict[str, object] = {

@@ -422,6 +422,7 @@ describe("NexovaApiClient", () => {
     assert.deepEqual(getAccountNavigationLinks("unauthenticated"), [
       { label: "Login", href: "/login" },
       { label: "Create Account", href: "/register" },
+      { label: "Reset Password", href: "/forgot-password" },
     ]);
     assert.deepEqual(getAccountNavigationLinks("authenticated"), [
       { label: "My Profile", href: "/account/profile" },
@@ -429,9 +430,14 @@ describe("NexovaApiClient", () => {
     ]);
   });
 
-  it("hides account links while the session is loading or has an error", () => {
-    assert.deepEqual(getAccountNavigationLinks("loading"), []);
-    assert.deepEqual(getAccountNavigationLinks("error"), []);
+  it("keeps public authentication links discoverable before session validation", () => {
+    const publicLinks = [
+      { label: "Login", href: "/login" },
+      { label: "Create Account", href: "/register" },
+      { label: "Reset Password", href: "/forgot-password" },
+    ];
+    assert.deepEqual(getAccountNavigationLinks("loading"), publicLinks);
+    assert.deepEqual(getAccountNavigationLinks("error"), publicLinks);
   });
 
   it("requires authentication for account and supplier routes", () => {

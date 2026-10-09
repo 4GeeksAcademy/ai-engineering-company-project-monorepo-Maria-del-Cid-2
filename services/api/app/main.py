@@ -22,10 +22,19 @@ from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
 from .auth.routers.profiles_router import router as profiles_router
 
-_DEFAULT_CORS_ORIGINS = (
-    "http://localhost:3000",
-    "https://friendly-barnacle-qv5p44r9rxq2644j-3000.app.github.dev",
-)
+_DEFAULT_CORS_ORIGINS = ("http://localhost:3000",)
+
+
+def get_default_cors_origins() -> list[str]:
+    """Return local and, when available, the exact current Codespaces origin."""
+    origins = list(_DEFAULT_CORS_ORIGINS)
+    codespace_name = os.getenv("CODESPACE_NAME", "").strip()
+    forwarding_domain = os.getenv(
+        "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev"
+    ).strip().strip("/")
+    if codespace_name and forwarding_domain:
+        origins.append(f"https://{codespace_name}-3000.{forwarding_domain}")
+    return origins
 
 
 def get_cors_origins() -> list[str]:
@@ -38,7 +47,7 @@ def get_cors_origins() -> list[str]:
             if origin.strip().rstrip("/")
         ]
         if configured_origins is not None
-        else list(_DEFAULT_CORS_ORIGINS)
+        else get_default_cors_origins()
     )
     if "*" in origins:
         raise ValueError("CORS_ORIGINS must contain explicit origins, not '*'")
