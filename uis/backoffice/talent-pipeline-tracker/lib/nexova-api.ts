@@ -1,4 +1,13 @@
 import type { AuthenticatedUser, SessionSnapshot, UserProfile } from "@/types/auth";
+import {
+  ApiClientError,
+  createRequestSignal,
+  DEFAULT_API_TIMEOUT_MS,
+  isAbortError,
+  parseHttpError,
+  readResponseBody,
+  type ApiErrorKind,
+} from "./api-errors.ts";
 
 const configuredApiBase = process.env.NEXT_PUBLIC_NEXOVA_API_BASE?.trim();
 export const NEXOVA_API_BASE = (
@@ -25,26 +34,20 @@ export interface NexovaRequestOptions extends Omit<RequestInit, "body" | "header
   body?: BodyInit | null;
   headers?: HeadersInit;
   json?: unknown;
+  timeoutMs?: number;
 }
 
-export type NexovaApiErrorKind = "http" | "network";
+export type NexovaApiErrorKind = ApiErrorKind;
 
-export class NexovaApiError extends Error {
-  readonly kind: NexovaApiErrorKind;
-  readonly status: number | null;
-  readonly field: string | null;
-
+export class NexovaApiError extends ApiClientError {
   constructor(
     kind: NexovaApiErrorKind,
     status: number | null,
     message: string,
     field: string | null = null,
   ) {
-    super(message);
+    super(kind, status, message, field);
     this.name = "NexovaApiError";
-    this.kind = kind;
-    this.status = status;
-    this.field = field;
   }
 
   get isUnauthorized(): boolean {
@@ -73,48 +76,6 @@ function browserStorage(): TokenStorage | null {
   } catch {
     return null;
   }
-}
-
-function getErrorDetails(body: unknown, fallback: string): { message: string; field: string | null } {
-  if (typeof body === "string" && body) return { message: body, field: null };
-  if (typeof body !== "object" || body === null) {
-    return { message: fallback, field: null };
-  }
-  if ("field" in body && "message" in body && typeof body.field === "string" && typeof body.message === "string") {
-    return { message: body.message, field: body.field };
-  }
-  if (!("detail" in body)) {
-    return { message: fallback, field: null };
-  }
-
-  const detail = body.detail;
-  if (typeof detail === "string") return { message: detail, field: null };
-  if (Array.isArray(detail)) {
-    return { message: detail
-      .map((item: unknown) => {
-        if (typeof item === "object" && item !== null && "msg" in item) {
-          return String(item.msg);
-        }
-        return String(item);
-      })
-        .join("; "), field: null };
-  }
-      return { message: fallback, field: null };
-}
-
-async function readResponseBody(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) return undefined;
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("json")) {
-    try {
-      return JSON.parse(text) as unknown;
-    } catch {
-      return text;
-    }
-  }
-  return text;
 }
 
 export class NexovaApiClient {
@@ -232,7 +193,14 @@ export class NexovaApiClient {
     endpoint: string,
     options: NexovaRequestOptions = {},
   ): Promise<T> {
-    const { auth = false, body: inputBody, headers: inputHeaders, json, ...init } = options;
+    const {
+      auth = false,
+      body: inputBody,
+      headers: inputHeaders,
+      json,
+      timeoutMs = DEFAULT_API_TIMEOUT_MS,
+      ...init
+    } = options;
     const revision = this.sessionRevision;
     const headers = new Headers(inputHeaders);
     let body = inputBody;
@@ -265,34 +233,48 @@ export class NexovaApiClient {
       headers.delete("Authorization");
     }
 
-    let response: Response;
+    const requestSignal = createRequestSignal(init.signal, timeoutMs);
     try {
-      response = await this.fetcher(
-        `${this.baseUrl}/${endpoint.replace(/^\/+/, "")}`,
-        { ...init, body, headers },
-      );
-    } catch {
-      throw new NexovaApiError("network", null, "Unable to reach Nexova API");
-    }
-
-    const responseBody = await readResponseBody(response);
-    if (!response.ok) {
-      if (response.status === 401 && auth && revision === this.sessionRevision) {
-        this.handleUnauthorized();
+      let response: Response;
+      try {
+        response = await this.fetcher(
+          `${this.baseUrl}/${endpoint.replace(/^\/+/, "")}`,
+          { ...init, body, headers, signal: requestSignal.signal },
+        );
+      } catch (error) {
+        if (requestSignal.didTimeout()) {
+          throw new NexovaApiError("timeout", null, "The request timed out.");
+        }
+        if (requestSignal.signal.aborted || isAbortError(error)) {
+          throw new NexovaApiError("cancelled", null, "The request was cancelled.");
+        }
+        throw new NexovaApiError("network", null, "Unable to reach Nexova API.");
       }
-      const errorDetails = getErrorDetails(responseBody, `Nexova API error ${response.status}`);
-      throw new NexovaApiError(
-        "http",
-        response.status,
-        errorDetails.message,
-        errorDetails.field,
-      );
-    }
 
-    if (response.status === 204 || responseBody === undefined) {
-      return undefined as T;
+      const responseBody = await readResponseBody(response);
+      if (!response.ok) {
+        if (response.status === 401 && auth && revision === this.sessionRevision) {
+          this.handleUnauthorized();
+        }
+        const errorDetails = parseHttpError(response.status, responseBody.value);
+        throw new NexovaApiError(
+          "http",
+          response.status,
+          errorDetails.message,
+          errorDetails.field,
+        );
+      }
+
+      if (response.status === 204 || !responseBody.hasBody) {
+        return undefined as T;
+      }
+      if (responseBody.isJson && !responseBody.isValidJson) {
+        throw new NexovaApiError("parse", response.status, "Nexova API returned an invalid response.");
+      }
+      return responseBody.value as T;
+    } finally {
+      requestSignal.cleanup();
     }
-    return responseBody as T;
   }
 
   private getStorage(): TokenStorage | null {

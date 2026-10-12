@@ -48,6 +48,8 @@ def validate_incident(row: NormalizedIncidentRow) -> ValidationResult:
         errors.append(ValidationErrorCode.INVALID_EMAIL)
 
     status = _parse_status(row.status.strip())
+    if status is None:
+        errors.append(ValidationErrorCode.INVALID_STATUS)
     if status is IncidentStatus.CLOSED and row.satisfaction_score is None:
         errors.append(ValidationErrorCode.CLOSED_WITHOUT_SATISFACTION_SCORE)
 
@@ -58,10 +60,8 @@ def validate_incident(row: NormalizedIncidentRow) -> ValidationResult:
     if errors:
         return ValidationResult(is_valid=False, errors=tuple(errors))
 
-    # Status is part of the input contract. A malformed status cannot produce a
-    # domain record, although it has no additional validation code in this unit.
     if status is None or category is None:
-        raise ValueError("validated row contains an unsupported domain value")
+        return ValidationResult(is_valid=False, errors=tuple(errors))
 
     return ValidationResult(
         is_valid=True,

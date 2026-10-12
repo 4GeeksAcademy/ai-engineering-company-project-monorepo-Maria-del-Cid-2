@@ -30,7 +30,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     _print_report(args.csv_path, result)
-    answer = input("Export results to CSV? [y / n]: ").strip().lower()
+    try:
+        answer = input("Export results to CSV? [y / n]: ").strip().lower()
+    except EOFError:
+        print("Error: unable to read the export choice from standard input.", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\nError: export cancelled by user.", file=sys.stderr)
+        return 1
     if answer == "y":
         try:
             export_analysis_csv(result, Path("results.csv"))

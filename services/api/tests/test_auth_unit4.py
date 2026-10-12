@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 # ── Env vars MUST be set before auth imports ────────────────────────────────
 os.environ["SECRET_KEY"] = "test-secret-key-for-unit-tests"
@@ -32,6 +33,7 @@ from app.auth.models import ProfileCreate, User, UserCreate, UserRole
 from app.auth.repository import (
     DuplicateEmailError,
     ProfileRepository,
+    ProfilePersistenceError,
     UserRepository,
 )
 from app.auth.routers.auth_router import router as auth_router
@@ -407,6 +409,56 @@ class CreateUserTests(unittest.TestCase):
         profile = self.profile_repo.get_by_user_id(user.id)
         self.assertIsNone(profile)
 
+    def test_profile_failure_reverts_user_without_exposing_error(self) -> None:
+        failing_profile_repo = mock.Mock(spec=ProfileRepository)
+        failing_profile_repo.create.side_effect = ProfilePersistenceError(
+            "database detail must stay internal"
+        )
+        app = _make_test_app(self.repo, failing_profile_repo)
+        client = TestClient(app)
+
+        response = client.post(
+            "/api/users",
+            json={
+                "email": "rollback@example.com",
+                "password": "pass123",
+                "profile": {"name": "Rollback", "phone": "+999"},
+            },
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("database detail must stay internal", response.text)
+        self.assertIsNone(self.repo.get_by_email("rollback@example.com"))
+
+    def test_profile_failure_logs_incomplete_rollback_without_sensitive_data(self) -> None:
+        failing_profile_repo = mock.Mock(spec=ProfileRepository)
+        failing_profile_repo.create.side_effect = ProfilePersistenceError(
+            "database detail must stay internal"
+        )
+        self.repo.delete = mock.Mock(side_effect=OSError("storage secret"))
+        app = _make_test_app(self.repo, failing_profile_repo)
+        client = TestClient(app)
+
+        with self.assertLogs("app.auth.routers.users_router", level="ERROR") as logs:
+            response = client.post(
+                "/api/users",
+                json={
+                    "email": "rollback-failure@example.com",
+                    "password": "password-must-not-be-logged",
+                    "profile": {"name": "Rollback", "phone": "+999"},
+                },
+            )
+
+        output = "\n".join(logs.output)
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("ProfilePersistenceError", output)
+        self.assertIn("OSError", output)
+        self.assertIn("Failed to create user and profile", response.text)
+        self.assertNotIn("user creation reverted", response.text)
+        self.assertNotIn("rollback-failure@example.com", output)
+        self.assertNotIn("password-must-not-be-logged", output)
+        self.assertNotIn("storage secret", output)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Users: GET /api/users
@@ -778,6 +830,28 @@ class DeleteUserTests(unittest.TestCase):
         # Verificar que el Profile también se eliminó
         self.assertIsNone(self.profile_repo.get_by_user_id(user_id))
 
+    def test_delete_user_does_not_return_204_if_user_delete_fails(self) -> None:
+        self.repo.delete = mock.Mock(return_value=False)
+        response = self.client.delete(
+            f"/api/users/{self.user_with_profile.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertIsNotNone(self.repo.get(self.user_with_profile.id))
+        self.assertEqual(response.json()["detail"], "Unable to delete user")
+
+    def test_delete_user_stops_if_profile_cleanup_fails(self) -> None:
+        self.profile_repo.delete_by_user_id = mock.Mock(
+            side_effect=ProfilePersistenceError("storage detail")
+        )
+        response = self.client.delete(
+            f"/api/users/{self.user_with_profile.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertIsNotNone(self.repo.get(self.user_with_profile.id))
+        self.assertNotIn("storage detail", response.text)
+
     def test_delete_without_token_returns_401(self) -> None:
         """Sin token → 401."""
         response = self.client.delete(f"/api/users/{self.user.id}")
@@ -840,6 +914,14 @@ class GetProfileMeTests(unittest.TestCase):
         """Sin token → 401."""
         response = self.client.get("/api/profiles/me")
         self.assertEqual(response.status_code, 401)
+
+    def test_get_profile_me_persistence_error_returns_generic_500(self) -> None:
+        self.profile_repo.get_by_user_id = mock.Mock(
+            side_effect=ProfilePersistenceError("storage detail")
+        )
+        response = self.client.get("/api/profiles/me", headers=_auth_header(self.token))
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("storage detail", response.text)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -942,6 +1024,28 @@ class UpdateProfileMeTests(unittest.TestCase):
         self.assertEqual(data["phone"], "+999")
         self.assertEqual(data["address"], "New address")
         self.assertIsNotNone(self.profile_repo.get_by_user_id(self.user_no_profile.id))
+
+    def test_update_profile_create_persistence_error_returns_generic_500(self) -> None:
+        self.profile_repo.create = mock.Mock(
+            side_effect=ProfilePersistenceError("storage detail")
+        )
+        response = self.client.put(
+            "/api/profiles/me",
+            headers=_auth_header(self.token_no_profile),
+            json={"name": "Ghost"},
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("storage detail", response.text)
+
+    def test_update_profile_missing_result_returns_generic_500(self) -> None:
+        self.profile_repo.update = mock.Mock(return_value=None)
+        response = self.client.put(
+            "/api/profiles/me",
+            headers=_auth_header(self.token),
+            json={"name": "Updated"},
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("AssertionError", response.text)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

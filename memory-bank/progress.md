@@ -1,5 +1,36 @@
 # Progress — Nexova
 
+### Gestor centralizado de incidencias — carga histórica desde CSV
+
+Corregido `scripts/seed_incidents.py` para validar los conteos de calidad sobre
+las filas importables del CSV, sin exigir que el total global de TinyDB sea 96.
+El resultado distingue `total` de registros válidos del CSV y
+`database_total` de registros persistidos, por lo que las incidencias manuales
+no se consideran errores.
+
+La base efectiva compartida por API y seed es `services/data/incidents.json`.
+La carga real preservó la incidencia manual ID 1, importó 96 registros válidos
+y creó 96 claves en `incident_seed_keys`, dejando 97 incidencias en total. Una
+segunda ejecución insertó 0 registros y mantuvo el total en 97. `GET
+/api/incidents` devolvió 97 registros incluyendo la incidencia manual y los
+ejemplos históricos.
+
+Verificación: tests focalizados de seed y gestor API **12/12 correctos**; CSV
+con 100 filas, 96 válidas, cuatro descartadas y conteos esperados por estado y
+categoría. No se eliminó ni reinició la base, no se instalaron dependencias y
+no se creó commit.
+
+### Actualización posterior — rate limit de password reset
+
+El contrato se fijó en **3 solicitudes por dirección de email durante una hora**.
+La implementación y los dos tests del rate limit quedaron alineados con ese
+contrato, manteniendo el contador independiente por email y la expiración de la
+ventana.
+
+La suite backend completa pasa **279/279 tests**. La validación visual/E2E y la
+comprobación contra servicios desplegados reales siguen pendientes; no se han
+declarado como realizadas.
+
 ## 1. Estado general
 
 El proyecto Nexova se encuentra en una fase de construcción progresiva de su ecosistema digital y de AI Engineering.
@@ -9,6 +40,114 @@ Ya existe una base de aplicaciones y documentación, y se está incorporando una
 ---
 
 ## 2. Completado
+
+### Error-handling-audit — Fase 1 backend
+
+Reforzada la gestión de errores y el diagnóstico seguro en autenticación:
+
+- El adaptador Resend usa `logging` con dominio del destinatario, tipo de fallo
+  y estado HTTP, sin emails completos, tokens ni cuerpos de respuesta.
+- La creación de perfiles usa `ProfilePersistenceError`; el registro de usuario
+  conserva la compensación y registra de forma segura los fallos del rollback.
+- Las respuestas de error mantienen los códigos y contratos existentes.
+
+Verificación: 46 tests de email/repositorios y 66 tests HTTP de usuarios,
+perfiles y autenticación focalizada pasan. La suite ampliada de auth ejecuta
+193 tests: 191 pasan y 2 fallan en el rate limit de password reset, un fallo
+preexistente y ajeno a estos archivos. No se modificaron scripts Python ni el
+frontend.
+
+### Error-handling-audit — Fase 2 scripts y CSV
+
+Implementado el tratamiento controlado de errores en el lector CSV y el seed de
+incidencias. El parser usa modo estricto y convierte `csv.Error` en
+`CsvReadError` con número de fila; los estados desconocidos generan
+`INVALID_STATUS` sin `ValueError` inesperado. El seed prepara todas las filas
+antes de abrir la base y devuelve código no cero por `stderr` ante errores
+esperables, sin afirmar rollback transaccional de TinyDB.
+
+Verificación: slice de lector, validación, análisis, exportación, CLI, API y
+seed con 41 tests correctos; validación compartida con 2 tests correctos; seed
+aislado con 96 inserciones en la primera ejecución y 0 en la segunda. La suite
+backend completa ejecuta 266 tests: 264 correctos y 2 fallan en los tests
+preexistentes de rate limit de password reset. `analyze.py`, exportación,
+frontend, autenticación y rate limiting no se modificaron.
+
+### Error-handling-audit — Fase 3 clientes API del frontend
+
+Reforzados los clientes API de `uis/backoffice/talent-pipeline-tracker` sin
+modificar componentes visuales. Se añadió `lib/api-errors.ts` para clasificar
+errores HTTP, red, timeout, parseo y cancelación, interpretar formatos de error
+conocidos y redactar emails, tokens, URLs y rutas internas.
+
+`lib/api.ts`, `lib/nexova-api.ts` y `lib/incident-analysis-api.ts` ahora
+gestionan cuerpos JSON, texto plano, respuestas vacías, JSON inválido, timeout
+configurable y cancelación externa. La exportación conserva el tipo `Blob` y
+los clientes existentes mantienen sus firmas de éxito.
+
+Verificación: tests nuevos de Tracker e Incident Analysis **9/9**, tests de
+Nexova **24/24**, suite frontend completa **56/56**, TypeScript correcto y build
+correcto. El lint mantiene 3 errores y 5 warnings preexistentes en archivos del
+Tracker no relacionados con esta fase. Los componentes visuales y los clientes
+de negocio que delegan en Nexova no se modificaron; la traducción uniforme de
+mensajes en esos consumidores queda pendiente para la siguiente fase.
+
+### Error-handling-audit — Fase 4 consumidores frontend y validación integrada
+
+Añadido `lib/api-error-messages.ts` para centralizar mensajes seguros en los
+consumidores genéricos. Los hooks de candidaturas y notas, perfil, Supplier
+Directory e Incident Analysis ya no propagan directamente `error.message`.
+Mantienen sus fallbacks contextuales y dejan intactas las traducciones
+específicas de autenticación, password reset e Incident Manager.
+
+Las cancelaciones esperadas devuelven `null` y no generan mensajes visibles;
+red, timeout y errores HTTP siguen distinguiéndose internamente. Se añadieron
+2 pruebas focalizadas para el traductor común.
+
+La Fase 4 queda verificada con la suite frontend
+completa **58/58**, TypeScript
+y build correctos, y `git diff --check` correcto. El lint mantiene 3 errores y
+5 warnings preexistentes. No se modificaron backend, rate limiting, CSV,
+seeders ni se creó commit.
+
+### Error-handling-audit — Fase 5 validación integrada y cierre
+
+Se ejecutaron primero los slices focalizados sobre bases TinyDB temporales:
+auth/email/perfiles/password reset **127 tests, 125 correctos y 2 fallos** del
+rate limit conocido; CSV/validación/análisis/exportación/CLI/seed **36/36**; API
+HTTP/Incident Manager/Supplier/CORS **36/36**; y frontend **58/58**.
+
+La suite backend completa ejecutó **267 tests: 265 correctos y 2 fallos**, los
+mismos asserts del rate limit. La suite frontend completa quedó en **58/58**.
+TypeScript, build de Next.js y `git diff --check` pasaron. Lint mantiene 3
+errores y 5 warnings preexistentes. FastAPI emitió únicamente el warning de
+deprecación sobre `httpx`/`TestClient`.
+
+El fixture `scripts/incidents-nexova.csv` estuvo presente durante la validación
+y tenía 101 líneas. No se ejecutaron seeders contra datos reales, no se
+instalaron dependencias y no se creó commit. No existen Error Boundaries
+globales en el Tracker y no hay navegador/runner E2E disponible, por lo que la
+validación visual queda pendiente.
+
+Los riesgos residuales son el contrato no resuelto del rate limit, la falta de
+atomicidad multioperación de TinyDB, la ausencia de Error Boundary global y la
+falta de verificación contra servicios desplegados reales. La matriz completa
+de hallazgos y recomendaciones está en `docs/aprendiendo-gestion-errores.md`.
+
+### Error Boundaries globales de Next.js — corrección posterior a la Fase 5
+
+Implementados `app/error.tsx` y `app/global-error.tsx` en
+`uis/backoffice/talent-pipeline-tracker`. Ambos son Client Components
+compatibles con Next.js 16.3.3 y App Router. Muestran mensajes genéricos en
+español, permiten reintentar mediante `reset()` y ofrecen navegación a `/` sin
+exponer mensajes de error, trazas ni datos internos. El registro técnico se
+limita al identificador `error.digest` cuando está disponible.
+
+No se modificaron `AuthProvider`, `AuthShell`, autenticación, logout, clientes
+API, backend ni dependencias. La suite frontend ejecuta **58/58 tests
+correctos**, TypeScript y el build de Next.js pasan, y `git diff --check` es
+correcto. No se realizó validación visual en navegador; esa comprobación queda
+pendiente.
 
 ### Password reset — Fase 1 backend
 
@@ -145,11 +284,13 @@ activado ni modificado operativamente.
 
 ### Fase 6 — Auditoría final previa a la entrega
 
-Backend: 222 tests, 212 correctos. Los 10 fallos restantes provienen de un
-único fixture ausente, `scripts/incidents-nexova.csv`, que nunca estuvo
-versionado; afectan a Incident Analysis (`test_analysis`, `test_csv_reader`,
-`test_export`, `test_cli`, `test_api`, `test_results_export_api`) y no a
-autenticación. Auth, perfiles, CORS y Supplier Directory pasan por completo.
+La auditoría histórica ejecutó 222 tests backend, con 212 correctos; los fallos
+restantes se atribuyeron entonces a un fixture ausente,
+`scripts/incidents-nexova.csv`, que no estaba disponible en aquella ejecución.
+En la validación integrada actual el fixture está presente y la suite backend
+ejecuta 267 tests, con 265 correctos y solo los 2 fallos conocidos de rate
+limit. Auth, perfiles, CORS, Supplier Directory, CSV, análisis y seed pasan en
+los slices cubiertos.
 La suite se ejecutó sobre una copia aislada en `/tmp` porque
 `AuthSemanticTests`/`IncidentsPublicTests` abren la BD por defecto.
 
@@ -166,11 +307,9 @@ Los archivos no se leyeron ni modificaron.
 Pendientes resueltos tras la auditoría: `httpx` se declara en el extra `test`
 de `services/api/pyproject.toml` (y `uv.lock`); `ConfigTests`
 (`test_auth_unit1`) carga una copia aislada de `config.py` y ya no depende del
-orden de importación. Sigue pendiente restaurar el fixture CSV: existe como
-archivo sin seguimiento dentro del stash `stash@{1}` (`git show
-stash@{1}^3:scripts/incidents-nexova.csv`); con él, la suite completa (233
-ejecuciones) pasa en una copia aislada y `analyze.py` reproduce los valores
-esperados (100 filas, 96 válidas, media 3.84).
+orden de importación. En la validación integrada de Fase 5 el fixture CSV está
+presente y los tests de datos pasan; se mantiene la recomendación de verificar
+su ubicación antes de ejecutar pruebas.
 
 
 ## 3. Estado actual del Talent Pipeline Tracker
@@ -289,9 +428,10 @@ La aplicación está ubicada actualmente en `uis/backoffice/talent-pipeline-trac
   observó `[]` anteriormente.
 - Sin token, Supplier responde `401 Not authenticated`; con token inválido,
   `401 Invalid credentials`. El registro no inicia sesión automáticamente.
-- No hay archivos CSV en el workspace, aunque las pruebas hacen referencia a
-  `scripts/incidents-nexova.csv`. La causa y el efecto sobre pruebas/demos
-  dependen de confirmar o recuperar ese fixture; no se generó uno.
+- En la validación de Fase 5 `scripts/incidents-nexova.csv` está presente y
+  contiene 101 líneas; el slice de CSV, análisis, exportación, CLI y seed pasa
+  36/36. La ubicación efectiva debe seguir verificándose antes de ejecutar
+  procesos en otros entornos.
 - La causa exacta de los errores de hidratación observados no está confirmada.
   La solución actual evita renderizar el formulario antes de hidratar, pero se
   debe completar la validación de login/registro en Chrome.

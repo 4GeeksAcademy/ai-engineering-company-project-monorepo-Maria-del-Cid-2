@@ -1,16 +1,21 @@
 """Tests for the Unit 6 command-line interface."""
 
 import csv
+from contextlib import redirect_stderr
+from io import StringIO
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
-
 
 ROOT = Path(__file__).parents[3]
 CLI = ROOT / "scripts" / "analyze.py"
 DATASET = ROOT / "scripts" / "incidents-nexova.csv"
+sys.path.insert(0, str(ROOT))
+
+from scripts import analyze as analyze_cli
 
 
 class IncidentCliTests(unittest.TestCase):
@@ -42,6 +47,35 @@ class IncidentCliTests(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("Error: unable to analyze CSV:", completed.stderr)
         self.assertNotIn("@", completed.stdout + completed.stderr)
+
+    def test_end_of_input_returns_error(self) -> None:
+        completed = subprocess.run(
+            [sys.executable, str(CLI), str(DATASET)],
+            input="",
+            text=True,
+            capture_output=True,
+            cwd=ROOT,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn(
+            "Error: unable to read the export choice from standard input.",
+            completed.stderr,
+        )
+
+    def test_keyboard_interrupt_returns_error(self) -> None:
+        stderr = StringIO()
+        with redirect_stderr(stderr):
+            with (
+                patch.object(analyze_cli, "analyze_incidents_csv"),
+                patch.object(analyze_cli, "_print_report"),
+                patch("builtins.input", side_effect=KeyboardInterrupt),
+            ):
+                result = analyze_cli.main([str(DATASET)])
+
+        self.assertEqual(result, 1)
+        self.assertIn("Error: export cancelled by user.", stderr.getvalue())
 
     def test_n_does_not_create_results_csv(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

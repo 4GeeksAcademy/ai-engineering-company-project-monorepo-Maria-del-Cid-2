@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { getNotes, addNote, deleteNote } from "@/lib/notes";
+import { getUserFacingApiError } from "@/lib/api-error-messages";
 import type { NoteOut } from "@/types";
 
 interface UseNotesReturn {
@@ -25,9 +26,7 @@ export function useNotes(): UseNotesReturn {
       const result = await getNotes(recordId);
       setNotes(result.data);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error al cargar notas"
-      );
+      setError(getUserFacingApiError(err, "No se pudieron cargar las notas."));
     } finally {
       setLoading(false);
     }
@@ -40,9 +39,7 @@ export function useNotes(): UseNotesReturn {
         const newNote = await addNote(recordId, { content });
         setNotes((prev) => [...prev, newNote]);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error al añadir nota"
-        );
+        setError(getUserFacingApiError(err, "No se pudo añadir la nota."));
         throw err;
       }
     },
@@ -56,9 +53,7 @@ export function useNotes(): UseNotesReturn {
         await deleteNote(recordId, noteId);
         setNotes((prev) => prev.filter((n) => n.id !== noteId));
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error al eliminar nota"
-        );
+        setError(getUserFacingApiError(err, "No se pudo eliminar la nota."));
         throw err;
       }
     },

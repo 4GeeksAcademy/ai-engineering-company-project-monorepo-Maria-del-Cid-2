@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 from io import StringIO
 
@@ -23,6 +24,16 @@ from .auth.routers.users_router import router as users_router
 from .auth.routers.profiles_router import router as profiles_router
 
 _DEFAULT_CORS_ORIGINS = ("http://localhost:3000",)
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_validation_errors(exc: RequestValidationError) -> list[dict[str, object]]:
+    """Remove request values and exception context from validation errors."""
+    sensitive_keys = {"input", "ctx"}
+    return [
+        {key: value for key, value in error.items() if key not in sensitive_keys}
+        for error in exc.errors()
+    ]
 
 
 def get_default_cors_origins() -> list[str]:
@@ -84,7 +95,10 @@ async def handle_request_validation_error(
         "/api/incidents/results/export",
     }
     if not manager_path or analysis_path:
-        return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
+        return JSONResponse(
+            status_code=422,
+            content={"detail": jsonable_encoder(_sanitize_validation_errors(exc))},
+        )
 
     first_error = exc.errors()[0]
     location = first_error.get("loc", ())
@@ -99,8 +113,15 @@ async def handle_request_validation_error(
 
 
 @app.exception_handler(Exception)
-async def handle_unexpected_error(_request: Request, _exc: Exception) -> JSONResponse:
+async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
     """Never expose implementation details from an unexpected server error."""
+
+    logger.error(
+        "unexpected request failure path=%s exception_type=%s correlation_id=%s",
+        request.url.path,
+        type(exc).__name__,
+        request.headers.get("X-Request-ID") or "-",
+    )
 
     return JSONResponse(
         status_code=500,

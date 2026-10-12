@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getRecords } from "@/lib/records";
+import { getUserFacingApiError } from "@/lib/api-error-messages";
 import type { RecordOut, RecordsQueryParams, PaginatedResponse } from "@/types";
 import { DEFAULT_PAGE_LIMIT } from "@/constants";
 
@@ -64,9 +65,7 @@ export function useRecords(): UseRecordsReturn {
       const result = await getRecords(apiParams);
       setData(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error al cargar candidaturas"
-      );
+      setError(getUserFacingApiError(err, "No se pudieron cargar las candidaturas."));
     } finally {
       setLoading(false);
     }

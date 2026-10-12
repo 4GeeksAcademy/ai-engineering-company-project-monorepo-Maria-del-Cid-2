@@ -55,6 +55,18 @@ class CsvReaderTests(unittest.TestCase):
         with self.assertRaisesRegex(CsvReadError, "fewer columns"):
             read_incidents_csv(StringIO(f"{HEADER}\nNXV-000001,2024-01-18\n"))
 
+    def test_syntactically_malformed_csv_reports_row_without_source_data(self) -> None:
+        malformed = (
+            f"{HEADER}\n"
+            'NXV-000001,2024-01-18,Acme,ACCESS,"bad"quote,AGT-01,OPEN,'
+            "customer@example.com,"
+        )
+
+        with self.assertRaisesRegex(CsvReadError, "row 2.*syntactically malformed") as context:
+            read_incidents_csv(StringIO(malformed))
+
+        self.assertNotIn("customer@example.com", str(context.exception))
+
     def test_csv_dataset_has_expected_row_count(self) -> None:
         rows = read_incidents_csv("scripts/incidents-nexova.csv")
 

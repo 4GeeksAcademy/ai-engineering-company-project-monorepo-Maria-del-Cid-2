@@ -11,6 +11,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 from pydantic import ValidationError
 
@@ -28,7 +29,7 @@ from app.auth.models import (
     UserRole,
     UserUpdate,
 )
-from app.auth.repository import ProfileRepository, UserRepository
+from app.auth.repository import ProfilePersistenceError, ProfileRepository, UserRepository
 
 
 class UserModelTests(unittest.TestCase):
@@ -254,6 +255,46 @@ class ProfileRepositoryTests(unittest.TestCase):
         found = self.repo.get(created.id)
         self.assertIsNotNone(found)
         self.assertEqual(found.name, "Carol")
+
+    def test_profile_read_error_is_normalized(self) -> None:
+        table = mock.Mock()
+        table.get.side_effect = OSError("storage detail")
+        with mock.patch("app.auth.repository.get_profiles_table", return_value=table):
+            with self.assertRaises(ProfilePersistenceError) as context:
+                self.repo.get_by_user_id(1)
+        self.assertIsInstance(context.exception.__cause__, OSError)
+
+    def test_profile_create_error_is_normalized(self) -> None:
+        table = mock.Mock()
+        table.__iter__ = mock.Mock(return_value=iter(()))
+        table.insert.side_effect = OSError("storage detail")
+        with mock.patch("app.auth.repository.get_profiles_table", return_value=table):
+            with self.assertRaises(ProfilePersistenceError) as context:
+                self.repo.create(1, ProfileCreate(name="Alice"))
+        self.assertIsInstance(context.exception.__cause__, OSError)
+
+    def test_profile_update_error_is_normalized(self) -> None:
+        table = mock.Mock()
+        table.get.return_value = {
+            "id": 1,
+            "user_id": 1,
+            "name": "Alice",
+            "phone": None,
+            "address": None,
+        }
+        table.update.side_effect = OSError("storage detail")
+        with mock.patch("app.auth.repository.get_profiles_table", return_value=table):
+            with self.assertRaises(ProfilePersistenceError) as context:
+                self.repo.update(1, ProfileUpdate(name="Updated"))
+        self.assertIsInstance(context.exception.__cause__, OSError)
+
+    def test_profile_delete_error_is_normalized(self) -> None:
+        table = mock.Mock()
+        table.remove.side_effect = OSError("storage detail")
+        with mock.patch("app.auth.repository.get_profiles_table", return_value=table):
+            with self.assertRaises(ProfilePersistenceError) as context:
+                self.repo.delete_by_user_id(1)
+        self.assertIsInstance(context.exception.__cause__, OSError)
 
     def test_update_profile(self) -> None:
         user = self._create_user()

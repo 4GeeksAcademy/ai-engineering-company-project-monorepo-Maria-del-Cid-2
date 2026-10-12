@@ -25,6 +25,7 @@ class ValidationErrorCode(StrEnum):
     INVALID_DESCRIPTION = "invalid_description"
     INVALID_AGENT_ID = "invalid_agent_id"
     INVALID_EMAIL = "invalid_email"
+    INVALID_STATUS = "invalid_status"
     CLOSED_WITHOUT_SATISFACTION_SCORE = "closed_without_satisfaction_score"
     SATISFACTION_SCORE_OUT_OF_RANGE = "satisfaction_score_out_of_range"
 

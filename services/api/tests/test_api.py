@@ -14,10 +14,18 @@ ROOT = Path(__file__).parents[3]
 DATASET = ROOT / "scripts" / "incidents-nexova.csv"
 
 
+async def _raise_unexpected_error():
+    raise RuntimeError("internal detail must not reach the client")
+
+
+app.add_api_route("/__test/unexpected-error", _raise_unexpected_error, methods=["GET"])
+
+
 class IncidentApiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.client = TestClient(app)
+        cls.safe_error_client = TestClient(app, raise_server_exceptions=False)
         cls.csv_bytes = DATASET.read_bytes()
 
     def post_csv(self, content: bytes, filename: str = "incidents.csv"):
@@ -75,6 +83,44 @@ class IncidentApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
         self.assertIn("file", response.text)
+        self.assertNotIn('"input"', response.text)
+        self.assertNotIn('"ctx"', response.text)
+
+    def test_validation_error_does_not_expose_password_or_token(self) -> None:
+        response = self.safe_error_client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": "reset-token-secret",
+                "new_password": "new-password-secret",
+                "confirm_password": "different-password-secret",
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertNotIn("reset-token-secret", response.text)
+        self.assertNotIn("new-password-secret", response.text)
+        self.assertNotIn("different-password-secret", response.text)
+        self.assertNotIn('"input"', response.text)
+        self.assertNotIn('"ctx"', response.text)
+
+    def test_unexpected_error_returns_generic_500_and_safe_log(self) -> None:
+        with self.assertLogs("app.main", level="ERROR") as logs:
+            response = self.safe_error_client.get(
+                "/__test/unexpected-error",
+                headers={"X-Request-ID": "audit-correlation-123"},
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            response.json(),
+            {"message": "No se pudo completar la operación. Inténtalo de nuevo."},
+        )
+        self.assertNotIn("internal detail must not reach the client", response.text)
+        log_output = "\n".join(logs.output)
+        self.assertIn("path=/__test/unexpected-error", log_output)
+        self.assertIn("exception_type=RuntimeError", log_output)
+        self.assertIn("correlation_id=audit-correlation-123", log_output)
+        self.assertNotIn("internal detail must not reach the client", log_output)
 
     def test_non_csv_filename_returns_bad_request(self) -> None:
         response = self.post_csv(self.csv_bytes, filename="incidents.txt")

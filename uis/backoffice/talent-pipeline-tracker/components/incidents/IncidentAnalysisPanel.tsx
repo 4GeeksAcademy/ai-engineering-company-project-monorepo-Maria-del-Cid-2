@@ -2,6 +2,7 @@
 
 import { DragEvent, useRef, useState } from "react";
 import { analyzeIncidents, exportIncidentResults } from "@/lib/incident-analysis-api";
+import { getUserFacingApiError } from "@/lib/api-error-messages";
 import {
   INCIDENT_CATEGORIES,
   INCIDENT_STATUSES,
@@ -141,7 +142,7 @@ function DownloadButton() {
       link.remove();
       URL.revokeObjectURL(objectUrl);
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : "Unable to download results.");
+      setError(getUserFacingApiError(downloadError, "No se pudieron descargar los resultados."));
     } finally {
       setDownloading(false);
     }
@@ -191,7 +192,7 @@ export function IncidentAnalysisPanel() {
     try {
       setResult(await analyzeIncidents(file));
     } catch (analysisError) {
-      setError(analysisError instanceof Error ? analysisError.message : "Unable to analyze the file.");
+      setError(getUserFacingApiError(analysisError, "No se pudo analizar el archivo."));
     } finally {
       setAnalyzing(false);
     }

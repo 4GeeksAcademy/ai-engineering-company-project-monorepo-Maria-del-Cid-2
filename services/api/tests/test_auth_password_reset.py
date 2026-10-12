@@ -96,6 +96,8 @@ class PasswordResetApiTests(unittest.TestCase):
         self.service.request_reset("alice@example.com")
 
         self.assertEqual(len(self.email_sender.messages), 3)
+        rate_limit_records = self.database.table("password_reset_rate_limits").all()
+        self.assertEqual(len(rate_limit_records), 4)
 
     def test_rate_limit_has_own_counter_per_email_and_expires_after_one_hour(self) -> None:
         current_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -116,7 +118,19 @@ class PasswordResetApiTests(unittest.TestCase):
         current_time += timedelta(hours=1, seconds=1)
         service.request_reset("alice@example.com")
 
-        self.assertEqual(len(self.email_sender.messages), 5)
+        recipients = [message[0] for message in self.email_sender.messages]
+        self.assertEqual(recipients.count("alice@example.com"), 4)
+        self.assertEqual(recipients.count("other@example.com"), 1)
+
+        rate_limit_records = self.database.table("password_reset_rate_limits").all()
+        self.assertEqual(
+            sum(record["email"] == "alice@example.com" for record in rate_limit_records),
+            5,
+        )
+        self.assertEqual(
+            sum(record["email"] == "other@example.com" for record in rate_limit_records),
+            1,
+        )
 
     def test_audit_log_records_request_and_success_without_secrets(self) -> None:
         self.service.request_reset("alice@example.com", "203.0.113.10")

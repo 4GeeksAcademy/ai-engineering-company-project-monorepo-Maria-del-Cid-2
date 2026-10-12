@@ -1,11 +1,21 @@
+import {
+  ApiClientError,
+  createRequestSignal,
+  DEFAULT_API_TIMEOUT_MS,
+  isAbortError,
+  parseHttpError,
+  readResponseBody,
+} from "./api-errors.ts";
+
 const API_BASE = "https://playground.4geeks.com/tracker/api/v1";
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | undefined>;
+  timeoutMs?: number;
 }
 
 async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-  const { params, ...init } = options;
+  const { params, timeoutMs = DEFAULT_API_TIMEOUT_MS, ...init } = options;
 
   let url = `${API_BASE}${endpoint}`;
 
@@ -20,26 +30,44 @@ async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promis
     if (qs) url += `?${qs}`;
   }
 
-  const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
-    ...init,
-  });
+  const requestSignal = createRequestSignal(init.signal, timeoutMs);
+  try {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...init.headers,
+        },
+        ...init,
+        signal: requestSignal.signal,
+      });
+    } catch (error) {
+      if (requestSignal.didTimeout()) {
+        throw new ApiClientError("timeout", null, "The request timed out.");
+      }
+      if (requestSignal.signal.aborted || isAbortError(error)) {
+        throw new ApiClientError("cancelled", null, "The request was cancelled.");
+      }
+      throw new ApiClientError("network", null, "Unable to reach the Tracker API.");
+    }
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(
-      `API error ${response.status} (${response.statusText}): ${errorBody}`
-    );
+    const responseBody = await readResponseBody(response);
+    if (!response.ok) {
+      const details = parseHttpError(response.status, responseBody.value);
+      throw new ApiClientError("http", response.status, details.message, details.field);
+    }
+
+    if (response.status === 204 || !responseBody.hasBody) {
+      return undefined as T;
+    }
+    if (responseBody.isJson && !responseBody.isValidJson) {
+      throw new ApiClientError("parse", response.status, "The Tracker API returned an invalid response.");
+    }
+    return responseBody.value as T;
+  } finally {
+    requestSignal.cleanup();
   }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json() as Promise<T>;
 }
 
 export { apiFetch };
