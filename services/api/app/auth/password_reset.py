@@ -25,8 +25,8 @@ class PasswordResetError(Exception):
     """Expected reset failure that should have a generic public message."""
 
 
-PASSWORD_RESET_REQUEST_LIMIT = 5
-PASSWORD_RESET_RATE_LIMIT_WINDOW = timedelta(minutes=30)
+PASSWORD_RESET_REQUEST_LIMIT = 3
+PASSWORD_RESET_RATE_LIMIT_WINDOW = timedelta(hours=1)
 
 
 class PasswordResetService:

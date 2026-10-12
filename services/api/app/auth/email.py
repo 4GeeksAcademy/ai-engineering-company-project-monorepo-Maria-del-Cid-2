@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from html import escape
 from typing import Protocol
 from urllib.error import HTTPError, URLError
@@ -14,9 +15,17 @@ from .config import (
     RESEND_FROM_EMAIL,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class EmailDeliveryError(Exception):
     """Raised when the configured email provider cannot deliver a message."""
+
+
+def _recipient_context(recipient: str) -> str:
+    """Return non-sensitive recipient context for diagnostics."""
+    _, separator, domain = recipient.partition("@")
+    return domain if separator and domain else "invalid-recipient"
 
 
 class EmailSender(Protocol):
@@ -93,28 +102,33 @@ class ResendEmailSender:
         try:
             with urlopen(request, timeout=10) as response:
                 if response.status < 200 or response.status >= 300:
-                    print(
-                        f"[password-reset] Resend rejected email for {recipient} "
-                        f"(HTTP {response.status})",
-                        flush=True,
+                    logger.warning(
+                        "password-reset email provider rejected message "
+                        "provider=resend recipient_domain=%s status=%s",
+                        _recipient_context(recipient),
+                        response.status,
                     )
                     raise EmailDeliveryError("Email provider rejected the message")
-                print(
-                    f"[password-reset] Resend accepted email for {recipient} "
-                    f"(HTTP {response.status})",
-                    flush=True,
+                logger.info(
+                    "password-reset email accepted by provider "
+                    "provider=resend recipient_domain=%s status=%s",
+                    _recipient_context(recipient),
+                    response.status,
                 )
         except HTTPError as exc:
-            print(
-                f"[password-reset] Resend rejected email for {recipient} "
-                f"(HTTP {exc.code}): {exc.read().decode('utf-8', 'replace')}",
-                flush=True,
+            logger.warning(
+                "password-reset email provider rejected message "
+                "provider=resend recipient_domain=%s status=%s failure_type=%s",
+                _recipient_context(recipient),
+                exc.code,
+                type(exc).__name__,
             )
             raise EmailDeliveryError("Email provider rejected the message") from exc
         except (URLError, TimeoutError) as exc:
-            print(
-                f"[password-reset] Resend connection failed for {recipient}: "
-                f"{exc}",
-                flush=True,
+            logger.warning(
+                "password-reset email provider unavailable "
+                "provider=resend recipient_domain=%s failure_type=%s",
+                _recipient_context(recipient),
+                type(exc).__name__,
             )
             raise EmailDeliveryError("Email provider is unavailable") from exc

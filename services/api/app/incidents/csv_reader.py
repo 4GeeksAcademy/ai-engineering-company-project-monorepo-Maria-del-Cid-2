@@ -65,28 +65,44 @@ def read_incidents_csv(source: str | Path | TextIO) -> list[NormalizedIncidentRo
     except UnicodeDecodeError as exc:
         raise CsvReadError("CSV must be UTF-8 encoded") from exc
     except OSError as exc:
-        raise CsvReadError(f"Unable to read CSV file: {path}") from exc
+        raise CsvReadError("Unable to read CSV file") from exc
 
 
 def _read_rows(handle: TextIO) -> list[NormalizedIncidentRow]:
-    reader = csv.DictReader(handle, delimiter=",")
-    if reader.fieldnames is None or not any(name.strip() for name in reader.fieldnames):
-        raise CsvReadError("CSV must contain a header row")
+    reader = csv.DictReader(handle, delimiter=",", strict=True)
+    try:
+        if reader.fieldnames is None or not any(name.strip() for name in reader.fieldnames):
+            raise CsvReadError("CSV must contain a header row")
 
-    fieldnames = [name.strip() for name in reader.fieldnames]
-    missing = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
-    if missing:
-        raise CsvReadError("CSV is missing required columns: " + ", ".join(missing))
+        fieldnames = [name.strip() for name in reader.fieldnames]
+        missing = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
+        if missing:
+            raise CsvReadError("CSV is missing required columns: " + ", ".join(missing))
 
-    normalized_keys = dict(zip(reader.fieldnames, fieldnames, strict=True))
-    rows: list[NormalizedIncidentRow] = []
-    for row_number, row in enumerate(reader, start=2):
-        if None in row:
-            raise CsvReadError(f"CSV row {row_number} has more columns than its header")
-        if any(value is None for value in row.values()):
-            raise CsvReadError(f"CSV row {row_number} has fewer columns than its header")
-        rows.append(_normalize_row({normalized_keys[key]: value for key, value in row.items()}))
-    return rows
+        normalized_keys = dict(zip(reader.fieldnames, fieldnames, strict=True))
+        rows: list[NormalizedIncidentRow] = []
+        row_number = 2
+        while True:
+            try:
+                row = next(reader)
+            except StopIteration:
+                break
+            except csv.Error as exc:
+                raise CsvReadError(
+                    f"CSV row {row_number} is syntactically malformed"
+                ) from exc
+            if None in row:
+                raise CsvReadError(f"CSV row {row_number} has more columns than its header")
+            if any(value is None for value in row.values()):
+                raise CsvReadError(f"CSV row {row_number} has fewer columns than its header")
+            rows.append(_normalize_row({normalized_keys[key]: value for key, value in row.items()}))
+            row_number += 1
+        return rows
+    except csv.Error as exc:
+        row_number = reader.line_num
+        if row_number:
+            raise CsvReadError(f"CSV row {row_number} is syntactically malformed") from exc
+        raise CsvReadError("CSV is syntactically malformed") from exc
 
 
 def _normalize_row(row: dict[str, str]) -> NormalizedIncidentRow:

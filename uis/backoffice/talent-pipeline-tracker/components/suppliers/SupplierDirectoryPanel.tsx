@@ -19,6 +19,7 @@ import {
   type SupplierCreatePayload,
   type SupplierStatus,
 } from "@/types/supplier";
+import { getUserFacingApiError } from "@/lib/api-error-messages";
 
 const categoryOptions = SUPPLIER_CATEGORIES.map((value) => ({
   value,
@@ -40,7 +41,7 @@ function isRenewalSoon(date: string | null): boolean {
 }
 
 function apiErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unable to complete the request.";
+  return getUserFacingApiError(error, "No se pudo completar la solicitud.") ?? "";
 }
 
 function SupplierForm({ onCreated }: { onCreated: (supplier: Supplier) => void }) {

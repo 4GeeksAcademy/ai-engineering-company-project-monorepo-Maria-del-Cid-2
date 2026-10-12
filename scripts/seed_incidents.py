@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "packages" / "shared" / "python" / "src"))
 sys.path.insert(0, str(ROOT / "services" / "api"))
 
 from nexova_shared.incidents.validation import validate_incident_values  # noqa: E402
-from app.incidents.csv_reader import NormalizedIncidentRow, read_incidents_csv  # noqa: E402
+from app.incidents.csv_reader import CsvReadError, NormalizedIncidentRow, read_incidents_csv  # noqa: E402
 from app.incidents.validation import validate_incident  # noqa: E402
 from app.incidents.manager_database import get_database  # noqa: E402
 from app.incidents.manager_models import IncidentCreate  # noqa: E402
@@ -64,18 +64,36 @@ def transform_row(row: NormalizedIncidentRow) -> tuple[str, IncidentCreate, date
 
 
 def seed_incidents(csv_path: Path = CSV_PATH) -> dict[str, object]:
-    database = get_database()
+    rows = read_incidents_csv(csv_path)
     invalid_rows: list[int] = []
+    prepared_rows: list[tuple[str, IncidentCreate, datetime]] = []
+    for row_number, row in enumerate(rows, start=2):
+        transformed = transform_row(row)
+        if transformed is None:
+            invalid_rows.append(row_number)
+            continue
+        prepared_rows.append(transformed)
+
+    imported_status_counts = {key: 0 for key in EXPECTED_STATUS_COUNTS}
+    imported_category_counts = {key: 0 for key in EXPECTED_CATEGORY_COUNTS}
+    for _, payload, _ in prepared_rows:
+        imported_status_counts[payload.status] += 1
+        imported_category_counts[payload.category] += 1
+
+    if (
+        imported_status_counts != EXPECTED_STATUS_COUNTS
+        or imported_category_counts != EXPECTED_CATEGORY_COUNTS
+    ):
+        raise RuntimeError(
+            "Unexpected imported incident totals: "
+            f"status={imported_status_counts} category={imported_category_counts}"
+        )
+
+    database = get_database()
     inserted = 0
     try:
         repository = IncidentRepository(database)
-        for row_number, row in enumerate(read_incidents_csv(csv_path), start=2):
-            transformed = transform_row(row)
-            if transformed is None:
-                invalid_rows.append(row_number)
-                continue
-
-            key, payload, created_at = transformed
+        for key, payload, created_at in prepared_rows:
             if repository.has_seed_key(key):
                 continue
             incident = repository.create(payload, created_at=created_at)
@@ -86,32 +104,35 @@ def seed_incidents(csv_path: Path = CSV_PATH) -> dict[str, object]:
         result = {
             "inserted": inserted,
             "invalid_rows": invalid_rows,
-            "total": summary.total,
-            "by_status": summary.by_status,
-            "by_category": summary.by_category,
+            "total": len(prepared_rows),
+            "database_total": summary.total,
+            "by_status": imported_status_counts,
+            "by_category": imported_category_counts,
         }
     finally:
         database.close()
 
-    status_counts = result["by_status"]
-    category_counts = result["by_category"]
-    if result["total"] != 96 or any(
-        status_counts.get(key, 0) != value for key, value in EXPECTED_STATUS_COUNTS.items()
-    ):
-        raise RuntimeError(f"Unexpected seeded status totals: {result}")
-    if any(category_counts.get(key, 0) != value for key, value in EXPECTED_CATEGORY_COUNTS.items()):
-        raise RuntimeError(f"Unexpected seeded category totals: {result}")
     return result
 
 
-def main() -> None:
-    result = seed_incidents()
+def main(csv_path: Path = CSV_PATH) -> int:
+    try:
+        result = seed_incidents(csv_path)
+    except CsvReadError as exc:
+        print(f"Error: unable to read incidents CSV: {exc}", file=sys.stderr)
+        return 1
+    except (OSError, ValueError, RuntimeError):
+        print("Error: unable to seed incidents because the input or persistence operation failed.", file=sys.stderr)
+        return 1
+
     print(f"Inserted {result['inserted']} incidents.")
     print(f"Invalid rows: {result['invalid_rows'] or 'none'}")
-    print(f"Total valid incidents: {result['total']}")
+    print(f"Imported valid incidents: {result['total']}")
+    print(f"Total incidents in database: {result['database_total']}")
     print(f"By status: {result['by_status']}")
     print(f"By category: {result['by_category']}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

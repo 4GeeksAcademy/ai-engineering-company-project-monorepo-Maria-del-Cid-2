@@ -5,6 +5,8 @@ Endpoints protegidos con autenticación y autorización por roles.
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import (
@@ -13,11 +15,17 @@ from app.auth.dependencies import (
     get_repository,
 )
 from app.auth.models import User, UserCreate, UserRole, UserUpdate
-from app.auth.repository import DuplicateEmailError, ProfileRepository, UserRepository
+from app.auth.repository import (
+    DuplicateEmailError,
+    ProfilePersistenceError,
+    ProfileRepository,
+    UserRepository,
+)
 from app.auth.schemas import UserCreateRequest, UserResponse, UserUpdateRequest
 from app.auth.security import hash_password
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+logger = logging.getLogger(__name__)
 
 
 def _user_to_response(user: User) -> UserResponse:
@@ -68,13 +76,33 @@ def create_user(
     if payload.profile is not None:
         try:
             profile_repository.create(user.id, payload.profile)
-        except Exception:
-            # Compensación: eliminar el User creado
-            repository.delete(user.id)
+        except ProfilePersistenceError as exc:
+            rollback_succeeded = False
+            try:
+                rollback_succeeded = repository.delete(user.id)
+            except Exception as rollback_error:
+                logger.error(
+                    "user creation compensation failed user_id=%s "
+                    "failure_type=%s rollback_failure_type=%s",
+                    user.id,
+                    type(exc).__name__,
+                    type(rollback_error).__name__,
+                )
+            if not rollback_succeeded:
+                logger.error(
+                    "user creation compensation incomplete user_id=%s "
+                    "failure_type=%s",
+                    user.id,
+                    type(exc).__name__,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to create user and profile",
+                ) from exc
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create profile, user creation reverted",
-            )
+            ) from exc
 
     return _user_to_response(user)
 
@@ -234,7 +262,35 @@ def delete_user(
         )
 
     # ── Eliminar Profile asociado ─────────────────────────────────────
-    profile_repository.delete_by_user_id(user_id)
+    try:
+        profile_repository.delete_by_user_id(user_id)
+    except ProfilePersistenceError as exc:
+        logger.error(
+            "user deletion profile cleanup failed user_id=%s failure_type=%s",
+            user_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete user",
+        ) from exc
 
     # ── Eliminar User ─────────────────────────────────────────────────
-    repository.delete(user_id)
+    try:
+        user_deleted = repository.delete(user_id)
+    except Exception as exc:
+        logger.error(
+            "user deletion failed after profile cleanup user_id=%s failure_type=%s",
+            user_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete user",
+        ) from exc
+    if not user_deleted:
+        logger.error("user deletion incomplete user_id=%s", user_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete user",
+        )

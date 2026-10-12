@@ -401,6 +401,45 @@ describe("NexovaApiClient", () => {
     assert.equal(storage.removals, 0);
   });
 
+  it("classifies timeout, cancellation, and invalid JSON responses", async () => {
+    const rejectingOnAbort = (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+    });
+
+    const timeoutClient = makeClient({ fetcher: rejectingOnAbort });
+    await assert.rejects(timeoutClient.request("/slow", { timeoutMs: 1 }), (error) => {
+      assert.ok(error instanceof NexovaApiError);
+      assert.equal(error.kind, "timeout");
+      assert.equal(error.status, null);
+      return true;
+    });
+
+    const controller = new AbortController();
+    const cancellationClient = makeClient({ fetcher: rejectingOnAbort });
+    const pending = cancellationClient.request("/cancelled", {
+      signal: controller.signal,
+      timeoutMs: 1_000,
+    });
+    controller.abort();
+    await assert.rejects(pending, (error) => {
+      assert.ok(error instanceof NexovaApiError);
+      assert.equal(error.kind, "cancelled");
+      return true;
+    });
+
+    const invalidJsonClient = makeClient({
+      fetcher: async () => new Response("not-json", {
+        headers: { "Content-Type": "application/json" },
+      }),
+    });
+    await assert.rejects(invalidJsonClient.request("/invalid"), (error) => {
+      assert.ok(error instanceof NexovaApiError);
+      assert.equal(error.kind, "parse");
+      assert.equal(error.status, 200);
+      return true;
+    });
+  });
+
   it("clears local state on logout without calling a backend endpoint", () => {
     const storage = new MemoryStorage();
     storage.setItem(ACCESS_TOKEN_KEY, "valid-token");

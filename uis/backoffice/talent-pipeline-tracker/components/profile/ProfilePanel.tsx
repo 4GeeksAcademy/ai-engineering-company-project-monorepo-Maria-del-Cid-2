@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button, Input, Spinner, Textarea } from "@/components/ui";
 import { nexovaApi } from "@/lib/nexova-api";
+import { getUserFacingApiError } from "@/lib/api-error-messages";
 import { getMyProfile, updateMyProfile } from "@/lib/profile-api";
 import type { ProfileUpdatePayload } from "@/lib/profile-api";
 import type { UserProfile } from "@/types/auth";
@@ -22,12 +23,6 @@ function profileFields(profile: UserProfile | null): ProfileUpdatePayload {
     phone: profile?.phone ?? "",
     address: profile?.address ?? "",
   };
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : "No se pudo completar la solicitud. Inténtalo de nuevo.";
 }
 
 export function ProfilePanel() {
@@ -50,7 +45,7 @@ export function ProfilePanel() {
       setFields(profileFields(profile));
       setProfileMissing(profile === null);
     } catch (error) {
-      setLoadError(errorMessage(error));
+      setLoadError(getUserFacingApiError(error, "No se pudo cargar el perfil."));
     } finally {
       setLoading(false);
     }
@@ -80,7 +75,7 @@ export function ProfilePanel() {
       setProfileMissing(false);
       setSaved(true);
     } catch (error) {
-      setSaveError(errorMessage(error));
+      setSaveError(getUserFacingApiError(error, "No se pudo guardar el perfil."));
     } finally {
       setSaving(false);
     }

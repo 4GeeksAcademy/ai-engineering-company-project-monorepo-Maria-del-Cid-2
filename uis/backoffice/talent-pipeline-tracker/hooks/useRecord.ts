@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getRecordById, patchRecord, deleteRecord } from "@/lib/records";
+import { getUserFacingApiError } from "@/lib/api-error-messages";
 import type { RecordOut, RecordPatch } from "@/types";
 
 interface UseRecordReturn {
@@ -25,9 +26,7 @@ export function useRecord(id: string): UseRecordReturn {
       const result = await getRecordById(id);
       setRecord(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error al cargar el candidato"
-      );
+      setError(getUserFacingApiError(err, "No se pudo cargar la candidatura."));
     } finally {
       setLoading(false);
     }
@@ -44,9 +43,7 @@ export function useRecord(id: string): UseRecordReturn {
         const updated = await patchRecord(id, data);
         setRecord(updated);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error al actualizar"
-        );
+        setError(getUserFacingApiError(err, "No se pudo actualizar la candidatura."));
         throw err;
       }
     },
@@ -58,9 +55,7 @@ export function useRecord(id: string): UseRecordReturn {
     try {
       await deleteRecord(id);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error al eliminar"
-      );
+      setError(getUserFacingApiError(err, "No se pudo eliminar la candidatura."));
       throw err;
     }
   }, [id]);

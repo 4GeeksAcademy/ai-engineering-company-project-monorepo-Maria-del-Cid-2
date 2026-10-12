@@ -41,6 +41,10 @@ class DuplicateEmailError(Exception):
     """Raised when a user email is already registered."""
 
 
+class ProfilePersistenceError(Exception):
+    """Raised when a profile cannot be persisted."""
+
+
 class UserRepository:
     """Persistence adapter for User records in TinyDB."""
 
@@ -165,50 +169,67 @@ class ProfileRepository:
     # ── CRUD ─────────────────────────────────────────────────────────────
 
     def create(self, user_id: int, payload: ProfileCreate) -> Profile:
-        profile_id = max((doc.doc_id for doc in self._table), default=0) + 1
-        profile = Profile.from_create(profile_id, user_id, payload)
-        self._table.insert(
-            Document(profile.model_dump(mode="json"), doc_id=profile_id)
-        )
-        return profile
+        try:
+            profile_id = max((doc.doc_id for doc in self._table), default=0) + 1
+            profile = Profile.from_create(profile_id, user_id, payload)
+            self._table.insert(
+                Document(profile.model_dump(mode="json"), doc_id=profile_id)
+            )
+            return profile
+        except Exception as exc:
+            raise ProfilePersistenceError from exc
 
     def get(self, profile_id: int) -> Profile | None:
-        record = self._table.get(doc_id=profile_id)
-        return Profile.model_validate(record) if record is not None else None
+        try:
+            record = self._table.get(doc_id=profile_id)
+            return Profile.model_validate(record) if record is not None else None
+        except Exception as exc:
+            raise ProfilePersistenceError from exc
 
     def get_by_user_id(self, user_id: int) -> Profile | None:
-        ProfileQuery = Query()
-        record = self._table.get(ProfileQuery.user_id == user_id)
-        return Profile.model_validate(record) if record is not None else None
+        try:
+            ProfileQuery = Query()
+            record = self._table.get(ProfileQuery.user_id == user_id)
+            return Profile.model_validate(record) if record is not None else None
+        except Exception as exc:
+            raise ProfilePersistenceError from exc
 
     def update(self, user_id: int, payload: ProfileUpdate) -> Profile | None:
         """Actualiza el Profile asociado a un user_id.
 
         Busca el Profile por user_id (relación 1:1) y aplica los cambios.
         """
-        profile = self.get_by_user_id(user_id)
-        if profile is None:
-            return None
+        try:
+            profile = self.get_by_user_id(user_id)
+            if profile is None:
+                return None
 
-        updates: dict[str, Any] = {}
-        if payload.name is not None:
-            updates["name"] = payload.name
-        if payload.phone is not None:
-            updates["phone"] = payload.phone
-        if payload.address is not None:
-            updates["address"] = payload.address
+            updates: dict[str, Any] = {}
+            if payload.name is not None:
+                updates["name"] = payload.name
+            if payload.phone is not None:
+                updates["phone"] = payload.phone
+            if payload.address is not None:
+                updates["address"] = payload.address
 
-        if not updates:
-            return profile
+            if not updates:
+                return profile
 
-        ProfileQuery = Query()
-        self._table.update(updates, ProfileQuery.user_id == user_id)
-        return self.get_by_user_id(user_id)
+            ProfileQuery = Query()
+            self._table.update(updates, ProfileQuery.user_id == user_id)
+            return self.get_by_user_id(user_id)
+        except ProfilePersistenceError:
+            raise
+        except Exception as exc:
+            raise ProfilePersistenceError from exc
 
     def delete_by_user_id(self, user_id: int) -> bool:
         """Elimina el Profile asociado a un user_id."""
-        ProfileQuery = Query()
-        return bool(self._table.remove(ProfileQuery.user_id == user_id))
+        try:
+            ProfileQuery = Query()
+            return bool(self._table.remove(ProfileQuery.user_id == user_id))
+        except Exception as exc:
+            raise ProfilePersistenceError from exc
 
 
 class PasswordResetTokenRepository:

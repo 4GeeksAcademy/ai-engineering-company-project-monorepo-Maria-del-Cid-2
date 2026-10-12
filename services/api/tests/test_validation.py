@@ -69,6 +69,12 @@ class IncidentValidationTests(unittest.TestCase):
             ValidationErrorCode.INVALID_EMAIL,
         )
 
+    def test_unknown_status_is_reported_without_unexpected_exception(self) -> None:
+        self.assert_error(
+            self.make_row(status="UNKNOWN"),
+            ValidationErrorCode.INVALID_STATUS,
+        )
+
     def test_closed_without_satisfaction_score(self) -> None:
         self.assert_error(
             self.make_row(satisfaction_score=None),

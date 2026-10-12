@@ -1,3 +1,5 @@
+import { ApiClientError, type ApiErrorKind } from "../lib/api-errors.ts";
+
 export const INCIDENT_CATEGORIES = [
   "TECHNICAL",
   "BILLING",
@@ -37,12 +39,14 @@ export interface IncidentAnalysisResult {
   invalid_by_type: Partial<Record<ValidationErrorCode, number>>;
 }
 
-export class IncidentAnalysisApiError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
+export class IncidentAnalysisApiError extends ApiClientError {
+  constructor(
+    status: number,
+    message: string,
+    kind: ApiErrorKind = status === 0 ? "network" : "http",
+    field: string | null = null,
+  ) {
+    super(kind, status, message, field);
     this.name = "IncidentAnalysisApiError";
-    this.status = status;
   }
 }

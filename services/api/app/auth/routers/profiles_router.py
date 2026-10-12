@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import get_current_user, get_profile_repository
 from app.auth.models import Profile, ProfileUpdate, User
-from app.auth.repository import ProfileRepository
+from app.auth.repository import ProfilePersistenceError, ProfileRepository
 from app.auth.schemas import ProfileCreate  # Reutilizamos el modelo de creación
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
@@ -32,7 +32,13 @@ def read_my_profile(
     - Si no existe Profile → 404.
     - No permite que el cliente especifique qué user_id consultar.
     """
-    profile = profile_repository.get_by_user_id(current_user.id)
+    try:
+        profile = profile_repository.get_by_user_id(current_user.id)
+    except ProfilePersistenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo completar la operación. Inténtalo de nuevo.",
+        ) from exc
     if profile is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -63,13 +69,20 @@ def update_my_profile(
 
     Si no existe Profile → 404.
     """
-    existing = profile_repository.get_by_user_id(current_user.id)
-    if existing is None:
-        return profile_repository.create(
-            current_user.id,
-            ProfileCreate(**payload.model_dump()),
-        )
+    try:
+        existing = profile_repository.get_by_user_id(current_user.id)
+        if existing is None:
+            return profile_repository.create(
+                current_user.id,
+                ProfileCreate(**payload.model_dump()),
+            )
 
-    updated = profile_repository.update(current_user.id, payload)
-    assert updated is not None  # Acabamos de verificar que existe
-    return updated
+        updated = profile_repository.update(current_user.id, payload)
+        if updated is None:
+            raise ProfilePersistenceError
+        return updated
+    except ProfilePersistenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo completar la operación. Inténtalo de nuevo.",
+        ) from exc
