@@ -16,6 +16,7 @@ dependencies = [
 	"python-jose[cryptography]>=3.3,<4",
 	"libpass[bcrypt]>=1.9,<2",
 	"python-dotenv>=1.0,<2",
+	"nexova-shared",
 ]
 
 [project.optional-dependencies]
@@ -30,3 +31,13 @@ seed = "app.suppliers.seed:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[tool.uv.sources]
+nexova-shared = { path = "../../packages/shared/python", editable = true }
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+]

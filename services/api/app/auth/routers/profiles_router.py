@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import get_current_user, get_profile_repository
 from app.auth.models import Profile, ProfileUpdate, User
-from app.auth.repository import ProfilePersistenceError, ProfileRepository
+from app.auth.repository import (
+    ProfileDuplicateError,
+    ProfilePersistenceError,
+    ProfileRepository,
+)
 from app.auth.schemas import ProfileCreate  # Reutilizamos el modelo de creación
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
@@ -67,20 +71,28 @@ def update_my_profile(
 
     Nunca permite modificar ``id`` ni ``user_id``.
 
-    Si no existe Profile → 404.
+    Si no existe Profile → lo crea (siempre que no exista ya uno).
+    Si un actor concurrente creó el Profile entre la comprobación
+    y la creación → 409.
     """
     try:
         existing = profile_repository.get_by_user_id(current_user.id)
         if existing is None:
-            return profile_repository.create(
+            created = profile_repository.create(
                 current_user.id,
                 ProfileCreate(**payload.model_dump()),
             )
+            return created
 
         updated = profile_repository.update(current_user.id, payload)
         if updated is None:
             raise ProfilePersistenceError
         return updated
+    except ProfileDuplicateError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Profile already exists",
+        ) from exc
     except ProfilePersistenceError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

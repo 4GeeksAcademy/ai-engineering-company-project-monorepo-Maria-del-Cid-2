@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import os
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Barrier
 from unittest import mock
 
 from pydantic import ValidationError
@@ -29,7 +31,13 @@ from app.auth.models import (
     UserRole,
     UserUpdate,
 )
-from app.auth.repository import ProfilePersistenceError, ProfileRepository, UserRepository
+from app.auth.repository import (
+    LastAdminError,
+    ProfileDuplicateError,
+    ProfilePersistenceError,
+    ProfileRepository,
+    UserRepository,
+)
 
 
 class UserModelTests(unittest.TestCase):
@@ -172,6 +180,95 @@ class UserRepositoryTests(unittest.TestCase):
     def test_delete_nonexistent_user_returns_false(self) -> None:
         self.assertFalse(self.repo.delete(999))
 
+    def _create_admin(self, email: str, *, is_active: bool = True) -> User:
+        return self.repo.create_with_attrs(
+            UserCreate(email=email, password="secret123"),
+            "hash",
+            role=UserRole.ADMIN,
+            is_active=is_active,
+        )
+
+    def test_update_rejects_demoting_last_active_admin(self) -> None:
+        admin = self._create_admin("admin@example.com")
+        with self.assertRaises(LastAdminError):
+            self.repo.update(admin.id, UserUpdate(role=UserRole.MANAGER))
+        self.assertEqual(self.repo.get(admin.id).role, UserRole.ADMIN)
+
+    def test_update_rejection_does_not_apply_other_fields(self) -> None:
+        admin = self._create_admin("admin@example.com")
+        with self.assertRaises(LastAdminError):
+            self.repo.update(
+                admin.id,
+                UserUpdate(email="changed@example.com", role=UserRole.USER),
+            )
+        persisted = self.repo.get(admin.id)
+        self.assertEqual(persisted.email, "admin@example.com")
+        self.assertEqual(persisted.role, UserRole.ADMIN)
+
+    def test_inactive_admin_does_not_count_when_demoting(self) -> None:
+        admin = self._create_admin("admin@example.com")
+        inactive = self._create_admin("inactive@example.com", is_active=False)
+        with self.assertRaises(LastAdminError):
+            self.repo.update(admin.id, UserUpdate(role=UserRole.USER))
+        self.assertEqual(self.repo.get(admin.id).role, UserRole.ADMIN)
+        self.assertEqual(self.repo.get(inactive.id).role, UserRole.ADMIN)
+
+    def test_update_allows_demoting_admin_when_another_active_admin_exists(self) -> None:
+        first = self._create_admin("first@example.com")
+        self._create_admin("second@example.com")
+        updated = self.repo.update(first.id, UserUpdate(role=UserRole.MANAGER))
+        self.assertEqual(updated.role, UserRole.MANAGER)
+        self.assertEqual(self.repo.get(first.id).role, UserRole.MANAGER)
+
+    def test_update_allows_demoting_inactive_admin_without_other_admins(self) -> None:
+        inactive = self._create_admin("inactive@example.com", is_active=False)
+        updated = self.repo.update(inactive.id, UserUpdate(role=UserRole.USER))
+        self.assertEqual(updated.role, UserRole.USER)
+
+    def test_delete_rejects_last_active_admin_before_cleanup(self) -> None:
+        admin = self._create_admin("admin@example.com")
+        cleanup = mock.Mock()
+        with self.assertRaises(LastAdminError):
+            self.repo.delete(admin.id, before_delete=cleanup)
+        cleanup.assert_not_called()
+        self.assertIsNotNone(self.repo.get(admin.id))
+
+    def test_delete_runs_cleanup_then_removes_user(self) -> None:
+        first = self._create_admin("first@example.com")
+        self._create_admin("second@example.com")
+        cleanup = mock.Mock(side_effect=lambda: self.assertIsNotNone(self.repo.get(first.id)))
+        self.assertTrue(self.repo.delete(first.id, before_delete=cleanup))
+        cleanup.assert_called_once_with()
+        self.assertIsNone(self.repo.get(first.id))
+
+    def test_delete_keeps_user_when_cleanup_fails(self) -> None:
+        first = self._create_admin("first@example.com")
+        self._create_admin("second@example.com")
+        cleanup = mock.Mock(side_effect=ProfilePersistenceError)
+        with self.assertRaises(ProfilePersistenceError):
+            self.repo.delete(first.id, before_delete=cleanup)
+        self.assertIsNotNone(self.repo.get(first.id))
+
+    def test_concurrent_mutual_demotion_leaves_one_active_admin(self) -> None:
+        first = self._create_admin("first@example.com")
+        second = self._create_admin("second@example.com")
+        barrier = Barrier(2)
+
+        def demote(user_id: int) -> bool:
+            barrier.wait()
+            try:
+                self.repo.update(user_id, UserUpdate(role=UserRole.USER))
+                return True
+            except LastAdminError:
+                return False
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(demote, [first.id, second.id]))
+
+        self.assertEqual(results.count(True), 1)
+        remaining = [u for u in self.repo.list() if u.role == UserRole.ADMIN and u.is_active]
+        self.assertEqual(len(remaining), 1)
+
     def test_hashed_password_is_stored(self) -> None:
         user = self._create_user(password="mypassword")
         stored = self.repo.get(user.id)
@@ -267,6 +364,7 @@ class ProfileRepositoryTests(unittest.TestCase):
     def test_profile_create_error_is_normalized(self) -> None:
         table = mock.Mock()
         table.__iter__ = mock.Mock(return_value=iter(()))
+        table.get.return_value = None  # get_by_user_id → no existe perfil previo
         table.insert.side_effect = OSError("storage detail")
         with mock.patch("app.auth.repository.get_profiles_table", return_value=table):
             with self.assertRaises(ProfilePersistenceError) as context:
@@ -325,16 +423,65 @@ class ProfileRepositoryTests(unittest.TestCase):
     def test_one_to_one_relationship(self) -> None:
         """Un usuario tiene como máximo un Profile."""
         user = self._create_user()
-        p1 = self.repo.create(user.id, ProfileCreate(name="First"))
-        # Al crear otro con el mismo user_id, simplemente se inserta otro doc
-        # (TinyDB no impide duplicados). La relación 1:1 se gestiona desde
-        # la lógica de negocio, no desde la base de datos.
-        p2 = self.repo.create(user.id, ProfileCreate(name="Second"))
-        self.assertIsNotNone(p1)
-        self.assertIsNotNone(p2)
-        # get_by_user_id devuelve el primero que encuentra (TinyDB no ordena)
+        self.repo.create(user.id, ProfileCreate(name="First"))
+        # Crear un segundo Profile para el mismo user_id debe rechazarse
+        with self.assertRaises(ProfileDuplicateError):
+            self.repo.create(user.id, ProfileCreate(name="Second"))
+        # El perfil original debe permanecer intacto
         found = self.repo.get_by_user_id(user.id)
         self.assertIsNotNone(found)
+        self.assertEqual(found.name, "First")
+
+    def test_create_after_delete_allows_new_profile(self) -> None:
+        """Eliminar y luego crear un nuevo Profile para el mismo user_id funciona."""
+        user = self._create_user()
+        self.repo.create(user.id, ProfileCreate(name="Original"))
+        self.assertTrue(self.repo.delete_by_user_id(user.id))
+        self.assertIsNone(self.repo.get_by_user_id(user.id))
+        # Ahora debería poder crearse otro
+        new_profile = self.repo.create(user.id, ProfileCreate(name="Replacement"))
+        self.assertIsNotNone(new_profile)
+        self.assertEqual(new_profile.name, "Replacement")
+        self.assertEqual(new_profile.user_id, user.id)
+
+    def test_create_duplicate_is_atomic_does_not_create_partial_profile(self) -> None:
+        """Si se rechaza un duplicado, no debe quedar ningún rastro."""
+        user = self._create_user()
+        self.repo.create(user.id, ProfileCreate(name="Original"))
+        # Contar cuántos docs hay en la tabla antes del intento
+        from app.auth.database import get_profiles_table
+        table = get_profiles_table(self.database)
+        count_before = len(table)
+        with self.assertRaises(ProfileDuplicateError):
+            self.repo.create(user.id, ProfileCreate(name="Intruder"))
+        # La tabla no debe tener documentos extra
+        self.assertEqual(len(table), count_before)
+        # Y el perfil original sigue intacto
+        found = self.repo.get_by_user_id(user.id)
+        self.assertEqual(found.name, "Original")
+
+    def test_concurrent_profile_creation_leaves_exactly_one_profile(self) -> None:
+        """Dos hilos creando un Profile para el mismo user_id → solo uno triunfa."""
+        user = self._create_user()
+        barrier = Barrier(2)
+
+        def create_profile() -> bool:
+            barrier.wait()
+            try:
+                self.repo.create(user.id, ProfileCreate(name="Concurrent"))
+                return True
+            except ProfileDuplicateError:
+                return False
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(lambda _: create_profile(), range(2)))
+
+        self.assertEqual(results.count(True), 1)
+        # Solo debe haber 1 profile en la tabla
+        from app.auth.database import get_profiles_table
+        table = get_profiles_table(self.database)
+        profiles_for_user = [doc for doc in table if doc.get("user_id") == user.id]
+        self.assertEqual(len(profiles_for_user), 1)
 
     def test_multiple_users_have_isolated_profiles(self) -> None:
         """Los perfiles de distintos usuarios están aislados."""
