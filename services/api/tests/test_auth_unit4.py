@@ -32,6 +32,8 @@ from app.auth.dependencies import get_current_user, get_profile_repository, get_
 from app.auth.models import ProfileCreate, User, UserCreate, UserRole
 from app.auth.repository import (
     DuplicateEmailError,
+    LastAdminError,
+    ProfileDuplicateError,
     ProfileRepository,
     ProfilePersistenceError,
     UserRepository,
@@ -666,6 +668,36 @@ class UpdateUserTests(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["email"], "updated@example.com")
 
+    def test_update_to_existing_email_returns_409_without_changing_users(self) -> None:
+        """No permite reutilizar el email de otro usuario."""
+        original_user = self.repo.get(self.user.id)
+        original_other_user = self.repo.get(self.other_user.id)
+        assert original_user is not None
+        assert original_other_user is not None
+
+        response = self.client.put(
+            f"/api/users/{self.user.id}",
+            headers=_auth_header(self.user_token),
+            json={"email": original_other_user.email},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertNotIn("hashed_password", response.text)
+        self.assertNotIn(original_user.hashed_password, response.text)
+        self.assertNotIn(original_other_user.hashed_password, response.text)
+
+        unchanged_user = self.repo.get(self.user.id)
+        unchanged_other_user = self.repo.get(self.other_user.id)
+        assert unchanged_user is not None
+        assert unchanged_other_user is not None
+        self.assertEqual(unchanged_user.email, original_user.email)
+        self.assertEqual(unchanged_user.hashed_password, original_user.hashed_password)
+        self.assertEqual(unchanged_other_user.email, original_other_user.email)
+        self.assertEqual(
+            unchanged_other_user.hashed_password,
+            original_other_user.hashed_password,
+        )
+
     def test_user_cannot_update_another_user(self) -> None:
         """User no puede modificar otro → 403."""
         response = self.client.put(
@@ -689,18 +721,24 @@ class UpdateUserTests(unittest.TestCase):
         response = self.client.put(
             f"/api/users/{self.user.id}",
             headers=_auth_header(self.user_token),
-            json={"role": "admin"},
+            json={"role": "admin", "email": "escalated@example.com"},
         )
         self.assertEqual(response.status_code, 403)
+        persisted = self.repo.get(self.user.id)
+        self.assertEqual(persisted.role, UserRole.USER)
+        self.assertEqual(persisted.email, "normal@example.com")
 
     def test_manager_cannot_change_role(self) -> None:
         """Manager no puede cambiar role → 403."""
         response = self.client.put(
             f"/api/users/{self.manager.id}",
             headers=_auth_header(self.manager_token),
-            json={"role": "admin"},
+            json={"role": "admin", "email": "escalated@example.com"},
         )
         self.assertEqual(response.status_code, 403)
+        persisted = self.repo.get(self.manager.id)
+        self.assertEqual(persisted.role, UserRole.MANAGER)
+        self.assertEqual(persisted.email, "manager@example.com")
 
     def test_admin_can_change_role(self) -> None:
         """Admin puede cambiar role."""
@@ -712,6 +750,48 @@ class UpdateUserTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["role"], "manager")
+        persisted = self.repo.get(self.other_user.id)
+        self.assertEqual(persisted.role, UserRole.MANAGER)
+        self.assertEqual(
+            persisted.credentials_version, self.other_user.credentials_version
+        )
+
+    def test_admin_cannot_change_own_role_returns_403_and_keeps_role(self) -> None:
+        """Un admin no puede cambiarse su propio rol."""
+        response = self.client.put(
+            f"/api/users/{self.admin.id}",
+            headers=_auth_header(self.admin_token),
+            json={"role": "manager"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.repo.get(self.admin.id).role, UserRole.ADMIN)
+
+    def test_admin_can_demote_another_admin_when_active_admin_remains(self) -> None:
+        second_admin = _create_test_user(
+            self.repo, "admin2@example.com", "admin456", role=UserRole.ADMIN
+        )
+        response = self.client.put(
+            f"/api/users/{second_admin.id}",
+            headers=_auth_header(self.admin_token),
+            json={"role": "manager"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["role"], "manager")
+        self.assertEqual(self.repo.get(second_admin.id).role, UserRole.MANAGER)
+        self.assertEqual(self.repo.get(self.admin.id).role, UserRole.ADMIN)
+
+    def test_update_maps_last_admin_error_to_409(self) -> None:
+        # Vía HTTP el actor siempre es otro admin activo; la regla se prueba en el repositorio.
+        self.repo.update = mock.Mock(side_effect=LastAdminError)
+        response = self.client.put(
+            f"/api/users/{self.other_user.id}",
+            headers=_auth_header(self.admin_token),
+            json={"role": "manager"},
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json()["detail"], "Cannot remove the last active admin"
+        )
 
     def test_update_nonexistent_user_returns_404(self) -> None:
         """Usuario inexistente → 404."""
@@ -856,6 +936,62 @@ class DeleteUserTests(unittest.TestCase):
         """Sin token → 401."""
         response = self.client.delete(f"/api/users/{self.user.id}")
         self.assertEqual(response.status_code, 401)
+
+    def test_last_active_admin_cannot_be_deleted_and_profile_is_kept(self) -> None:
+        self.profile_repo.create(self.admin.id, ProfileCreate(name="Admin"))
+        response = self.client.delete(
+            f"/api/users/{self.admin.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json()["detail"], "Cannot remove the last active admin"
+        )
+        persisted = self.repo.get(self.admin.id)
+        self.assertEqual(persisted.role, UserRole.ADMIN)
+        self.assertTrue(persisted.is_active)
+        self.assertEqual(self.profile_repo.get_by_user_id(self.admin.id).name, "Admin")
+
+    def test_inactive_admin_does_not_count_as_remaining_admin(self) -> None:
+        inactive_admin = _create_test_user(
+            self.repo,
+            "inactive-admin@example.com",
+            "admin456",
+            role=UserRole.ADMIN,
+            is_active=False,
+        )
+        response = self.client.delete(
+            f"/api/users/{self.admin.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertIsNotNone(self.repo.get(self.admin.id))
+        self.assertIsNotNone(self.repo.get(inactive_admin.id))
+
+    def test_admin_can_delete_self_when_another_active_admin_exists(self) -> None:
+        second_admin = _create_test_user(
+            self.repo, "admin2@example.com", "admin456", role=UserRole.ADMIN
+        )
+        self.profile_repo.create(self.admin.id, ProfileCreate(name="Admin"))
+        response = self.client.delete(
+            f"/api/users/{self.admin.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertIsNone(self.repo.get(self.admin.id))
+        self.assertIsNone(self.profile_repo.get_by_user_id(self.admin.id))
+        self.assertEqual(self.repo.get(second_admin.id).role, UserRole.ADMIN)
+
+    def test_delete_user_unexpected_exception_returns_500(self) -> None:
+        """Excepción inesperada en delete→500 sin exponer detalles."""
+        self.repo.delete = mock.Mock(side_effect=Exception("internal detail"))
+        response = self.client.delete(
+            f"/api/users/{self.other_user.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["detail"], "Unable to delete user")
+        self.assertNotIn("internal detail", response.text)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1046,6 +1182,36 @@ class UpdateProfileMeTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 500)
         self.assertNotIn("AssertionError", response.text)
+
+    def test_race_condition_create_duplicate_profile_returns_409(self) -> None:
+        """Si dos PUTs concurrentes intentan crear Profile, el segundo recibe 409."""
+        # Simular la condición de carrera: get_by_user_id devuelve None (no existe)
+        # pero create() detecta que ya hay un profile para ese user_id
+        self.profile_repo.get_by_user_id = mock.Mock(return_value=None)
+        self.profile_repo.create = mock.Mock(
+            side_effect=ProfileDuplicateError
+        )
+        response = self.client.put(
+            "/api/profiles/me",
+            headers=_auth_header(self.token_no_profile),
+            json={"name": "Ghost"},
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"], "Profile already exists")
+
+    def test_create_profile_duplicate_persistence_error_returns_500(self) -> None:
+        """Si create() lanza ProfilePersistenceError en lugar de duplicado → 500."""
+        self.profile_repo.get_by_user_id = mock.Mock(return_value=None)
+        self.profile_repo.create = mock.Mock(
+            side_effect=ProfilePersistenceError("storage detail")
+        )
+        response = self.client.put(
+            "/api/profiles/me",
+            headers=_auth_header(self.token_no_profile),
+            json={"name": "Ghost"},
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("storage detail", response.text)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

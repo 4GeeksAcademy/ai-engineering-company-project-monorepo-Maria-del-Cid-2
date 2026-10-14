@@ -83,7 +83,54 @@ class EmailLoggingTests(unittest.TestCase):
         self.assertIn("status=202", output)
         self.assertNotIn("sensitive-recipient@example.com", output)
         self.assertNotIn("secret-token", output)
+    def test_provider_rejection_response_raises_error(self) -> None:
+        """Respuesta HTTP no-2xx del provider levanta EmailDeliveryError."""
+        sender = ResendEmailSender(api_key="test-api-key")
 
+        with mock.patch("app.auth.email.urlopen", return_value=_Response(422)):
+            with self.assertLogs("app.auth.email", level="WARNING") as logs:
+                with self.assertRaises(EmailDeliveryError):
+                    sender.send_password_reset(
+                        "sensitive-recipient@example.com",
+                        "https://frontend.test/reset?token=secret-token",
+                    )
+
+        output = "\n".join(logs.output)
+        self.assertIn("status=422", output)
+        self.assertNotIn("sensitive-recipient@example.com", output)
+        self.assertNotIn("secret-token", output)
+
+    def test_provider_timeout_raises_error(self) -> None:
+        """TimeoutError del provider levanta EmailDeliveryError."""
+        sender = ResendEmailSender(api_key="test-api-key")
+
+        with mock.patch(
+            "app.auth.email.urlopen",
+            side_effect=TimeoutError("connection timed out"),
+        ):
+            with self.assertLogs("app.auth.email", level="WARNING") as logs:
+                with self.assertRaises(EmailDeliveryError):
+                    sender.send_password_reset(
+                        "sensitive-recipient@example.com",
+                        "https://frontend.test/reset?token=secret-token",
+                    )
+
+        output = "\n".join(logs.output)
+        self.assertIn("TimeoutError", output)
+        self.assertNotIn("sensitive-recipient@example.com", output)
+        self.assertNotIn("secret-token", output)
+
+    def test_provider_no_api_key_raises_error(self) -> None:
+        """Sin API key → EmailDeliveryError sin llamar a urlopen."""
+        sender = ResendEmailSender(api_key="")
+
+        with self.assertRaisesRegex(
+            EmailDeliveryError, "Email provider is not configured"
+        ):
+            sender.send_password_reset(
+                "recipient@example.com",
+                "https://frontend.test/reset?token=secret-token",
+            )
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,7 @@ os.environ["SECRET_KEY"] = "test-secret-key-for-unit-tests"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
 
 from jose import JWTError, jwt
+from pydantic import ValidationError
 
 import app.auth.config as auth_config
 from app.auth.security import (
@@ -172,6 +173,56 @@ class JwtTests(unittest.TestCase):
         token = create_access_token({"other": "data"})
         decoded = decode_access_token(token)
         self.assertNotIn("user_uuid", decoded)
+
+
+class AuthSchemasTests(unittest.TestCase):
+    """Tests de validación de esquemas de auth (passwords_match)."""
+
+    def test_password_reset_request_rejects_mismatch(self) -> None:
+        """new_password != confirm_password → ValidationError."""
+        from app.auth.schemas import PasswordResetRequest
+
+        with self.assertRaises(ValidationError) as ctx:
+            PasswordResetRequest(
+                token="validtoken",
+                new_password="longenough123",
+                confirm_password="different456",
+            )
+        self.assertIn("Passwords do not match", str(ctx.exception))
+
+    def test_password_reset_request_accepts_match(self) -> None:
+        """new_password == confirm_password → instancia válida."""
+        from app.auth.schemas import PasswordResetRequest
+
+        obj = PasswordResetRequest(
+            token="validtoken",
+            new_password="longenough123",
+            confirm_password="longenough123",
+        )
+        self.assertEqual(obj.new_password, "longenough123")
+
+    def test_change_password_request_rejects_mismatch(self) -> None:
+        """new_password != confirm_password en ChangePasswordRequest."""
+        from app.auth.schemas import ChangePasswordRequest
+
+        with self.assertRaises(ValidationError) as ctx:
+            ChangePasswordRequest(
+                current_password="old",
+                new_password="longenough456",
+                confirm_password="mismatch789",
+            )
+        self.assertIn("Passwords do not match", str(ctx.exception))
+
+    def test_change_password_request_accepts_match(self) -> None:
+        """new_password == confirm_password → instancia válida."""
+        from app.auth.schemas import ChangePasswordRequest
+
+        obj = ChangePasswordRequest(
+            current_password="old",
+            new_password="longenough456",
+            confirm_password="longenough456",
+        )
+        self.assertEqual(obj.new_password, "longenough456")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 os.environ["SECRET_KEY"] = "test-secret-key-for-password-reset"
@@ -372,6 +373,44 @@ class PasswordResetApiTests(unittest.TestCase):
             data={"username": "alice@example.com", "password": "newsecret123"},
         )
         self.assertEqual(new_login.status_code, 200)
+
+    # ── Ramas no cubiertas de password_reset.py ─────────────────────────────
+
+    def test_reset_password_rejects_inactive_user(self) -> None:
+        """reset_password levanta error si el usuario fue desactivado."""
+        self.service.request_reset("alice@example.com")
+        token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        # Desactivar al usuario
+        self.users._table.update({"is_active": False}, doc_ids=[self.user.id])
+
+        with self.assertRaisesRegex(
+            PasswordResetError, "Invalid or expired reset token"
+        ):
+            self.service.reset_password(token, "newsecret123")
+
+    def test_reset_password_rejects_nonexistent_user(self) -> None:
+        """reset_password levanta error si el usuario fue eliminado."""
+        self.service.request_reset("alice@example.com")
+        token = parse_qs(urlparse(self.email_sender.messages[0][1]).query)["token"][0]
+        # Eliminar al usuario
+        self.users._table.remove(doc_ids=[self.user.id])
+
+        with self.assertRaisesRegex(
+            PasswordResetError, "Invalid or expired reset token"
+        ):
+            self.service.reset_password(token, "newsecret123")
+
+    def test_change_password_rejects_update_password_failure(self) -> None:
+        """change_password levanta error si update_password retorna None."""
+        with mock.patch.object(self.users, "update_password", return_value=None):
+            with self.assertRaisesRegex(
+                PasswordResetError, "Current password is incorrect"
+            ):
+                self.service.change_password(
+                    self.user.id,
+                    "oldsecret123",
+                    "newsecret123",
+                )
 
 
 if __name__ == "__main__":

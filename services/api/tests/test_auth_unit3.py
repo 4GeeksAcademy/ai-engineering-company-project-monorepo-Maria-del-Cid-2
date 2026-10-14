@@ -14,6 +14,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 # ── Env vars MUST be set before auth imports ────────────────────────────────
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-unit-3")
@@ -28,7 +29,7 @@ from app.auth.models import User, UserCreate, UserRole
 from app.auth.repository import UserRepository
 from app.auth.security import create_access_token, hash_password, decode_access_token
 from app.auth.service import AuthService, AuthenticationError
-from app.auth.dependencies import get_current_user, get_repository
+from app.auth.dependencies import get_current_user, get_password_reset_service, get_repository
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -369,6 +370,47 @@ class AuthHttpSemanticTests(unittest.TestCase):
                     403,
                     f"Escenario '{name}' no debe devolver 403",
                 )
+
+
+class PasswordResetServiceDependencyTests(unittest.TestCase):
+    """Test del generador get_password_reset_service (dependencies.py)."""
+
+    def setUp(self) -> None:
+        self.temp_dir = TemporaryDirectory()
+        self.db_path = Path(self.temp_dir.name) / "auth_test_dep.json"
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    def test_get_password_reset_service_yields_valid_service(self) -> None:
+        """El generador produce un PasswordResetService con dependencias."""
+        from app.auth.password_reset import PasswordResetService
+        from app.auth.database import create_database
+
+        database = create_database(self.db_path)
+        try:
+            with mock.patch("app.auth.dependencies.get_database", return_value=database):
+                gen = get_password_reset_service()
+                service = next(gen)
+                self.assertIsInstance(service, PasswordResetService)
+                gen.close()
+        finally:
+            database.close()
+
+    def test_get_password_reset_service_closes_db_on_generator_close(self) -> None:
+        """El finally del generador cierra la BD."""
+        from app.auth.database import create_database
+
+        database = create_database(self.db_path)
+        close_mock = mock.Mock(wraps=database.close)
+        database.close = close_mock
+
+        with mock.patch("app.auth.dependencies.get_database", return_value=database):
+            gen = get_password_reset_service()
+            _ = next(gen)  # Avanzar al yield
+            gen.close()  # Cerrar el generador → ejecuta finally
+
+        close_mock.assert_called_once()
 
 
 if __name__ == "__main__":

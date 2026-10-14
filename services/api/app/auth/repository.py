@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from threading import Lock
-from typing import Any
+from typing import Any, Callable
 
 from tinydb import Query, TinyDB
 from tinydb.table import Document, Table
@@ -35,14 +35,23 @@ from .models import (
 _user_creation_lock = Lock()
 _password_reset_lock = Lock()
 _password_update_lock = Lock()
+_profile_lock = Lock()
 
 
 class DuplicateEmailError(Exception):
     """Raised when a user email is already registered."""
 
 
+class LastAdminError(Exception):
+    """Raised when an operation would leave the system without active admins."""
+
+
 class ProfilePersistenceError(Exception):
     """Raised when a profile cannot be persisted."""
+
+
+class ProfileDuplicateError(Exception):
+    """Raised when a profile already exists for the given user_id."""
 
 
 class UserRepository:
@@ -114,22 +123,44 @@ class UserRepository:
     def list(self) -> list[User]:
         return [User.model_validate(doc) for doc in self._table.all()]
 
+    def _is_last_active_admin(self, user: User) -> bool:
+        """Whether ``user`` is the only user with role admin and is_active."""
+        if user.role != UserRole.ADMIN or not user.is_active:
+            return False
+        return not any(
+            doc.doc_id != user.id
+            and doc.get("role") == UserRole.ADMIN.value
+            and doc.get("is_active", True)
+            for doc in self._table.all()
+        )
+
     def update(self, user_id: int, payload: UserUpdate) -> User | None:
-        user = self.get(user_id)
-        if user is None:
-            return None
+        with _user_creation_lock:
+            user = self.get(user_id)
+            if user is None:
+                return None
 
-        updates: dict[str, Any] = {}
-        if payload.email is not None:
-            updates["email"] = payload.email
-        if payload.role is not None:
-            updates["role"] = payload.role.value
+            if (
+                payload.role is not None
+                and payload.role != UserRole.ADMIN
+                and self._is_last_active_admin(user)
+            ):
+                raise LastAdminError
 
-        if not updates:
-            return user
+            updates: dict[str, Any] = {}
+            if payload.email is not None:
+                existing = self.get_by_email(str(payload.email))
+                if existing is not None and existing.id != user_id:
+                    raise DuplicateEmailError
+                updates["email"] = payload.email
+            if payload.role is not None:
+                updates["role"] = payload.role.value
 
-        self._table.update(updates, doc_ids=[user_id])
-        return self.get(user_id)
+            if not updates:
+                return user
+
+            self._table.update(updates, doc_ids=[user_id])
+            return self.get(user_id)
 
     def update_password(self, user_id: int, hashed_password: str) -> User | None:
         """Replace a password and invalidate all previously issued JWTs."""
@@ -147,13 +178,27 @@ class UserRepository:
             )
             return self.get(user_id)
 
-    def delete(self, user_id: int) -> bool:
+    def delete(
+        self,
+        user_id: int,
+        *,
+        before_delete: Callable[[], object] | None = None,
+    ) -> bool:
         """Elimina el usuario por su ID.
 
-        Nota: el Profile vinculado debe eliminarse por separado
-        mediante ProfileRepository.delete_by_user_id().
+        La comprobación del último admin activo, ``before_delete`` (p. ej. la
+        limpieza del Profile) y el borrado se ejecutan bajo el mismo lock, de
+        modo que un rechazo no deja eliminaciones parciales.
         """
-        return bool(self._table.remove(doc_ids=[user_id]))
+        with _user_creation_lock:
+            user = self.get(user_id)
+            if user is None:
+                return False
+            if self._is_last_active_admin(user):
+                raise LastAdminError
+            if before_delete is not None:
+                before_delete()
+            return bool(self._table.remove(doc_ids=[user_id]))
 
 
 class ProfileRepository:
@@ -169,15 +214,28 @@ class ProfileRepository:
     # ── CRUD ─────────────────────────────────────────────────────────────
 
     def create(self, user_id: int, payload: ProfileCreate) -> Profile:
-        try:
-            profile_id = max((doc.doc_id for doc in self._table), default=0) + 1
-            profile = Profile.from_create(profile_id, user_id, payload)
-            self._table.insert(
-                Document(profile.model_dump(mode="json"), doc_id=profile_id)
-            )
-            return profile
-        except Exception as exc:
-            raise ProfilePersistenceError from exc
+        """Crea un Profile para el usuario.
+
+        Protegido por ``_profile_lock``: verifica que no exista ya un Profile
+        para ``user_id`` antes de insertar. Si existe → ``ProfileDuplicateError``.
+
+        La comprobación y la escritura se ejecutan bajo el mismo lock, de modo
+        que dos hilos no puedan crear perfiles duplicados simultáneamente.
+        El lock solo es efectivo dentro del mismo proceso; no coordina
+        múltiples workers.
+        """
+        with _profile_lock:
+            if self.get_by_user_id(user_id) is not None:
+                raise ProfileDuplicateError
+            try:
+                profile_id = max((doc.doc_id for doc in self._table), default=0) + 1
+                profile = Profile.from_create(profile_id, user_id, payload)
+                self._table.insert(
+                    Document(profile.model_dump(mode="json"), doc_id=profile_id)
+                )
+                return profile
+            except Exception as exc:
+                raise ProfilePersistenceError from exc
 
     def get(self, profile_id: int) -> Profile | None:
         try:
@@ -198,30 +256,33 @@ class ProfileRepository:
         """Actualiza el Profile asociado a un user_id.
 
         Busca el Profile por user_id (relación 1:1) y aplica los cambios.
+        Ejecutado bajo ``_profile_lock`` para evitar race conditions con
+        ``create()``.
         """
-        try:
-            profile = self.get_by_user_id(user_id)
-            if profile is None:
-                return None
+        with _profile_lock:
+            try:
+                profile = self.get_by_user_id(user_id)
+                if profile is None:
+                    return None
 
-            updates: dict[str, Any] = {}
-            if payload.name is not None:
-                updates["name"] = payload.name
-            if payload.phone is not None:
-                updates["phone"] = payload.phone
-            if payload.address is not None:
-                updates["address"] = payload.address
+                updates: dict[str, Any] = {}
+                if payload.name is not None:
+                    updates["name"] = payload.name
+                if payload.phone is not None:
+                    updates["phone"] = payload.phone
+                if payload.address is not None:
+                    updates["address"] = payload.address
 
-            if not updates:
-                return profile
+                if not updates:
+                    return profile
 
-            ProfileQuery = Query()
-            self._table.update(updates, ProfileQuery.user_id == user_id)
-            return self.get_by_user_id(user_id)
-        except ProfilePersistenceError:
-            raise
-        except Exception as exc:
-            raise ProfilePersistenceError from exc
+                ProfileQuery = Query()
+                self._table.update(updates, ProfileQuery.user_id == user_id)
+                return self.get_by_user_id(user_id)
+            except ProfilePersistenceError:
+                raise
+            except Exception as exc:
+                raise ProfilePersistenceError from exc
 
     def delete_by_user_id(self, user_id: int) -> bool:
         """Elimina el Profile asociado a un user_id."""

@@ -17,6 +17,7 @@ from app.auth.dependencies import (
 from app.auth.models import User, UserCreate, UserRole, UserUpdate
 from app.auth.repository import (
     DuplicateEmailError,
+    LastAdminError,
     ProfilePersistenceError,
     ProfileRepository,
     UserRepository,
@@ -176,10 +177,11 @@ def update_user(
 
     Reglas de autorización:
     - Self → puede actualizar sus campos permitidos (email)
-    - Self → NO puede cambiarse el role a sí mismo
+    - Self → NO puede cambiarse el role a sí mismo (tampoco un admin)
     - Admin → puede actualizar cualquier usuario, incluido el role
     - Manager → no puede actualizar arbitrariamente otros usuarios
     - Otro usuario → 403
+    - Degradar al último admin activo → 409
 
     Solo admin puede cambiar ``role``.
     Nunca se acepta ``hashed_password`` directamente.
@@ -209,13 +211,27 @@ def update_user(
             detail="Only admins can change role",
         )
 
-    # ── Self no puede cambiarse role aunque sea admin vía payload ─────
-    #   (ya cubierto arriba: is_admin check, pero si self intenta
-    #    enviar role sin ser admin, ya se bloquea)
+    # ── Self no puede cambiarse el role (tampoco un admin) ────────────
+    if is_self and payload.role is not None and payload.role != existing.role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admins cannot change their own role",
+        )
 
     # ── Aplicar cambios ───────────────────────────────────────────────
     update_payload = UserUpdate(email=payload.email, role=payload.role)
-    updated = repository.update(user_id, update_payload)
+    try:
+        updated = repository.update(user_id, update_payload)
+    except DuplicateEmailError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        ) from exc
+    except LastAdminError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot remove the last active admin",
+        ) from exc
 
     # repository.update() returns None if user doesn't exist (already checked)
     assert updated is not None
@@ -242,6 +258,7 @@ def delete_user(
     - Manager → no puede eliminar arbitrariamente
     - Usuario normal → no puede eliminar otro usuario
     - Usuario inexistente → 404
+    - Eliminar al último admin activo → 409
     """
     # ── Autorización ──────────────────────────────────────────────────
     is_self = current_user.id == user_id
@@ -261,9 +278,17 @@ def delete_user(
             detail="User not found",
         )
 
-    # ── Eliminar Profile asociado ─────────────────────────────────────
+    # ── Eliminar Profile y User bajo el mismo lock del repositorio ────
     try:
-        profile_repository.delete_by_user_id(user_id)
+        user_deleted = repository.delete(
+            user_id,
+            before_delete=lambda: profile_repository.delete_by_user_id(user_id),
+        )
+    except LastAdminError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot remove the last active admin",
+        ) from exc
     except ProfilePersistenceError as exc:
         logger.error(
             "user deletion profile cleanup failed user_id=%s failure_type=%s",
@@ -274,13 +299,9 @@ def delete_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to delete user",
         ) from exc
-
-    # ── Eliminar User ─────────────────────────────────────────────────
-    try:
-        user_deleted = repository.delete(user_id)
     except Exception as exc:
         logger.error(
-            "user deletion failed after profile cleanup user_id=%s failure_type=%s",
+            "user deletion failed user_id=%s failure_type=%s",
             user_id,
             type(exc).__name__,
         )

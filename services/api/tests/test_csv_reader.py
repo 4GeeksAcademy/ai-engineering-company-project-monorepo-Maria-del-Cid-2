@@ -1,6 +1,7 @@
 """Tests for the Unit 2 CSV reader and normalizer."""
 
 from io import StringIO
+from pathlib import Path
 import unittest
 
 from app.incidents.csv_reader import CsvReadError, read_incidents_csv
@@ -68,7 +69,8 @@ class CsvReaderTests(unittest.TestCase):
         self.assertNotIn("customer@example.com", str(context.exception))
 
     def test_csv_dataset_has_expected_row_count(self) -> None:
-        rows = read_incidents_csv("scripts/incidents-nexova.csv")
+        dataset_path = Path(__file__).resolve().parents[3] / "scripts" / "incidents-nexova.csv"
+        rows = read_incidents_csv(dataset_path)
 
         self.assertEqual(len(rows), 100)
 

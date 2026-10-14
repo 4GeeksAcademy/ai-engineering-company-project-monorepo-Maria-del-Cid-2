@@ -1,4 +1,5 @@
 
+
  # **Empresa seleccionada** 
 ## Por qué Nexova
 He decidido seleccionar la consultora de Recursos Humanos Nexova porque considero que el proceso de selección de personal y todo lo que implica es una de las áreas más importantes para el buen funcionamiento de una empresa. Sin embargo, en muchos casos es también una de las que menos atención recibe. Además, me resulta especialmente interesante trabajar con un sistema que combine el análisis de datos con la gestión de personas.
