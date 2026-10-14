@@ -982,6 +982,17 @@ class DeleteUserTests(unittest.TestCase):
         self.assertIsNone(self.profile_repo.get_by_user_id(self.admin.id))
         self.assertEqual(self.repo.get(second_admin.id).role, UserRole.ADMIN)
 
+    def test_delete_user_unexpected_exception_returns_500(self) -> None:
+        """Excepción inesperada en delete→500 sin exponer detalles."""
+        self.repo.delete = mock.Mock(side_effect=Exception("internal detail"))
+        response = self.client.delete(
+            f"/api/users/{self.other_user.id}",
+            headers=_auth_header(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["detail"], "Unable to delete user")
+        self.assertNotIn("internal detail", response.text)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Profiles: GET /api/profiles/me

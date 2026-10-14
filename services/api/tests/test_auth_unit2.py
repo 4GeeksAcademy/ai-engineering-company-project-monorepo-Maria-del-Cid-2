@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Barrier
@@ -19,10 +19,12 @@ from pydantic import ValidationError
 
 from app.auth.database import (
     create_database,
+    get_password_reset_tokens_table,
     get_profiles_table,
     get_users_table,
 )
 from app.auth.models import (
+    PasswordResetToken,
     Profile,
     ProfileCreate,
     ProfileUpdate,
@@ -33,6 +35,7 @@ from app.auth.models import (
 )
 from app.auth.repository import (
     LastAdminError,
+    PasswordResetTokenRepository,
     ProfileDuplicateError,
     ProfilePersistenceError,
     ProfileRepository,
@@ -276,6 +279,11 @@ class UserRepositoryTests(unittest.TestCase):
         self.assertEqual(stored.hashed_password, "bcrypt_hash_mypassword")
         # Verificar que no se guarda la original
         self.assertNotEqual(stored.hashed_password, "mypassword")
+
+    def test_update_password_nonexistent_user_returns_none(self) -> None:
+        """update_password retorna None para usuario inexistente."""
+        result = self.repo.update_password(99999, "irrelevant_hash")
+        self.assertIsNone(result)
 
 
 class ProfileModelTests(unittest.TestCase):
@@ -567,6 +575,152 @@ class UserRoleTests(unittest.TestCase):
     def test_update_with_invalid_role_rejected(self) -> None:
         with self.assertRaises(ValueError):
             UserUpdate(role="superadmin")  # type: ignore
+
+
+class PasswordResetTokenRepositoryTests(unittest.TestCase):
+    """Tests del repositorio de tokens de reseteo de contraseña."""
+
+    def setUp(self) -> None:
+        self.temp_dir = TemporaryDirectory()
+        self.db_path = Path(self.temp_dir.name) / "auth_test_tokens.json"
+        self.database = create_database(self.db_path)
+        self.repo = PasswordResetTokenRepository(self.database)
+        self.now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+        self.token = self.repo.create(
+            user_id=1,
+            token_hash="abc123hash",
+            created_at=self.now,
+            expires_at=self.now + timedelta(hours=1),
+        )
+
+    def tearDown(self) -> None:
+        self.database.close()
+        self.temp_dir.cleanup()
+
+    def test_get_by_hash_returns_token(self) -> None:
+        """Recuperar por hash devuelve el token."""
+        result = self.repo.get_by_hash("abc123hash")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.user_id, 1)
+        self.assertEqual(result.token_hash, "abc123hash")
+
+    def test_get_by_hash_missing_returns_none(self) -> None:
+        """Hash inexistente → None."""
+        result = self.repo.get_by_hash("nonexistent")
+        self.assertIsNone(result)
+
+    def test_consume_returns_true(self) -> None:
+        """Consumir un token válido retorna True."""
+        result = self.repo.consume(self.token.id, self.now + timedelta(minutes=5))
+        self.assertTrue(result)
+
+    def test_consume_returns_false_when_already_consumed(self) -> None:
+        """Consumir dos veces el mismo token → False la segunda."""
+        self.repo.consume(self.token.id, self.now + timedelta(minutes=5))
+        result = self.repo.consume(self.token.id, self.now + timedelta(minutes=10))
+        self.assertFalse(result)
+
+    def test_consume_returns_false_when_expired(self) -> None:
+        """Token expirado → consume() retorna False."""
+        result = self.repo.consume(self.token.id, self.now + timedelta(hours=2))
+        self.assertFalse(result)
+
+    def test_consume_nonexistent_returns_false(self) -> None:
+        """Token inexistente → consume() retorna False."""
+        result = self.repo.consume(99999, self.now)
+        self.assertFalse(result)
+
+    def test_get_by_hash_is_thread_safe_with_consume(self) -> None:
+        """get_by_hash y consume comparten el lock; no hay corrupción de datos."""
+        token = self.repo.create(
+            user_id=2,
+            token_hash="xyz789hash",
+            created_at=self.now,
+            expires_at=self.now + timedelta(hours=1),
+        )
+        barrier = Barrier(2)
+
+        def consume_worker() -> bool:
+            barrier.wait()
+            return self.repo.consume(token.id, self.now + timedelta(minutes=5))
+
+        def get_hash_worker() -> PasswordResetToken | None:
+            barrier.wait()
+            return self.repo.get_by_hash(token.token_hash)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f1 = pool.submit(consume_worker)
+            f2 = pool.submit(get_hash_worker)
+            consume_result = f1.result()
+            get_result = f2.result()
+
+        # consume debe marcar el token existente y válido → True
+        self.assertTrue(consume_result)
+        # get_by_hash nunca pierde el documento bajo el lock compartido
+        self.assertIsNotNone(get_result)
+        self.assertIsInstance(get_result, PasswordResetToken)
+        # El estado final es consistente: el token queda consumido
+        final = self.repo.get_by_hash(token.token_hash)
+        self.assertIsNotNone(final)
+        self.assertIsNotNone(final.used_at)
+
+    def test_invalidate_for_user_marks_unused_tokens_as_used(self) -> None:
+        """invalidate_for_user() pública sella tokens no usados."""
+        self.repo.invalidate_for_user(1, self.now)
+        result = self.repo.get_by_hash("abc123hash")
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.used_at)
+
+
+class ProfileEdgeCaseTests(unittest.TestCase):
+    """Tests de casos borde en ProfileRepository.get/update.
+
+    Cubre ramas no alcanzadas por ProfileRepositoryTests:
+    - get() por doc_id normaliza errores
+    - update() retorna early cuando no hay cambios
+    - update() re-lanza ProfilePersistenceError
+    """
+
+    def setUp(self) -> None:
+        self.temp_dir = TemporaryDirectory()
+        self.db_path = Path(self.temp_dir.name) / "auth_test_profile_errors.json"
+        self.database = create_database(self.db_path)
+        self.repo = ProfileRepository(self.database)
+        self.user_repo = UserRepository(self.database)
+        # Creamos un usuario para poder crear perfiles reales
+        self.user = self.user_repo.create(
+            UserCreate(email="test@example.com", password="x"),
+            "bcrypt_hash",
+        )
+
+    def tearDown(self) -> None:
+        self.database.close()
+        self.temp_dir.cleanup()
+
+    def test_profile_get_error_is_normalized(self) -> None:
+        """get() por doc_id normaliza OSError a ProfilePersistenceError."""
+        table = mock.Mock()
+        table.get.side_effect = OSError("storage detail")
+        with mock.patch("app.auth.repository.get_profiles_table", return_value=table):
+            with self.assertRaises(ProfilePersistenceError) as context:
+                self.repo.get(1)
+        self.assertIsInstance(context.exception.__cause__, OSError)
+
+    def test_profile_update_no_changes_returns_profile(self) -> None:
+        """update() retorna el perfil sin persistir cuando no hay cambios."""
+        profile = self.repo.create(self.user.id, ProfileCreate(name="Alice"))
+        result = self.repo.update(self.user.id, ProfileUpdate())
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "Alice")
+
+    def test_profile_update_re_raises_persistence_error(self) -> None:
+        """update() re-lanza ProfilePersistenceError si get_by_user_id falló."""
+        with mock.patch.object(
+            self.repo, "get_by_user_id",
+            side_effect=ProfilePersistenceError("already broken"),
+        ):
+            with self.assertRaises(ProfilePersistenceError):
+                self.repo.update(self.user.id, ProfileUpdate(name="Bob"))
 
 
 if __name__ == "__main__":
