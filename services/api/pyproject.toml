@@ -17,6 +17,8 @@ dependencies = [
 	"libpass[bcrypt]>=1.9,<2",
 	"python-dotenv>=1.0,<2",
 	"nexova-shared",
+	"sqlmodel>=0.0.24,<0.1",
+	"psycopg[binary]>=3.2,<4",
 ]
 
 [project.optional-dependencies]

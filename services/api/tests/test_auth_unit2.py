@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from uuid import UUID
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,6 +17,7 @@ from threading import Barrier
 from unittest import mock
 
 from pydantic import ValidationError
+from tinydb.table import Document
 
 from app.auth.database import (
     create_database,
@@ -93,6 +95,27 @@ class UserModelTests(unittest.TestCase):
         user = User.from_create(1, payload, "hash")
         self.assertEqual(user.created_at.tzinfo, timezone.utc)
 
+    def test_user_from_create_generates_server_side_uuid(self) -> None:
+        payload = UserCreate(email="new@example.com", password="secret")
+        user = User.from_create(1, payload, "hash")
+        self.assertIsInstance(user.user_uuid, UUID)
+
+    def test_legacy_user_model_without_uuid_remains_readable(self) -> None:
+        legacy_record = {
+            "id": 1,
+            "email": "legacy@example.com",
+            "hashed_password": "hash",
+            "is_active": True,
+            "role": "user",
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "credentials_version": 0,
+        }
+
+        user = User.model_validate(legacy_record)
+
+        self.assertIsNone(user.user_uuid)
+        self.assertNotIn("user_uuid", legacy_record)
+
 
 class UserRepositoryTests(unittest.TestCase):
     """Tests del repositorio User con TinyDB real (archivo temporal)."""
@@ -128,6 +151,44 @@ class UserRepositoryTests(unittest.TestCase):
         self.assertIsNotNone(retrieved)
         self.assertEqual(retrieved.id, created.id)
         self.assertEqual(retrieved.email, created.email)
+
+    def test_user_uuid_is_persisted_and_stable_across_reads_and_reopen(self) -> None:
+        created = self._create_user()
+        stored = self.repo._table.get(doc_id=created.id)
+        self.assertEqual(stored["user_uuid"], str(created.user_uuid))
+
+        first_read = self.repo.get(created.id)
+        second_read = self.repo.get_by_email(created.email)
+        self.assertEqual(first_read.user_uuid, created.user_uuid)
+        self.assertEqual(second_read.user_uuid, created.user_uuid)
+
+        self.database.close()
+        self.database = create_database(self.db_path)
+        self.repo = UserRepository(self.database)
+        reopened = self.repo.get(created.id)
+        self.assertEqual(reopened.user_uuid, created.user_uuid)
+
+    def test_reading_legacy_user_does_not_backfill_uuid(self) -> None:
+        legacy_id = 75
+        legacy_record = {
+            "id": legacy_id,
+            "email": "legacy@example.com",
+            "hashed_password": "legacy-hash",
+            "is_active": True,
+            "role": "user",
+            "created_at": "2024-01-01T00:00:00+00:00",
+            "credentials_version": 0,
+        }
+        self.repo._table.insert(Document(legacy_record.copy(), doc_id=legacy_id))
+
+        first_read = self.repo.get(legacy_id)
+        second_read = self.repo.get_by_email("legacy@example.com")
+        stored_record = self.repo._table.get(doc_id=legacy_id)
+
+        self.assertIsNone(first_read.user_uuid)
+        self.assertIsNone(second_read.user_uuid)
+        self.assertNotIn("user_uuid", stored_record)
+        self.assertEqual(stored_record, legacy_record)
 
     def test_get_user_by_id_missing_returns_none(self) -> None:
         self.assertIsNone(self.repo.get(999))
