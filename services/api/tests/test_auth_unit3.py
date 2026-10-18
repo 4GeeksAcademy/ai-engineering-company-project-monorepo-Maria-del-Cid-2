@@ -23,6 +23,7 @@ os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 from jose import jwt
 from fastapi import FastAPI, Depends
 from fastapi.testclient import TestClient
+from tinydb.table import Document
 
 from app.auth.database import create_database
 from app.auth.models import User, UserCreate, UserRole
@@ -159,6 +160,11 @@ class AuthServiceTests(unittest.TestCase):
         self.assertEqual(payload.get("sub"), str(self.active_user.id))
         self.assertNotIn("email", payload)
 
+    def test_create_token_keeps_integer_id_sub_without_uuid_claim(self) -> None:
+        token_payload = decode_access_token(self.service.create_token(self.active_user))
+        self.assertEqual(token_payload["sub"], str(self.active_user.id))
+        self.assertNotIn("user_uuid", token_payload)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # get_current_user — tests con TestClient
@@ -199,6 +205,47 @@ class GetCurrentUserTests(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["email"], "alice@example.com")
         self.assertTrue(data["is_active"])
+
+    def test_existing_token_authenticates_legacy_user_without_uuid(self) -> None:
+        legacy_id = 500
+        self.repo._table.insert(
+            Document(
+                {
+                "id": legacy_id,
+                "email": "legacy@example.com",
+                "hashed_password": hash_password("legacy-password"),
+                "is_active": True,
+                "role": "user",
+                "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc).isoformat(),
+                "credentials_version": 0,
+                },
+                doc_id=legacy_id,
+            )
+        )
+        # Existing access tokens only need their established integer `sub` and
+        # credentials_version claims; the new persistent UUID is not required.
+        old_token = create_access_token(
+            data={"sub": str(legacy_id), "credentials_version": 0}
+        )
+
+        response = self.client.get("/me", headers=self._auth_header(old_token))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], legacy_id)
+        legacy_user = self.repo.get(legacy_id)
+        self.assertIsNone(legacy_user.user_uuid)
+
+    def test_user_creation_request_rejects_client_supplied_uuid(self) -> None:
+        from pydantic import ValidationError
+
+        from app.auth.schemas import UserCreateRequest
+
+        with self.assertRaises(ValidationError):
+            UserCreateRequest(
+                email="uuid-injection@example.com",
+                password="secret",
+                user_uuid="00000000-0000-0000-0000-000000000001",
+            )
 
     # ── Usuario inexistente ─────────────────────────────────────────────
 

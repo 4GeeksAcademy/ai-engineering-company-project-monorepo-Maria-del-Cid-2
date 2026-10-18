@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -64,6 +65,9 @@ class User(BaseModel):
     role: UserRole = UserRole.USER
     created_at: datetime
     credentials_version: int = Field(default=0, ge=0)
+    # None permite leer documentos TinyDB antiguos. Los usuarios nuevos reciben
+    # UUID explícitamente en from_create; no se genera al parsear registros.
+    user_uuid: UUID | None = None
 
     @classmethod
     def from_create(
@@ -97,6 +101,7 @@ class User(BaseModel):
             is_active=is_active,
             role=role,
             created_at=datetime.now(timezone.utc),
+            user_uuid=uuid4(),
         )
 
 

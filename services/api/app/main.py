@@ -18,6 +18,7 @@ from .incidents.csv_reader import CsvReadError, read_incidents_csv
 from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
 from .incidents.manager_router import router as incident_manager_router
+from .inventory.router import router as inventory_router
 from .suppliers.router import router as suppliers_router
 from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
@@ -73,6 +74,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(suppliers_router)
+app.include_router(inventory_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)

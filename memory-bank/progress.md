@@ -1,5 +1,128 @@
 # Progress — Nexova
 
+### Gestión de inventario — cierre de `feature/inventory-orm-dual-database`
+
+Estado final documentado de la funcionalidad de inventario ORM con doble base
+de datos. `services/api/app/inventory/seed.py` es un comando manual, no forma
+parte del startup. Requiere `--environment development|test`, un `DATABASE_URL`
+que pase el guard del entorno/destino y `NEXOVA_INVENTORY_SEED_USER_EMAIL` que
+resuelva una cuenta única y activa con `user_uuid` válido ya persistido en la
+TinyDB elegida por `AUTH_DB_PATH` o su ruta por defecto. La resolución abre
+TinyDB en solo lectura mediante `app.auth.database.get_database_path()`; no
+genera UUID, no usa el ID de documento y no imprime PII ni URL.
+
+La persistencia se mantiene separada: TinyDB contiene auth y otros dominios
+existentes; PostgreSQL/Supabase es el almacén de inventario. Los modelos
+SQLModel son `Asset`, `AssetEntry`, `AssetExit`; el stock se calcula como suma
+de entradas menos salidas y no se persiste. El seed carga 6 activos, 4 entradas
+y 3 salidas. La comprobación final fue reportada por el usuario: el seed se
+ejecutó correctamente en Supabase y `GET /api/inventory/products` devolvió los
+seis productos con `current_stock`. No se repitió la carga en este cierre.
+
+El guard solo permite Supabase para el destino de desarrollo explícitamente
+autorizado por código; contempla el nombre estándar `postgres` y rechaza
+Supabase para tests. Otros destinos PostgreSQL/SQLite deben identificar el
+entorno mediante sufijo y SQLite en memoria se limita a `test`. El seed solo
+inserta, aborta ante conflicto/stock negativo, deduplica por identidad natural
+incluido el UUID y usa advisory transaction lock en PostgreSQL. Mantener estas
+barreras; nunca usar Supabase como DB de pruebas.
+
+Verificación final desde `services/api`: `uv run pytest` → **374 passed, 0
+failed, 1 skipped**. El skip corresponde a la prueba opcional de concurrencia
+PostgreSQL; SQLite no prueba `FOR UPDATE`, advisory locks o aislamiento real de
+PostgreSQL. No se modificó código durante la validación final.
+
+**Advertencia a futuros agentes:** antes de cambiar TinyDB o ejecutar cualquier
+seed, consultar `memory-bank/techContext.md`, `memory-bank/progress.md` y la
+documentación específica; comprobar las rutas efectivas y variables reales del
+proceso, y preservar datos existentes. No crear endpoints temporales, editar
+registros directamente ni desactivar las protecciones si existe un flujo
+normal, autorizado y seguro. No leer, copiar o registrar secretos, UUID reales
+ni emails personales en documentación.
+
+Documentación de aprendizaje: `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+Hechos verificados en código y tests se distinguen allí de la carga remota y la
+comprobación API confirmadas por el usuario. Quedan pendientes la prueba real
+de concurrencia PostgreSQL en una DB desechable, las migraciones/aprovisionamiento
+formal y decisiones funcionales sobre stock por oficina/filtros/paginación y
+un eventual backfill aprobado para usuarios históricos sin UUID.
+
+### Gestión de inventario — Fase 6: integración y regresión
+
+Revisada la integración del router `/api/inventory` con `main.py`, sesiones
+SQLModel, auth TinyDB/JWT, UUID legacy, schemas, modelos, consultas y escrituras.
+Confirmados los seis endpoints (listado/detalle de productos, orders
+discriminadas `entry | exit`, creación de producto, inbound y outbound), el
+stock derivado y respuestas de error esperadas. La suite completa de backend
+se ejecutó desde `services/api` con `uv` y bases TinyDB temporales:
+`uv run pytest tests -q --tb=short` → **358 passed, 1 skipped, 49 subtests
+passed**. El skip es el test de concurrencia PostgreSQL; no se configuró ni
+usó una base PostgreSQL. No se encontraron regresiones en esta ejecución.
+
+SQLite verificó flujo HTTP, autenticación, validación, stock y rollback; no
+certifica `FOR UPDATE`, `READ COMMITTED` ni concurrencia PostgreSQL. El usuario
+antiguo sin UUID conserva JWT/lecturas y recibe 428 para escrituras de
+movimientos, sin mutación. `git diff --check` pasó. No se leyó `.env`, no se
+accedió a Supabase/BD real ni se ejecutaron seeds o migraciones.
+
+### Gestión de inventario — Fase 5: escrituras y operaciones
+
+Implementados `POST /api/inventory/products`, `/orders/inbound` y
+`/orders/outbound`, con schemas estrictos, responses HTTP tipadas, controles de
+integridad y transacciones SQLModel. El stock sigue derivado de movimientos.
+Las salidas rechazan stock insuficiente con 400. En PostgreSQL se bloquea la
+fila del activo con `SELECT FOR UPDATE` antes de calcular disponibilidad, para
+serializar salidas del mismo activo sin mantener un contador redundante.
+
+Los movimientos se atribuyen al `user_uuid` del contexto JWT; nunca se acepta
+del payload. Usuarios históricos sin UUID pueden leer y crear productos, pero
+reciben 428 al intentar escribir movimientos. No hay backfill implícito. La
+prueba PostgreSQL concurrente está implementada pero opcional; SQLite no
+certifica `FOR UPDATE`.
+
+Verificación desde `services/api`: `uv run pytest tests/test_inventory_api.py
+tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short`:
+**24 passed, 1 skipped, 16 subtests passed**. El único skip es la prueba real de
+concurrencia, por no haber URL a una base PostgreSQL de test. Se documentan los
+detalles y límites en `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+No se accedió a Supabase ni a `.env`; no se ejecutaron migraciones, commits o
+pushes.
+
+### Gestión de inventario — Fase 4: consultas y endpoints de lectura
+
+Implementados `GET /api/inventory/products`, `GET
+/api/inventory/products/{asset_id}` y `GET /api/inventory/orders`, todos
+protegidos por `get_current_user` sin nuevos roles. El stock se calcula como
+entradas menos salidas: las sumas se agrupan por activo antes del join para
+evitar multiplicar cantidades cuando hay varios movimientos de ambos tipos.
+Orders combina movimientos en respuesta discriminada `type: entry|exit` y
+conserva `supplier` o `exit_type`/`assigned_to` según corresponda.
+
+Las pruebas HTTP usan SQLite temporal y sustituyen tanto la sesión como el
+usuario; cubren stock con varios movimientos, cero sin movimientos, lista y
+detalle, 404, discriminadores y 401. Verificación conjunta con modelos e
+infraestructura: `uv run pytest tests/test_inventory_api.py
+tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short`
+desde `services/api`: **15 passed, 8 subtests passed**. Filtros y paginación no se implementaron
+porque siguen sin contrato. El stock se agrega globalmente por activo, sin
+desglose por oficina; confirmar si se necesita stock por oficina. No se conectó
+a PostgreSQL/Supabase, no se leyó `.env` y no se instalaron dependencias.
+
+### Gestión de inventario — Fase 3: modelos y esquemas
+
+Añadidos los modelos SQLModel `Asset`, `AssetEntry` y `AssetExit`, con SKU
+único, FK y relaciones, timestamps UTC, UUID obligatorio en movimientos,
+cantidades positivas y reglas de tipo de salida/asignación. Los schemas HTTP
+separan creación y respuesta; `current_stock` está únicamente en una respuesta
+que recibirá el valor calculado en una fase posterior. No se añadieron rutas,
+repositorios, lógica operativa de stock, seeds ni migraciones.
+
+Verificación: tests de modelos y de infraestructura **11 passed, 5 subtests
+passed**, usando SQLite temporal. No se conectó a PostgreSQL/Supabase, no se
+leyó `.env` ni se alteraron datos reales. El enunciado disponible no resuelve
+si `quantity` debe ser entero o decimal; se dejó como `float` provisional y la
+duda quedó documentada en `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+
 ### Gestor centralizado de incidencias — carga histórica desde CSV
 
 Corregido `scripts/seed_incidents.py` para validar los conteos de calidad sobre

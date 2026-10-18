@@ -452,3 +452,97 @@ se monta en cliente después del placeholder inicial. La causa exacta de las
 mutaciones de DOM observadas anteriormente no quedó demostrada; no atribuirla a
 LastPass u otra extensión sin reproducción. Tests/build tampoco sustituyen la
 comprobación manual del login y registro en Chrome.
+
+## 22. Inventario ORM con persistencia dual — estado final
+
+### Hechos comprobados en código
+
+- Rama trabajada: `feature/inventory-orm-dual-database`. Contexto de aprendizaje
+  detallado: `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+- Auth continúa en TinyDB; `app.auth.database.get_database_path()` selecciona
+  `AUTH_DB_PATH` o, si no está definida, `services/data/auth.json`. Inventario
+  usa SQLModel/SQLAlchemy síncrono y PostgreSQL mediante `DATABASE_URL`, aislado
+  en `services/api/app/inventory/database.py`. `get_engine()` es perezoso y
+  `get_session()` cierra la sesión por solicitud. No hay transacción distribuida
+  entre TinyDB y PostgreSQL.
+- ORM: `Asset` (tabla `assets`) tiene relaciones a `AssetEntry` y `AssetExit`
+  (tablas `asset_entries` y `asset_exits`) por FK `asset_id`. SKU es único;
+  cantidades son positivas; salidas limitan `exit_type` a `allocation` o
+  `consumption` y aplican la regla de `assigned_to`. `Asset` no almacena stock.
+- `queries.py` deriva `current_stock` como total de `AssetEntry.quantity` menos
+  total de `AssetExit.quantity`, con agregados separados por activo para evitar
+  multiplicar filas. Activos sin movimientos parten de cero. El saldo es global
+  por activo, no por oficina. El router de `app/main.py` tiene prefijo
+  `/api/inventory`; `GET /api/inventory/products` devuelve productos con
+  `current_stock`. Las rutas de inventario requieren JWT.
+- `operations.py` usa transacciones; la salida insuficiente se rechaza. En
+  PostgreSQL, outbound bloquea la fila de activo con `SELECT FOR UPDATE` y usa
+  `READ COMMITTED` para recalcular stock después del lock. SQLite no valida esa
+  concurrencia.
+- Seed manual: `services/api/app/inventory/seed.py`, no forma parte del startup.
+  Requiere el argumento `--environment development|test`, `DATABASE_URL` que
+  pase los guardas de entorno/destino, y `NEXOVA_INVENTORY_SEED_USER_EMAIL`.
+  El email se usa localmente para resolver una única cuenta activa con
+  `user_uuid` válido ya persistido en la tabla `users` de TinyDB. La lectura usa
+  `get_database_path()` en modo solo lectura. No se genera UUID, no se acepta
+  el ID del documento TinyDB como identidad y el comando no imprime UUID, email,
+  URL ni credenciales.
+- Los UUID se asignan en servidor a usuarios nuevos y se persisten en TinyDB;
+  registros legacy pueden carecer del campo. JWT sigue basado en el ID entero
+  (`sub`). La API no devuelve `user_uuid` en el response público de usuario.
+  No existe FK entre usuarios TinyDB y movimientos PostgreSQL. Una cuenta
+  legacy sin UUID puede seguir autenticándose/leyendo, pero no puede escribir
+  movimientos (428); no hay backfill automático.
+- Dataset del seed: 6 activos, 4 entradas y 3 salidas. El seed solo inserta,
+  exige coincidencia completa para reutilizar SKU, evita movimientos naturales
+  duplicados para el mismo UUID, rechaza saldo negativo y usa un advisory
+  transaction lock en PostgreSQL. La sesión debe estar limpia antes de entrar
+  en la operación.
+
+### Decisiones y convenciones que deben preservarse
+
+- Mantener auth y dominios TinyDB independientes de inventario PostgreSQL; no
+	mover datos ni intentar simular atomicidad entre bases.
+- Al localizar TinyDB de auth, usar `get_database_path()` y verificar el
+	entorno/ruta real del proceso. No suponer que el servidor API y la CLI usan
+	la misma base si arrancaron con variables distintas.
+- El destino del seed debe seguir restringido: Supabase solo se admite en
+	desarrollo para el proyecto de desarrollo autorizado en el código y la DB
+	estándar `postgres`; se rechaza como destino de tests. Otros nombres de DB y
+	archivos SQLite deben identificar explícitamente el entorno con `_dev` o
+	`_test`; SQLite en memoria es solo para test. Nunca usar la URL de desarrollo
+	como base de pruebas.
+- Variables relevantes (nombres únicamente; no registrar sus valores):
+  `DATABASE_URL`, `NEXOVA_INVENTORY_SEED_USER_EMAIL`, `AUTH_DB_PATH`,
+  `NEXOVA_INVENTORY_TEST_POSTGRES_URL` (optativa para concurrencia PostgreSQL,
+  solo con una base desechable cuyo nombre termine en `_test`), y `SECRET_KEY`
+  para la configuración de auth.
+- La CLI no carga `.env` automáticamente. En un entorno local se ha verificado
+  la forma `uv run --env-file .env python -m app.inventory.seed
+  --environment development` desde `services/api`, con la variable de email
+  definida localmente. No se debe almacenar el email de prueba ni incluir
+  secretos o valores de configuración en logs/docs.
+- Para arrancar la API desde `services/api`, el README documenta
+  `uvicorn app.main:app --reload`; Swagger está disponible en `/docs`. Para la
+  suite backend completa, desde `services/api`: `uv run pytest`.
+- Antes de modificar TinyDB o ejecutar un seed, leer este contexto, `progress.md`
+  y la documentación específica; confirmar código, rutas y variables reales y
+  preservar datos. No crear endpoints temporales, modificar registros
+  directamente ni desactivar guardas si existe una vía normal, autorizada y
+  segura.
+
+### Estado final, verificación y límites
+
+- Resultado verificado de la suite backend completa desde `services/api`:
+  `uv run pytest` → **374 aprobados, 0 fallidos, 1 omitido**. El omitido es la
+  prueba opcional de concurrencia PostgreSQL. Los tests usan almacenamiento
+  aislado; no se empleó Supabase como DB de pruebas.
+- La ejecución de seed en Supabase con 6 activos, 4 entradas y 3 salidas, y la
+  respuesta de `GET /api/inventory/products` con los seis productos y
+  `current_stock`, fueron confirmadas por el usuario. No se volvió a ejecutar
+  seed ni se accedió a Supabase durante el cierre documental.
+- Pendiente: ejecutar concurrencia en PostgreSQL desechable usando
+  `NEXOVA_INVENTORY_TEST_POSTGRES_URL`; definir/aprovisionar migraciones formales;
+  decidir si se requiere saldo por oficina, filtros/paginación y una estrategia
+  aprobada para usuarios históricos sin UUID. El resultado de pytest y la
+  confirmación del usuario no sustituyen dichas comprobaciones pendientes.
