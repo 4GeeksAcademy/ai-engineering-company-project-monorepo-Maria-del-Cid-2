@@ -1,5 +1,28 @@
 # Progress — Nexova
 
+### Gestión de inventario — Fase 5: escrituras y operaciones
+
+Implementados `POST /api/inventory/products`, `/orders/inbound` y
+`/orders/outbound`, con schemas estrictos, responses HTTP tipadas, controles de
+integridad y transacciones SQLModel. El stock sigue derivado de movimientos.
+Las salidas rechazan stock insuficiente con 400. En PostgreSQL se bloquea la
+fila del activo con `SELECT FOR UPDATE` antes de calcular disponibilidad, para
+serializar salidas del mismo activo sin mantener un contador redundante.
+
+Los movimientos se atribuyen al `user_uuid` del contexto JWT; nunca se acepta
+del payload. Usuarios históricos sin UUID pueden leer y crear productos, pero
+reciben 428 al intentar escribir movimientos. No hay backfill implícito. La
+prueba PostgreSQL concurrente está implementada pero opcional; SQLite no
+certifica `FOR UPDATE`.
+
+Verificación desde `services/api`: `uv run pytest tests/test_inventory_api.py
+tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short`:
+**24 passed, 1 skipped, 16 subtests passed**. El único skip es la prueba real de
+concurrencia, por no haber URL a una base PostgreSQL de test. Se documentan los
+detalles y límites en `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+No se accedió a Supabase ni a `.env`; no se ejecutaron migraciones, commits o
+pushes.
+
 ### Gestión de inventario — Fase 4: consultas y endpoints de lectura
 
 Implementados `GET /api/inventory/products`, `GET
