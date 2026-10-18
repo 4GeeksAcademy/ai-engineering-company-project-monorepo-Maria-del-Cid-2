@@ -1,5 +1,28 @@
 # Progress — Nexova
 
+### Gestión de inventario — Fase 7: seed de desarrollo seguro
+
+Añadido `services/api/app/inventory/seed.py` como comando manual, no conectado
+al startup. Requiere un marcador explícito `development`/`test`, nombre de DB
+con sufijo de entorno, UUID suministrado del usuario y URL de `DATABASE_URL`;
+realiza validaciones antes de pedir el engine y no lee `.env`. No incluye URL o
+credenciales en salida. El dataset tiene seis activos, cuatro entradas y tres
+salidas; saldos netos base esperados: 10, 10, 7, 0, 0 y 0.
+
+El seed solo inserta: reutiliza activos únicamente si coinciden todos sus
+campos, omite movimientos con identidad natural exacta para el mismo UUID,
+aborta ante conflicto o saldo negativo y usa lock transaccional advisory en
+PostgreSQL. Requiere una sesión sin transacción abierta. Tests aislados cubren
+dataset, destino, UUID, idempotencia, no mutación y rollback. Verificación
+focalizada: **20 passed, 13 subtests passed**. Suite backend completa con
+`SECRET_KEY` de prueba y `PYTHON_DOTENV_DISABLED=1`: **367 passed, 1 skipped,
+57 subtests passed**; el skip es concurrencia PostgreSQL opcional. SQLite no
+verifica locks PostgreSQL.
+
+No se ejecutó el seed, no se leyó `.env`, no hubo acceso a bases externas ni
+migraciones. Documentación ampliada en
+`docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+
 ### Gestión de inventario — Fase 6: integración y regresión
 
 Revisada la integración del router `/api/inventory` con `main.py`, sesiones
