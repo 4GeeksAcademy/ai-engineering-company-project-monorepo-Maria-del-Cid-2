@@ -2,7 +2,7 @@
 
 ## Estado de esta fase
 
-Este documento registra la evolución de la gestión de inventario. La Fase 3 implementó modelos SQLModel y contratos de validación HTTP; la Fase 4 añadió consultas y endpoints de lectura; la Fase 5 añade escrituras transaccionales de productos y movimientos. No se ejecutan seeds ni migraciones.
+Este documento registra la evolución de la gestión de inventario. La Fase 3 implementó modelos SQLModel y contratos de validación HTTP; la Fase 4 añadió consultas y endpoints de lectura; la Fase 5 añadió escrituras transaccionales de productos y movimientos; la Fase 6 verificó su integración y regresión backend. No se ejecutan seeds ni migraciones.
 
 ### Hechos observados e infraestructura implementada
 
@@ -123,6 +123,19 @@ Para evitar la carrera en dos salidas concurrentes, en PostgreSQL se bloquea la 
 Una cuenta antigua válida para JWT puede carecer de `user_uuid`. Se decidió bloquear solo las escrituras de movimientos con 428, sin backfill ni generación automática en petición. La creación de productos no requiere atribución de movimiento y permanece permitida. La integración de auth actual conserva el ID entero/JWT y no se modifica.
 
 Cobertura añadida a `services/api/tests/test_inventory_api.py`: creación válida/inválida y SKU duplicado; entradas/salidas y stock derivado; salida insuficiente y FK inexistente sin persistencia; tipos de salida/asignado y cantidad inválidos; cliente intentando fijar UUID; usuario legacy sin UUID; integridad y rollback de inserción inducido con trigger SQLite; compilación SQL de la cláusula PostgreSQL `FOR UPDATE`. Prueba opcional de concurrencia real: se habilita solo con `NEXOVA_INVENTORY_TEST_POSTGRES_URL` a una base de test cuyo nombre termine `_test`; genera un schema temporal privado, compite dos salidas de 7 sobre stock 10 y verifica que solo una confirma, luego elimina ese schema. No se ejecutó porque no se configuró ni se accedió a una base PostgreSQL.
+
+## Fase 6 — integración y pruebas de regresión
+
+Se revisó el registro del router en `app/main.py`, la sesión SQLModel perezosa, los schemas y modelos, las consultas, las rutas y su dependencia JWT. Los endpoints efectivos están bajo `/api/inventory`: `GET /products`, `GET /products/{asset_id}`, `GET /orders`, `POST /products`, `POST /orders/inbound` y `POST /orders/outbound`. Se conserva la unión discriminada de movimientos `entry | exit`, el stock derivado y la identidad JWT basada en el ID entero TinyDB. El usuario antiguo sin UUID sigue autenticándose y leyendo; las escrituras de movimientos responden 428 sin mutar ni generar UUID.
+
+Verificación de regresión desde `services/api`, con `PYTHON_DOTENV_DISABLED=1`, `SECRET_KEY` de prueba y bases TinyDB temporales para auth, proveedores e incidencias:
+
+```text
+uv run pytest tests -q --tb=short
+358 passed, 1 skipped, 49 subtests passed
+```
+
+El único skip corresponde a la prueba de concurrencia PostgreSQL opcional: necesita `NEXOVA_INVENTORY_TEST_POSTGRES_URL` que apunte a una base desechable cuyo nombre termine en `_test`; no se configuró ni se conectó a ninguna base PostgreSQL. La suite valida en SQLite flujos HTTP, validación, autenticación, recursos inexistentes, conflictos, stock derivado y rollback, pero no la semántica real de bloqueo/aislamiento de PostgreSQL. No se encontró ni corrigió una regresión en la suite ejecutada. `git diff --check` pasó. No se cargó `.env`, ni se accedió a Supabase, ejecutaron seeds/migraciones o alteraron datos persistentes.
 
 ## Secuencia sugerida para fases futuras
 

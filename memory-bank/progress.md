@@ -1,5 +1,23 @@
 # Progress — Nexova
 
+### Gestión de inventario — Fase 6: integración y regresión
+
+Revisada la integración del router `/api/inventory` con `main.py`, sesiones
+SQLModel, auth TinyDB/JWT, UUID legacy, schemas, modelos, consultas y escrituras.
+Confirmados los seis endpoints (listado/detalle de productos, orders
+discriminadas `entry | exit`, creación de producto, inbound y outbound), el
+stock derivado y respuestas de error esperadas. La suite completa de backend
+se ejecutó desde `services/api` con `uv` y bases TinyDB temporales:
+`uv run pytest tests -q --tb=short` → **358 passed, 1 skipped, 49 subtests
+passed**. El skip es el test de concurrencia PostgreSQL; no se configuró ni
+usó una base PostgreSQL. No se encontraron regresiones en esta ejecución.
+
+SQLite verificó flujo HTTP, autenticación, validación, stock y rollback; no
+certifica `FOR UPDATE`, `READ COMMITTED` ni concurrencia PostgreSQL. El usuario
+antiguo sin UUID conserva JWT/lecturas y recibe 428 para escrituras de
+movimientos, sin mutación. `git diff --check` pasó. No se leyó `.env`, no se
+accedió a Supabase/BD real ni se ejecutaron seeds o migraciones.
+
 ### Gestión de inventario — Fase 5: escrituras y operaciones
 
 Implementados `POST /api/inventory/products`, `/orders/inbound` y
