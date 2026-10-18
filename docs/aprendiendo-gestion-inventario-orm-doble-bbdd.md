@@ -2,7 +2,7 @@
 
 ## Estado de esta fase
 
-Este documento recoge la investigación y las decisiones necesarias para preparar una futura gestión de inventario. **No implica que el dominio de inventario esté implementado.** En esta fase no se han añadido modelos, routers, movimientos, cálculo de stock, semillas ni migraciones.
+Este documento registra la evolución de la gestión de inventario. La Fase 3 implementó modelos SQLModel y contratos de validación HTTP; la Fase 4 añade consultas y endpoints de lectura autenticados. No añade escrituras HTTP, semillas ni migraciones.
 
 ### Hechos observados e infraestructura implementada
 
@@ -12,22 +12,25 @@ Este documento recoge la investigación y las decisiones necesarias para prepara
 - Los usuarios creados desde esta fase reciben un `user_uuid` generado en el servidor y persistido junto al usuario. El campo es opcional al parsear: documentos históricos sin él siguen siendo legibles y autenticables; su lectura no asigna ni persiste un UUID.
 - `services/api/pyproject.toml` declara SQLModel (`sqlmodel>=0.0.24,<0.1`) y psycopg (`psycopg[binary]>=3.2,<4`); `uv.lock` fija las versiones resueltas. El entorno `uv` del servicio se usa para ejecutar el backend.
 - `services/api/app/inventory/database.py` contiene la configuración aislada. Lee `DATABASE_URL` al solicitar el engine, crea el engine de forma perezosa y proporciona `get_session` con cierre garantizado. La importación del módulo no lee configuración ni crea engine; crear el engine tampoco abre por sí solo una conexión.
-- No hay modelos ni router de inventario registrado. `main.py` no se ha conectado a PostgreSQL ni se han alterado el contrato JWT, el ID entero de usuario o los flujos de autenticación. La adición no disruptiva del UUID persistido para usuarios nuevos se describe en la sección de identidad.
-- Las rutas actuales de la API incluyen el prefijo `/api`; esto no determina por sí solo el prefijo final del futuro módulo de inventario.
+- `services/api/app/inventory/models.py` define `Asset`, `AssetEntry` y `AssetExit` con relaciones ORM, FK a assets y restricciones de SKU único, cantidades positivas y coherencia `exit_type`/`assigned_to`. `Asset` no persiste `current_stock`.
+- `services/api/app/inventory/schemas.py` separa requests y responses. `current_stock` aparece solo en `AssetWithStockResponse`, calculado por consulta y no persistido. `user_uuid` se omite de los schemas de creación y se tipa como UUID en respuestas. Orders usa una unión discriminada por `type`: `entry` o `exit`.
+- `services/api/app/inventory/queries.py` calcula sumas de entradas y salidas de forma independiente por `asset_id` antes de unirlas a activos, y expone una lista unificada de movimientos sin combinar modelos de movimiento entre sí.
+- `services/api/app/inventory/router.py` registra `GET /api/inventory/products`, `GET /api/inventory/products/{asset_id}` y `GET /api/inventory/orders`. Todas las rutas requieren `get_current_user`; no se añadieron roles específicos. El detalle inexistente responde 404.
+- `main.py` registra el router. Se conserva el prefijo `/api` y el contrato JWT existente; la app no se conecta a PostgreSQL durante import o startup.
 
 ### Supuestos de trabajo, no decisiones aprobadas
 
 - La propuesta considerada es mantener las persistencias actuales y añadir PostgreSQL como almacén independiente para inventario.
-- SQLModel proporciona la futura capa de modelos y las sesiones síncronas sobre SQLAlchemy; esta fase solo implementa engine/sesión y no declara modelos.
+- SQLModel proporciona los modelos y las sesiones síncronas sobre SQLAlchemy. Los endpoints de lectura ya usan la sesión de inventario mediante una dependencia; el engine sigue siendo perezoso y no se conecta al iniciar la app.
 - PostgreSQL será el destino de producción; SQLite podría servir para pruebas rápidas de la capa ORM, no para certificar propiedades específicas de PostgreSQL.
 
 ### Decisiones abiertas
 
-1. **Identidad y propiedad de datos:** `user_uuid` ya existe para nuevos usuarios como identificador persistente adicional, pero no sustituye al ID entero ni al `sub`. Los usuarios antiguos pueden continuar sin UUID. La asignación a los existentes requiere una operación explícita, idempotente y aprobada por separado; no hay backfill automático ni asociación de inventario implementada.
-2. **Prefijo HTTP:** decidir entre `/api/inventory/...` y `/inventory/...`. La convención actual `/api` es un antecedente, no una aprobación del nuevo contrato.
+1. **Identidad y propiedad de datos:** `user_uuid` ya existe para nuevos usuarios como identificador persistente adicional, pero no sustituye al ID entero ni al `sub`. Los usuarios antiguos pueden continuar sin UUID. La asignación a los existentes requiere una operación explícita, idempotente y aprobada por separado; no hay backfill automático. Las lecturas de inventario exigen JWT, pero no filtran recursos por usuario.
+2. **Contrato de lectura pendiente:** filtros, orden configurable y paginación no están definidos y por ello no se exponen todavía. El listado de productos no filtra por oficina: el stock se calcula globalmente agregando todos los movimientos del activo. Hay que confirmar si el dominio requiere stock por oficina antes de ofrecer esa vista; los campos `office` de movimientos no se aplican al cálculo global. `GET /inventory/orders` representa una unión discriminada de entradas y salidas (`type: entry | exit`), no una entidad de orden independiente.
 3. **Dependencias:** las dependencias están declaradas y resueltas en el lock del servicio API. No se añadió Alembic ni otra herramienta de migraciones.
 4. **Configuración y operación:** se eligió `DATABASE_URL` como nombre de configuración del backend. El aprovisionamiento PostgreSQL, los detalles de secretos en despliegue, migraciones y parámetros operativos continúan pendientes.
-5. **Dominio:** acordar reglas de activos, entradas, salidas, cantidades, permisos, auditoría y consistencia antes de diseñar el esquema.
+5. **Dominio:** acordar reglas pendientes de entradas/escrituras, cantidades, permisos, auditoría y consistencia antes de implementar operaciones. Las lecturas actuales están protegidas por autenticación, sin autorización por rol.
 
 ## ¿Qué significa mantener dos bases de datos?
 
@@ -37,7 +40,7 @@ La configuración y ciclo de vida de la conexión PostgreSQL deben quedar encaps
 
 ## ORM, engine, sesión y transacción
 
-- **Modelo ORM:** clase Python que describe una tabla y convierte objetos en operaciones SQL. Un modelo de SQLModel destinado a persistencia suele declarar `table=True`; todavía no se definen aquí tablas de inventario.
+- **Modelo ORM:** clase Python que describe una tabla y convierte objetos en operaciones SQL. Los modelos de inventario declaran `table=True`; todavía no se han creado tablas mediante migración ni en una base de datos.
 - **Engine:** configuración y punto de acceso al pool de conexiones. Crear el objeto engine no debería ejecutar consultas por sí solo; una conexión real se usa cuando se abre una conexión o sesión y se ejecuta SQL.
 - **Session:** unidad de trabajo que agrupa lectura y escritura ORM. En FastAPI es habitual proporcionar una sesión por solicitud mediante una dependencia con `yield` y cerrarla en un bloque `finally`.
 - **Transacción:** conjunto de operaciones confirmado o revertido conjuntamente **dentro de una misma base de datos**. Debe hacerse `commit` solo cuando la operación de dominio esté lista; ante un error se hace rollback y se propaga una respuesta de error apropiada. Cerrar una sesión no equivale a confirmar una transacción.
@@ -51,7 +54,9 @@ Antes de habilitar la base real, habrá que confirmar TLS/red, credenciales de m
 
 ## Pruebas aisladas y límites de SQLite
 
-`services/api/tests/test_inventory_database.py` verifica la ausencia de configuración, la creación perezosa y cacheada del engine con SQLite temporal, y el cierre de sesión en terminación normal y al propagarse una excepción. La ruta SQLite temporal y su engine se eliminan/disponen al finalizar cada prueba. Las pruebas no abren conexiones externas ni leen `.env`; no se añadió una prueba de router porque aún no hay endpoints.
+`services/api/tests/test_inventory_database.py` verifica la ausencia de configuración, la creación perezosa y cacheada del engine con SQLite temporal, y el cierre de sesión en terminación normal y al propagarse una excepción. `services/api/tests/test_inventory_models.py` valida schemas, UUID, relaciones ORM y restricciones SQL. `services/api/tests/test_inventory_api.py` sustituye `get_session` por SQLite temporal y la identidad autenticada por una identidad de prueba; cubre listados, detalle, 404, cálculo con múltiples entradas y salidas, activo sin movimientos, unión discriminada de orders y que las tres rutas requieren autenticación. Las pruebas no abren conexiones externas ni leen `.env`.
+
+El cálculo agregado de stock no aplica partición por oficina: entradas menos salidas de todas las oficinas asociadas al activo. Filtros, paginación y orden configurable permanecen fuera del contrato hasta recibir definición funcional. No se fija un rol específico para consultar: basta con un JWT válido, según el patrón de las rutas protegidas existentes. SQLite comprueba la lógica SQL básica, pero no certifica comportamiento PostgreSQL ni concurrencia.
 
 SQLite puede comprobar parte del mapeo SQL y el ciclo básico de sesión, pero **no valida PostgreSQL**. En particular, no demuestra la semántica de bloqueo concurrente (`SELECT ... FOR UPDATE`), aislamiento, niveles de transacción, restricciones/tipos específicos, concurrencia entre workers ni comportamiento del pool PostgreSQL. Esas propiedades necesitarán pruebas de integración contra una instancia PostgreSQL desechable y aislada, en una fase autorizada posterior; no se usa ni se contacta una base real en esta fase.
 
@@ -59,23 +64,51 @@ SQLite puede comprobar parte del mapeo SQL y el ciclo básico de sesión, pero *
 
 El campo `user_uuid` se genera con UUID aleatorio en el servidor al crear un usuario nuevo y se almacena en el documento TinyDB. La API de creación no acepta el campo del cliente. La lectura de documentos antiguos acepta la ausencia del campo y devuelve internamente `user_uuid=None`; no modifica TinyDB ni crea un valor distinto en cada lectura. Esto preserva los JWT existentes: `sub` sigue conteniendo el ID entero en texto y la autenticación no requiere UUID ni añade un claim UUID. Los roles y la comprobación de `credentials_version` permanecen sin cambios.
 
-No se ha ejecutado backfill. Los usuarios históricos **no tienen necesariamente UUID**. Para asignar uno a esos registros hace falta definir y aprobar una operación explícita, idempotente, con validación de unicidad y estrategia de recuperación. Hasta entonces, consumidores futuros deben tratar el UUID como opcional para usuarios preexistentes. No se implementaron modelos/endpoints de inventario ni se expuso `user_uuid` en las respuestas HTTP actuales.
+No se ha ejecutado backfill. Los usuarios históricos **no tienen necesariamente UUID**. Para asignar uno a esos registros hace falta definir y aprobar una operación explícita, idempotente, con validación de unicidad y estrategia de recuperación. Hasta entonces, consumidores futuros deben tratar el UUID como opcional para usuarios preexistentes. Los endpoints de lectura de inventario no exponen el UUID de usuarios ni lo usan como filtro de propiedad.
 
 Archivos de auth modificados y cobertura: `services/api/app/auth/models.py`, `services/api/tests/test_auth_unit2.py` y `services/api/tests/test_auth_unit3.py`. Las pruebas verifican generación, persistencia/estabilidad al releer, lectura de un registro legacy sin mutación, rechazo de UUID en el payload cliente, conservación de `sub` y autenticación con token existente sin claim UUID.
 
-## Resultado de la fase de infraestructura
+## Resultado de la fase de infraestructura y modelos
 
-Archivos añadidos para la fase:
+Archivos añadidos durante la preparación y la Fase 3:
 
 - `services/api/app/inventory/__init__.py`
 - `services/api/app/inventory/database.py`
 - `services/api/tests/test_inventory_database.py`
+- `services/api/app/inventory/models.py`
+- `services/api/app/inventory/schemas.py`
+- `services/api/tests/test_inventory_models.py`
 
-La función `clear_engine_cache()` permite disponer el engine cacheado y limpiar la caché en pruebas o en una integración futura controlada. No se conecta a una base durante import o startup. La validación de esta fase se limita a los tests focalizados ejecutados con `uv` desde `services/api`; no es una certificación de PostgreSQL ni habilita todavía escrituras de inventario.
+La función `clear_engine_cache()` permite disponer el engine cacheado y limpiar la caché en pruebas o en una integración futura controlada. No se conecta a una base durante import o startup. `uv run pytest tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short` dio **11 passed, 5 subtests passed**. Los tests usan una base SQLite temporal; no son una certificación de PostgreSQL ni habilitan escrituras de inventario. No se ejecutaron migraciones, no se crearon tablas en Supabase ni se leyó `.env`.
+
+### Decisiones y dudas que quedan explícitas
+
+- `quantity` se representa como `float`, ya que el enunciado recibido exige que sea positiva pero no aclara si los activos se cuentan en unidades enteras o admiten fracciones. El schema y la base exigen `> 0`; confirmar el tipo de negocio antes de diseñar movimientos/endpoints.
+- `category`, `office`, `name`, `sku` y `supplier` son textos requeridos sin vocabularios cerrados ni reglas adicionales de normalización; no se inventaron catálogos o límites de longitud.
+- `exit_type` está restringido en HTTP y base de datos a `allocation`/`consumption`. La base también exige `assigned_to` no nulo para `allocation` y nulo para `consumption`.
+- Los UUID de los movimientos son campos requeridos y tipados, sin default/generación en PostgreSQL. En operaciones futuras deben obtenerse del usuario autenticado. El backfill de cuentas antiguas sin UUID sigue pendiente de aprobación independiente.
+- El timestamp predeterminado es UTC. No se definió un contrato para aceptar o modificarlo desde solicitudes; los schemas de creación lo omiten.
+
+## Fase 4 — consultas y endpoints de lectura
+
+`services/api/app/inventory/queries.py` implementa consultas de lectura. Para los listados de activos, agrega entradas y salidas por separado y después las une a `assets`; así evita el producto cartesiano entre múltiples entradas y salidas. El detalle utiliza subconsultas escalares para calcular el mismo total de un único activo. En ambos casos `current_stock = SUM(entries.quantity) - SUM(exits.quantity)` y los activos sin movimientos reciben stock cero. El valor nunca se persiste ni se actualiza en la tabla.
+
+La consulta de órdenes combina los registros existentes de `AssetEntry` y `AssetExit` mediante `UNION ALL`, con proyección común y campos propios de cada variante. El schema es una unión discriminada por `type`: `entry` conserva `supplier`; `exit` conserva `exit_type` y `assigned_to`; ambos contienen `id`, `asset_id`, `quantity`, `office`, `created_at` y `user_uuid`. No existe ni se añade una tabla/modelo de órdenes independiente. Las respuestas de productos y movimientos se validan contra schemas HTTP, no se devuelven entidades ORM directamente. Las consultas seleccionan solo los datos necesarios, sin cargar relaciones por fila ni generar consultas N+1.
+
+El router protegido se registra en `app/main.py`. La ruta efectiva sigue la convención actual `/api`: `GET /api/inventory/products`, `GET /api/inventory/products/{asset_id}` y `GET /api/inventory/orders`. La dependencia común valida JWT con `get_current_user`; no se inventaron permisos por rol. La falta de configuración de la persistencia conserva el manejo 503 de la dependencia de sesión y el detalle inexistente devuelve 404.
+
+Verificación: `uv run pytest tests/test_inventory_api.py tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short`, ejecutado desde `services/api`: **15 passed, 8 subtests passed**. Las pruebas usan SQLite en directorio temporal mediante `get_session` sobreescrito; la autenticación se reemplaza por usuario de prueba, salvo el caso sin token, que comprueba 401. Estos tests verifican la lógica del endpoint, no la concurrencia ni las propiedades específicas de PostgreSQL.
+
+### Decisiones pendientes de contrato
+
+- **Filtros/paginación:** no se implementaron porque el requisito no especifica campos de filtro, límites, cursores ni forma de respuesta paginada.
+- **Oficinas y stock:** el stock mostrado es global por activo, sumando movimientos de todas las oficinas. No representa saldo por oficina. Confirmar el alcance del inventario antes de ofrecer filtro o agregado por `office`.
+- **Orden de orders:** se presenta del movimiento más reciente al más antiguo, con desempate estable por `type` e `id`. No hay orden configurable hasta definir el contrato.
+- **Autorización:** se requiere JWT válido; no se aplican roles ni aislamiento por propietario. Definirlos si el dominio necesita restricciones más específicas.
 
 ## Secuencia sugerida para fases futuras
 
-1. Aprobar contrato de identidad y prefijo de rutas, junto a la semántica de inventario.
+1. Confirmar filtros, paginación, alcance por oficina, orden y permisos de lectura, junto a la semántica restante de inventario.
 2. Confirmar configuración de despliegue de PostgreSQL y política de secretos; las dependencias están declaradas.
 3. Diseñar modelos y migraciones revisables; validar compatibilidad con PostgreSQL en infraestructura de prueba aislada.
 4. Implementar endpoints y transacciones del dominio, control de acceso y auditoría según contratos aprobados.

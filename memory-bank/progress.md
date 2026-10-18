@@ -1,5 +1,40 @@
 # Progress — Nexova
 
+### Gestión de inventario — Fase 4: consultas y endpoints de lectura
+
+Implementados `GET /api/inventory/products`, `GET
+/api/inventory/products/{asset_id}` y `GET /api/inventory/orders`, todos
+protegidos por `get_current_user` sin nuevos roles. El stock se calcula como
+entradas menos salidas: las sumas se agrupan por activo antes del join para
+evitar multiplicar cantidades cuando hay varios movimientos de ambos tipos.
+Orders combina movimientos en respuesta discriminada `type: entry|exit` y
+conserva `supplier` o `exit_type`/`assigned_to` según corresponda.
+
+Las pruebas HTTP usan SQLite temporal y sustituyen tanto la sesión como el
+usuario; cubren stock con varios movimientos, cero sin movimientos, lista y
+detalle, 404, discriminadores y 401. Verificación conjunta con modelos e
+infraestructura: `uv run pytest tests/test_inventory_api.py
+tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short`
+desde `services/api`: **15 passed, 8 subtests passed**. Filtros y paginación no se implementaron
+porque siguen sin contrato. El stock se agrega globalmente por activo, sin
+desglose por oficina; confirmar si se necesita stock por oficina. No se conectó
+a PostgreSQL/Supabase, no se leyó `.env` y no se instalaron dependencias.
+
+### Gestión de inventario — Fase 3: modelos y esquemas
+
+Añadidos los modelos SQLModel `Asset`, `AssetEntry` y `AssetExit`, con SKU
+único, FK y relaciones, timestamps UTC, UUID obligatorio en movimientos,
+cantidades positivas y reglas de tipo de salida/asignación. Los schemas HTTP
+separan creación y respuesta; `current_stock` está únicamente en una respuesta
+que recibirá el valor calculado en una fase posterior. No se añadieron rutas,
+repositorios, lógica operativa de stock, seeds ni migraciones.
+
+Verificación: tests de modelos y de infraestructura **11 passed, 5 subtests
+passed**, usando SQLite temporal. No se conectó a PostgreSQL/Supabase, no se
+leyó `.env` ni se alteraron datos reales. El enunciado disponible no resuelve
+si `quantity` debe ser entero o decimal; se dejó como `float` provisional y la
+duda quedó documentada en `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+
 ### Gestor centralizado de incidencias — carga histórica desde CSV
 
 Corregido `scripts/seed_incidents.py` para validar los conteos de calidad sobre
