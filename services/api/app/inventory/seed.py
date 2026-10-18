@@ -7,6 +7,7 @@ imported by application startup.
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 from typing import Any
@@ -15,14 +16,18 @@ from uuid import UUID
 from sqlalchemy import func, select, text
 from sqlalchemy.engine import make_url
 from sqlmodel import Session
+from tinydb import Query, TinyDB
+from tinydb.storages import JSONStorage
 
+from app.auth.database import get_database_path
 from .database import get_engine
 from .models import Asset, AssetEntry, AssetExit
 
-SEED_ENVIRONMENT_VARIABLE = "NEXOVA_INVENTORY_SEED_ENV"
-SEED_USER_UUID_VARIABLE = "NEXOVA_INVENTORY_SEED_USER_UUID"
+SEED_USER_EMAIL_VARIABLE = "NEXOVA_INVENTORY_SEED_USER_EMAIL"
+SEED_ENVIRONMENT_ARGUMENT = "--environment"
 DATABASE_URL_VARIABLE = "DATABASE_URL"
 _ALLOWED_ENVIRONMENTS = {"development", "test"}
+_AUTHORIZED_SUPABASE_PROJECT_REF = "yamhkvudzwcqsbqvfmox"
 # A transaction-scoped PostgreSQL lock serializes concurrent runs of this seed.
 _POSTGRES_ADVISORY_LOCK_KEY = 5_842_914_773_201_105_007
 
@@ -69,13 +74,13 @@ ENTRY_SEED: tuple[dict[str, Any], ...] = (
     {"sku": "NXV-IT-001", "quantity": 10.0, "supplier": "TechDistrib Valencia S.L.", "office": "Valencia"},
     {"sku": "NXV-IT-001", "quantity": 5.0, "supplier": "TechDistrib Valencia S.L.", "office": "Valencia"},
     {"sku": "NXV-PER-001", "quantity": 8.0, "supplier": "TechDistrib Valencia S.L.", "office": "Valencia"},
-    {"sku": "NXV-IT-002", "quantity": 10.0, "supplier": "Office Depot Miami", "office": "Miami"},
+    {"sku": "NXV-PER-002", "quantity": 12.0, "supplier": "Office Depot Miami", "office": "Miami"},
 )
 
 EXIT_SEED: tuple[dict[str, Any], ...] = (
-    {"sku": "NXV-IT-001", "quantity": 3.0, "exit_type": "allocation", "assigned_to": "Alex Morgan", "office": "Valencia"},
-    {"sku": "NXV-IT-001", "quantity": 2.0, "exit_type": "consumption", "assigned_to": None, "office": "Valencia"},
-    {"sku": "NXV-PER-001", "quantity": 1.0, "exit_type": "allocation", "assigned_to": "Jamie Lee", "office": "Valencia"},
+    {"sku": "NXV-IT-001", "quantity": 2.0, "exit_type": "allocation", "assigned_to": "María García", "office": "Valencia"},
+    {"sku": "NXV-IT-001", "quantity": 1.0, "exit_type": "consumption", "assigned_to": None, "office": "Valencia"},
+    {"sku": "NXV-PER-001", "quantity": 1.0, "exit_type": "allocation", "assigned_to": "Carlos López", "office": "Valencia"},
 )
 
 
@@ -83,19 +88,38 @@ class SeedSafetyError(RuntimeError):
     """Raised when the configured target or existing rows are unsafe to seed."""
 
 
+def _supabase_project_ref(url: Any) -> str | None:
+    """Extract a Supabase project ref without exposing URL components."""
+
+    host = (url.host or "").lower()
+    if host.endswith(".pooler.supabase.com"):
+        username = url.username or ""
+        if username.startswith("postgres."):
+            return username.removeprefix("postgres.")
+        return None
+
+    if host.endswith(".supabase.co"):
+        labels = host.removesuffix(".supabase.co").split(".")
+        if len(labels) == 2 and labels[0] == "db":
+            return labels[1]
+    return None
+
+
 def validate_seed_target(environment: str, database_url: str) -> None:
     """Require an explicit matching environment marker and database identity.
 
     URL values are deliberately never included in errors or output. PostgreSQL
-    databases must end in ``_dev`` or ``_test``; SQLite files must use the
-    corresponding ``_dev.sqlite3``/``_test.sqlite3`` (or ``.db``) suffix.
-    In-memory SQLite is accepted only for the test environment.
+    databases must end in ``_dev`` or ``_test`` unless development targets the
+    explicitly authorized Supabase project, whose standard database is named
+    ``postgres``. Supabase targets are never accepted for the test environment.
+    SQLite files must use the corresponding ``_dev.sqlite3``/``_test.sqlite3``
+    (or ``.db``) suffix. In-memory SQLite is accepted only for tests.
     """
 
     normalized_environment = environment.strip().lower()
     if normalized_environment not in _ALLOWED_ENVIRONMENTS:
         raise SeedSafetyError(
-            f"{SEED_ENVIRONMENT_VARIABLE} must explicitly be 'development' or 'test'."
+            f"{SEED_ENVIRONMENT_ARGUMENT} must explicitly be 'development' or 'test'."
         )
     if not database_url.strip():
         raise SeedSafetyError(f"{DATABASE_URL_VARIABLE} is required.")
@@ -109,7 +133,17 @@ def validate_seed_target(environment: str, database_url: str) -> None:
     backend = url.get_backend_name()
     if backend == "postgresql":
         database_name = url.database or ""
-        safe_database_name = database_name.endswith(expected_suffix)
+        host = (url.host or "").lower()
+        is_supabase = host.endswith((".supabase.co", ".pooler.supabase.com"))
+        if is_supabase:
+            project_ref = _supabase_project_ref(url)
+            safe_database_name = (
+                normalized_environment == "development"
+                and project_ref == _AUTHORIZED_SUPABASE_PROJECT_REF
+                and (database_name == "postgres" or database_name.endswith("_dev"))
+            )
+        else:
+            safe_database_name = database_name.endswith(expected_suffix)
     elif backend == "sqlite":
         database_name = url.database or ""
         if database_name == ":memory:":
@@ -127,6 +161,49 @@ def validate_seed_target(environment: str, database_url: str) -> None:
             "The database identity does not explicitly match the selected "
             "development/test environment; no data was changed."
         )
+
+
+def resolve_seed_user_uuid(email: str) -> UUID:
+    """Resolve one active user from the configured local auth TinyDB, read-only.
+
+    The caller supplies the authorized development account's email locally.
+    No user data or UUID is emitted, and old records without a persisted UUID
+    are rejected rather than assigned a newly generated identity.
+    """
+
+    normalized_email = email.strip().casefold()
+    if not normalized_email:
+        raise SeedSafetyError(f"{SEED_USER_EMAIL_VARIABLE} is required.")
+
+    database_path = get_database_path()
+    if not database_path.is_file():
+        raise SeedSafetyError("The configured local auth database is unavailable.")
+
+    try:
+        with TinyDB(database_path, storage=JSONStorage, access_mode="r") as database:
+            records = database.table("users").search(
+                Query().email.test(
+                    lambda value: isinstance(value, str)
+                    and value.strip().casefold() == normalized_email
+                )
+            )
+    except Exception as exc:
+        raise SeedSafetyError("The configured local auth database could not be read safely.") from exc
+
+    if len(records) != 1:
+        raise SeedSafetyError("The authorized development account was not uniquely identified.")
+
+    record = records[0]
+    if record.get("is_active", True) is not True:
+        raise SeedSafetyError("The authorized development account is not active.")
+
+    try:
+        user_uuid = UUID(str(record.get("user_uuid", "")))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise SeedSafetyError(
+            "The authorized development account has no valid persisted user UUID."
+        ) from exc
+    return user_uuid
 
 
 def _acquire_seed_lock(session: Session) -> None:
@@ -286,19 +363,14 @@ def seed_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
         raise
 
 
-def main() -> int:
-    """Run the seed only after validating both explicit environment fences."""
+def main(environment: str) -> int:
+    """Run only when the CLI caller explicitly selects a safe environment."""
 
-    environment = os.environ.get(SEED_ENVIRONMENT_VARIABLE, "")
     database_url = os.environ.get(DATABASE_URL_VARIABLE, "")
-    raw_user_uuid = os.environ.get(SEED_USER_UUID_VARIABLE, "")
+    raw_user_email = os.environ.get(SEED_USER_EMAIL_VARIABLE, "")
     try:
         validate_seed_target(environment, database_url)
-        if not raw_user_uuid.strip():
-            raise SeedSafetyError(
-                f"{SEED_USER_UUID_VARIABLE} must be set to an existing development user's UUID."
-            )
-        user_uuid = UUID(raw_user_uuid.strip())
+        user_uuid = resolve_seed_user_uuid(raw_user_email)
 
         # Target checks happen before asking the lazy inventory boundary for an engine.
         engine = get_engine()
@@ -320,4 +392,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    parser = argparse.ArgumentParser(description="Seed Nexova inventory demo data safely.")
+    parser.add_argument(
+        "--environment",
+        required=True,
+        choices=sorted(_ALLOWED_ENVIRONMENTS),
+        help="Explicit target environment; this opt-in is not read from dotenv.",
+    )
+    raise SystemExit(main(parser.parse_args().environment))

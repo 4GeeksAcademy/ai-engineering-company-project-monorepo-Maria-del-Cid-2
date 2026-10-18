@@ -1,8 +1,17 @@
 # Aprendiendo: gestión de inventario con ORM y doble base de datos
 
-## Estado de esta fase
+## Estado final
 
-Este documento registra la evolución de la gestión de inventario. La Fase 3 implementó modelos SQLModel y contratos de validación HTTP; la Fase 4 añadió consultas y endpoints de lectura; la Fase 5 añadió escrituras transaccionales de productos y movimientos; la Fase 6 verificó su integración y regresión backend. No se ejecutan seeds ni migraciones.
+Este documento registra la evolución de la gestión de inventario. La Fase 3
+implementó modelos SQLModel y contratos HTTP; la Fase 4 añadió consultas y
+lecturas; la Fase 5 añadió escrituras transaccionales; la Fase 6 integró y
+probó el router; y la Fase 7 añadió un seed manual con barreras de seguridad.
+El estado final de la rama `feature/inventory-orm-dual-database` se validó con
+la suite backend completa: **374 aprobados, 0 fallidos y 1 omitido**. El usuario
+confirmó que el seed se ejecutó en Supabase con seis activos, cuatro entradas y
+tres salidas, y que `GET /api/inventory/products` devuelve los seis productos
+con `current_stock`. Esa operación externa fue confirmada por el usuario; no se
+repitió durante la actualización documental.
 
 ### Hechos observados e infraestructura implementada
 
@@ -20,11 +29,11 @@ Este documento registra la evolución de la gestión de inventario. La Fase 3 im
 - El router expone también `POST /api/inventory/products`, `POST /api/inventory/orders/inbound` y `POST /api/inventory/orders/outbound`. Los movimientos usan UUID de `get_current_user`; un usuario autenticado histórico sin UUID obtiene 428 y no causa mutaciones.
 - `main.py` registra el router. Se conserva el prefijo `/api` y el contrato JWT existente; la app no se conecta a PostgreSQL durante import o startup.
 
-### Supuestos de trabajo, no decisiones aprobadas
+### Decisiones de diseño vigentes
 
-- La propuesta considerada es mantener las persistencias actuales y añadir PostgreSQL como almacén independiente para inventario.
-- SQLModel proporciona los modelos y las sesiones síncronas sobre SQLAlchemy. Los endpoints de lectura ya usan la sesión de inventario mediante una dependencia; el engine sigue siendo perezoso y no se conecta al iniciar la app.
-- PostgreSQL será el destino de producción; SQLite podría servir para pruebas rápidas de la capa ORM, no para certificar propiedades específicas de PostgreSQL.
+- TinyDB conserva autenticación, perfiles y otros dominios existentes; PostgreSQL/Supabase es la persistencia independiente de inventario. No se intenta una transacción distribuida entre ambas.
+- SQLModel proporciona modelos y sesiones síncronas sobre SQLAlchemy. `get_session` entrega una sesión por solicitud y la cierra; el engine es perezoso. SQLite temporal aísla pruebas ordinarias, pero no certifica semántica PostgreSQL.
+- `DATABASE_URL` es una variable privada del backend, no del cliente. La configuración del destino Supabase permitida por el seed es específica y no convierte Supabase en base de pruebas.
 
 ### Decisiones abiertas
 
@@ -36,21 +45,39 @@ Este documento registra la evolución de la gestión de inventario. La Fase 3 im
 
 ## ¿Qué significa mantener dos bases de datos?
 
-Significa que cada dominio utiliza su propio mecanismo de persistencia y configuración: TinyDB sigue atendiendo los dominios existentes y PostgreSQL atendería el futuro inventario. No significa que una operación que escriba en ambas bases sea automáticamente atómica. Sin un coordinador distribuido, una transacción de PostgreSQL no puede revertir una escritura ya confirmada en TinyDB. Por ello, la primera integración debe evitar escrituras cruzadas o definir explícitamente compensación, idempotencia y recuperación antes de necesitarlas.
+Cada dominio utiliza su propio mecanismo de persistencia: TinyDB sigue
+atendiendo autenticación y otros dominios heredados, y PostgreSQL atiende el
+inventario. En desarrollo, el destino PostgreSQL validado es Supabase; esto no
+significa que Supabase gestione autenticación ni que las dos bases compartan
+transacciones. Una transacción PostgreSQL no puede revertir una escritura ya
+confirmada en TinyDB. El seed solo consulta TinyDB para resolver localmente la
+identidad del usuario que atribuirá movimientos; después escribe inventario en
+la base SQL. Esa lectura no crea un vínculo FK ni una transacción entre bases.
 
 La configuración y ciclo de vida de la conexión PostgreSQL deben quedar encapsulados en un módulo de inventario o infraestructura claramente aislado. No se debe sustituir globalmente la persistencia de TinyDB ni hacer que importar la app principal abra conexiones. La construcción del engine puede ser perezosa y la sesión debe crearse por solicitud; el cierre de la sesión debe quedar garantizado incluso si la ruta falla.
 
 ## ORM, engine, sesión y transacción
 
-- **Modelo ORM:** clase Python que describe una tabla y convierte objetos en operaciones SQL. Los modelos de inventario declaran `table=True`; todavía no se han creado tablas mediante migración ni en una base de datos.
+- **Modelo ORM:** clase Python que describe una tabla y convierte objetos en operaciones SQL. `Asset`, `AssetEntry` y `AssetExit` declaran tablas; no se incorporó una herramienta de migraciones. El seed/API confirmados presuponen que el esquema ya está disponible en el destino; el aprovisionamiento/migraciones formales quedan pendientes.
 - **Engine:** configuración y punto de acceso al pool de conexiones. Crear el objeto engine no debería ejecutar consultas por sí solo; una conexión real se usa cuando se abre una conexión o sesión y se ejecuta SQL.
 - **Session:** unidad de trabajo que agrupa lectura y escritura ORM. En FastAPI es habitual proporcionar una sesión por solicitud mediante una dependencia con `yield` y cerrarla en un bloque `finally`.
 - **Transacción:** conjunto de operaciones confirmado o revertido conjuntamente **dentro de una misma base de datos**. Debe hacerse `commit` solo cuando la operación de dominio esté lista; ante un error se hace rollback y se propaga una respuesta de error apropiada. Cerrar una sesión no equivale a confirmar una transacción.
 - **Solicitud HTTP:** la sesión por solicitud administra recursos, pero no significa que todas las solicitudes formen una transacción única ni que un proceso en TinyDB y otro en PostgreSQL compartan atomicidad.
 
-## Configuración segura prevista
+## Configuración y diferencias entre entornos
 
-La URL de conexión viene de `DATABASE_URL` en el entorno del backend, nunca del cliente ni de variables públicas `NEXT_PUBLIC_*`. `get_database_url()` falla explícitamente si no está configurada, sin revelar su contenido. La dependencia HTTP transforma esa ausencia en un `503` genérico. El `.env` local no se inspecciona. La importación del módulo y el arranque de la app no crean el engine ni conectan a PostgreSQL; el engine se construye en la primera solicitud de sesión que lo necesita. No se añade aquí un hook de apagado porque el engine es perezoso y aún no se integra con el ciclo de vida de la app.
+La URL de conexión viene de `DATABASE_URL` en el entorno del backend, nunca del cliente ni de variables públicas `NEXT_PUBLIC_*`. `get_database_url()` falla explícitamente si no está configurada, sin revelar su contenido. La dependencia HTTP transforma esa ausencia en un `503` genérico. `app/auth/config.py` carga `services/api/.env` al importarse para la configuración de auth; el módulo de base de datos de inventario no carga dotenv y solo lee `DATABASE_URL` al solicitar el engine. Al ejecutar la CLI manual puede usarse `uv run --env-file .env` para inyectar las variables locales sin mostrar su contenido. La importación de la app y su arranque no crean el engine ni conectan a PostgreSQL; el engine se construye ante la primera solicitud de sesión que lo necesita.
+
+Las pruebas usan SQLite en memoria o archivo temporal, de forma aislada. La
+prueba PostgreSQL concurrente es opcional y requiere
+`NEXOVA_INVENTORY_TEST_POSTGRES_URL` dirigido a una base desechable que termine
+en `_test`; no uses el destino de desarrollo/Supabase como base de pruebas. Para
+un seed local, los nombres de DB/archivo deben identificar `_dev` o `_test`.
+El único destino Supabase aceptado por el guard del seed es el proyecto de
+desarrollo autorizado por código; su DB estándar `postgres` se admite solo con
+`--environment development`. En el resto de servidores PostgreSQL, se exige el
+sufijo de entorno en el nombre de base. SQLite en memoria solo se permite para
+`test`.
 
 Antes de habilitar la base real, habrá que confirmar TLS/red, credenciales de mínimo privilegio, timeouts, pool, cierre en shutdown, manejo de indisponibilidad y observabilidad sin revelar la URL. Nada de ello se valida mediante una base local de prueba.
 
@@ -139,22 +166,120 @@ El único skip corresponde a la prueba de concurrencia PostgreSQL opcional: nece
 
 ## Fase 7 — seed de desarrollo seguro e idempotente
 
-Se añadió `services/api/app/inventory/seed.py` como comando manual independiente, no importado por el arranque de la API. La ejecución prevista es `uv run python -m app.inventory.seed` desde `services/api`, pero **no se ejecutó durante esta fase**. Antes de solicitar el engine, el comando exige `NEXOVA_INVENTORY_SEED_ENV=development` o `test`, `DATABASE_URL` con nombre de base inequívoco (`_dev`/`_test` para PostgreSQL; `_dev.sqlite3`/`_test.sqlite3` o `.db` para SQLite; SQLite en memoria solo en `test`) y `NEXOVA_INVENTORY_SEED_USER_UUID` con un UUID existente del usuario de desarrollo. No lee `.env`. Los errores y la salida no imprimen URL ni credenciales. El UUID se valida sintácticamente; comprobar que pertenece a un usuario real requiere que quien lo invoque lo obtenga por un procedimiento autorizado.
+`services/api/app/inventory/seed.py` implementa un comando manual independiente
+del startup. Desde `services/api`, la forma de invocación que se usó para la
+carga de desarrollo fue:
 
-El dataset contiene seis activos (`NXV-IT-001`, `NXV-IT-002`, `NXV-PER-001`, `NXV-PER-002`, `NXV-OFF-001`, `NXV-TRN-001`), cuatro entradas y tres salidas. El saldo neto esperado si no existen movimientos previos es respectivamente 10, 10, 7, 0, 0 y 0. Las dos salidas `allocation` incluyen destinatario y la salida `consumption` no lo incluye, de acuerdo con las restricciones del modelo.
+```bash
+NEXOVA_INVENTORY_SEED_USER_EMAIL="<email-de-la-cuenta-autorizada>" \\
+uv run --env-file .env python -m app.inventory.seed --environment development
+```
 
-La transacción no actualiza ni elimina filas. Un SKU ya existente solo se reutiliza si todos los atributos del activo coinciden; si difiere, el seed aborta y revierte las inserciones de esa ejecución. Antes de añadir salidas se verifica el stock derivado y no se permite saldo negativo. La identidad natural de cada movimiento compara activo, cantidad, campos de dominio y UUID (no timestamp ni ID generado): al repetir para el mismo UUID, se omiten coincidencias exactas; para otro UUID, se consideran atribuciones distintas y se insertan otros movimientos. En PostgreSQL, un advisory transaction lock serializa ejecuciones simultáneas de este mismo seed. La función exige una sesión sin transacción abierta para no confirmar ni revertir trabajo del llamador. No ofrece atomicidad con TinyDB ni valida la existencia del UUID en TinyDB.
+No copies el email real en documentación, historial compartido o logs. `--environment`
+es obligatorio y sus opciones están limitadas a `development`/`test`; no existe
+un marcador equivalente que sustituya ese argumento. La CLI lee
+`NEXOVA_INVENTORY_SEED_USER_EMAIL` y `DATABASE_URL` del entorno ya cargado. El
+comando no carga dotenv por sí mismo; `uv run --env-file .env` es el mecanismo
+de la invocación anterior para cargar la configuración local. La API puede
+cargar `services/api/.env` a través de `app/auth/config.py`, pero eso no debe
+confundirse con el comportamiento de la CLI.
 
-Se añadieron tests aislados en `services/api/tests/test_inventory_seed.py` para las vallas de destino/UUID, dataset y saldos, idempotencia y no mutación, conflictos de activos, stock previo negativo y protección de transacción del llamador. La validación focalizada final fue `uv run pytest tests/test_inventory_seed.py tests/test_inventory_models.py tests/test_inventory_database.py -q --tb=short`: **20 passed, 13 subtests passed**. La regresión backend completa, con `SECRET_KEY` de prueba y `PYTHON_DOTENV_DISABLED=1`, dio **367 passed, 1 skipped, 57 subtests passed**. El skip es la prueba opcional PostgreSQL; no se configuró ni usó esa DB. Todo el slice del seed usa SQLite temporal; no acredita el advisory lock ni otros comportamientos PostgreSQL.
+Antes de crear el engine o escribir, el seed valida el entorno y el destino.
+Para PostgreSQL no Supabase se exige que el nombre de la base termine en
+`_dev`/`_test`, según el entorno. SQLite requiere archivo con sufijo
+`_dev.sqlite3`/`_dev.db` o `_test.sqlite3`/`_test.db`; SQLite en memoria solo
+se acepta para `test`. Para Supabase se valida la forma del host directo
+`db.<ref>.supabase.co` o el username del pooler `postgres.<ref>`; solo el
+proyecto autorizado en código puede usarse para desarrollo, con la base
+estándar `postgres` o una terminada en `_dev`. Supabase se rechaza en `test`.
+Los errores no imprimen URL ni credenciales. Estas barreras reducen el riesgo
+de una escritura accidental, pero no sustituyen revisar de forma independiente
+las variables y el destino inmediatamente antes de ejecutar.
 
-Esta fase no ejecuta el seed, migraciones, conexiones a DB externa ni lectura de `.env`. No habilita ejecución automática ni autoriza el uso de una base real. El operador debe comprobar expresamente entorno, nombre de destino y UUID antes de invocar el comando.
+El usuario se resuelve por email normalizado, en la tabla `users` de TinyDB,
+usando `get_database_path()` de `app.auth.database`. Esa función prioriza
+`AUTH_DB_PATH`; si no está configurada, la ruta predeterminada es
+`services/data/auth.json` (resuelta desde el código del servicio). El seed abre
+TinyDB en modo lectura, exige un único registro activo y un `user_uuid` válido
+ya persistido. No crea UUID, no usa el ID entero/documento TinyDB y no imprime
+email ni UUID. Los usuarios nuevos obtienen UUID en servidor, persistido junto
+al registro; los usuarios históricos pueden no tenerlo. La API no devuelve el
+UUID en su respuesta pública de usuario. El seed no crea enlace FK entre las
+bases ni prueba identidad mediante la API; por eso es esencial que auth y CLI
+usen la misma ruta/localización efectiva. Si falta `AUTH_DB_PATH`, comprueba la
+ruta por defecto del proceso, no asumas que es la base usada por un servidor
+que se arrancó con otro entorno.
 
-## Secuencia sugerida para fases futuras
+El dataset actual contiene seis activos (`NXV-IT-001`, `NXV-IT-002`,
+`NXV-PER-001`, `NXV-PER-002`, `NXV-OFF-001`, `NXV-TRN-001`), cuatro entradas y
+tres salidas. Las entradas son 10 y 5 unidades de `NXV-IT-001`, 8 de
+`NXV-PER-001` y 12 de `NXV-PER-002`. Las salidas son 2 unidades de
+`NXV-IT-001` por asignación, 1 unidad de consumo sin asignatario y 1 unidad de
+`NXV-PER-001` por asignación. En ausencia de movimientos previos, los saldos
+netos por orden de SKU son 12, 0, 7, 12, 0 y 0.
 
-1. Confirmar filtros, paginación, alcance por oficina, orden e idempotencia/auditoría; confirmar si 428 es el status preferido para cuentas legacy sin UUID.
-2. Ejecutar la prueba opcional de concurrencia sobre una instancia PostgreSQL desechable aislada, y comprobar el aislamiento/schema de test en la versión de psycopg/PostgreSQL del despliegue.
-3. Confirmar configuración de despliegue de PostgreSQL y política de secretos; las dependencias están declaradas.
-4. Diseñar migraciones revisables y validar constraints/tipos PostgreSQL en infraestructura de prueba aislada.
-5. Planificar cualquier backfill aprobado de UUID con copia, validación, observabilidad y rollback documentados.
+El seed solo inserta. Reutiliza un SKU existente únicamente si todos sus
+atributos coinciden; ante una diferencia aborta y revierte la transacción de
+esta ejecución sin modificar filas existentes. Omite movimientos que ya
+coinciden por activo, cantidad, campos de dominio y UUID (no ID ni timestamp);
+el mismo conjunto puede repetirse para el mismo UUID sin duplicar esos
+movimientos. Rechaza saldos previos negativos o salidas que produzcan stock
+negativo. PostgreSQL utiliza un advisory transaction lock para serializar
+ejecuciones del seed. La sesión debe llegar sin transacción abierta. Esto no
+implica atomicidad entre TinyDB y PostgreSQL.
+
+La cobertura de `tests/test_inventory_seed.py` usa DB aisladas e incluye el
+guard de destinos, selección de cuenta activa con UUID persistido y no mutación
+de TinyDB, dataset, idempotencia y rollback. La suite backend completa terminó
+con **374 aprobados, 0 fallidos y 1 omitido**; el omitido corresponde a la
+prueba opcional de concurrencia PostgreSQL. Los tests SQLite no prueban advisory
+locks ni comportamiento de producción PostgreSQL.
+
+## Arranque, pruebas y comprobación manual
+
+Desde `services/api`, el README del servicio documenta el arranque local:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+La API requiere la configuración de auth, incluida `SECRET_KEY`; para inventario
+también necesita `DATABASE_URL` en el entorno del backend. Tras iniciar, abre
+`/docs` en el mismo host/puerto para Swagger UI, autentícate con el mecanismo
+JWT de la API y prueba `GET /api/inventory/products`. La respuesta es una lista
+de productos que incluye `current_stock`. Un `503` al acceder a inventario suele
+indicar que `DATABASE_URL` no está configurada; no compartas la URL al
+diagnosticarlo.
+
+Para la suite backend completa, desde `services/api`:
+
+```bash
+uv run pytest
+```
+
+Resultado final verificado en esta rama: **374 passed, 0 failed, 1 skipped**.
+Mantén `AUTH_DB_PATH` y otras rutas TinyDB de las pruebas aisladas según los
+fixtures/configuración de test del proyecto. No se debe usar Supabase como DB
+de test.
+
+## Hechos, decisiones y pendientes para fases futuras
+
+**Comprobado en código/tests:** `current_stock` se deriva de movimientos; las
+rutas están protegidas por JWT; las salidas bloquean activo en PostgreSQL y
+rechazan stock insuficiente; el seed tiene barreras, lectura TinyDB y rollback.
+La suite completa está verde. La carga de Supabase y el GET con seis productos
+son hechos reportados por el usuario en esta entrega, no una conexión realizada
+durante la actualización documental.
+
+**Decisiones que deben preservarse:** mantener separadas TinyDB y PostgreSQL;
+no generar `user_uuid` a demanda ni aceptar el UUID desde payloads HTTP; usar
+`get_database_path()` para localizar auth; mantener validaciones del seed y
+usar DB de test aislada; calcular stock desde movimientos, nunca desde un
+contador duplicado.
+
+**Pendiente de comprobación/definición:** concurrencia en PostgreSQL real
+mediante la prueba opcional y una DB de test desechable; migraciones/aprovisionamiento
+formal; filtros, paginación y stock por oficina; política futura de backfill
+para usuarios antiguos sin UUID. SQLite no valida el lock PostgreSQL.
 
 Cada fase debe comprobar explícitamente que no altera el comportamiento de TinyDB y que sus pruebas usan almacenamiento aislado. Este orden es orientativo; no autoriza por sí mismo ninguna operación futura.

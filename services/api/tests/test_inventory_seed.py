@@ -12,16 +12,18 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, Session, create_engine
+from tinydb import TinyDB
+from tinydb.storages import JSONStorage
 
 from app.inventory.models import Asset, AssetEntry, AssetExit
 from app.inventory.seed import (
     ASSET_SEED,
     ENTRY_SEED,
     EXIT_SEED,
-    SEED_ENVIRONMENT_VARIABLE,
-    SEED_USER_UUID_VARIABLE,
+    SEED_USER_EMAIL_VARIABLE,
     SeedSafetyError,
     main,
+    resolve_seed_user_uuid,
     seed_inventory,
     validate_seed_target,
 )
@@ -50,30 +52,124 @@ class InventorySeedSafetyTests(unittest.TestCase):
         validate_seed_target("development", "sqlite:////tmp/nexova_inventory_dev.sqlite3")
         validate_seed_target("test", "sqlite:///:memory:")
 
+    def test_authorized_supabase_project_accepts_standard_postgres_database_only_for_dev(self) -> None:
+        url = "postgresql://hidden:secret@db.yamhkvudzwcqsbqvfmox.supabase.co/postgres"
+        validate_seed_target("development", url)
+        with self.assertRaises(SeedSafetyError):
+            validate_seed_target("test", url)
+
+    def test_supabase_project_reference_must_match_authorized_development_project(self) -> None:
+        wrong_project = "postgresql://hidden:secret@db.otherproject.supabase.co/postgres"
+        wrong_database = "postgresql://hidden:secret@db.yamhkvudzwcqsbqvfmox.supabase.co/production"
+        for url in (wrong_project, wrong_database):
+            with self.subTest(target="[redacted]"), self.assertRaises(SeedSafetyError):
+                validate_seed_target("development", url)
+
+    def test_authorized_supabase_pooler_requires_authorized_ref_in_username(self) -> None:
+        url = (
+            "postgresql+psycopg://postgres.yamhkvudzwcqsbqvfmox:hidden@"
+            "aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+        )
+        validate_seed_target("development", url)
+        wrong_project = url.replace("postgres.yamhkvudzwcqsbqvfmox", "postgres.otherproject")
+        with self.assertRaises(SeedSafetyError):
+            validate_seed_target("development", wrong_project)
+
     def test_main_refuses_before_engine_creation_without_safe_environment(self) -> None:
-        environment = {
-            SEED_ENVIRONMENT_VARIABLE: "production",
+        with patch.dict(os.environ, {
             "DATABASE_URL": "postgresql://user:secret@host/inventory_dev",
-            SEED_USER_UUID_VARIABLE: str(TEST_UUID),
-        }
-        with patch.dict(os.environ, environment, clear=True), patch(
+            SEED_USER_EMAIL_VARIABLE: "dev@example.test",
+        }, clear=True), patch(
             "app.inventory.seed.get_engine", side_effect=AssertionError("engine must not be requested")
         ):
-            self.assertEqual(main(), 1)
+            self.assertEqual(main("production"), 1)
 
     def test_main_refuses_when_user_uuid_is_missing_or_invalid(self) -> None:
         safe_env = {
-            SEED_ENVIRONMENT_VARIABLE: "test",
             "DATABASE_URL": "sqlite:///:memory:",
         }
-        for user_uuid in (None, "not-a-uuid"):
+        for user_email in (None, ""):
             environment = dict(safe_env)
-            if user_uuid is not None:
-                environment[SEED_USER_UUID_VARIABLE] = user_uuid
-            with self.subTest(user_uuid=user_uuid), patch.dict(os.environ, environment, clear=True), patch(
+            if user_email is not None:
+                environment[SEED_USER_EMAIL_VARIABLE] = user_email
+            with self.subTest(user_email=user_email), patch.dict(os.environ, environment, clear=True), patch(
                 "app.inventory.seed.get_engine", side_effect=AssertionError("engine must not be requested")
             ):
-                self.assertEqual(main(), 1)
+                self.assertEqual(main("test"), 1)
+
+    def test_main_resolves_user_uuid_from_local_account_before_engine_creation(self) -> None:
+        environment = {
+            "DATABASE_URL": "sqlite:///:memory:",
+            SEED_USER_EMAIL_VARIABLE: "authorized@example.test",
+        }
+        with patch.dict(os.environ, environment, clear=True), patch(
+            "app.inventory.seed.resolve_seed_user_uuid", return_value=TEST_UUID
+        ) as resolve_user, patch(
+            "app.inventory.seed.get_engine", side_effect=AssertionError("engine must not be requested")
+        ):
+            self.assertEqual(main("test"), 1)
+        resolve_user.assert_called_once_with("authorized@example.test")
+
+
+class InventorySeedUserResolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary_directory = TemporaryDirectory()
+        self.database_path = Path(self.temporary_directory.name) / "auth.json"
+        with TinyDB(self.database_path) as database:
+            database.table("users").insert(
+                {
+                    "email": "Authorized@Example.test",
+                    "is_active": True,
+                    "user_uuid": str(TEST_UUID),
+                    "id": 92,
+                }
+            )
+            database.table("users").insert(
+                {
+                    "email": "inactive@example.test",
+                    "is_active": False,
+                    "user_uuid": str(TEST_UUID),
+                    "id": 93,
+                }
+            )
+            database.table("users").insert(
+                {
+                    "email": "legacy@example.test",
+                    "is_active": True,
+                    "id": 94,
+                }
+            )
+            database.table("users").insert(
+                {
+                    "email": "malformed@example.test",
+                    "is_active": True,
+                    "user_uuid": "not-a-uuid",
+                    "id": 95,
+                }
+            )
+
+    def tearDown(self) -> None:
+        self.temporary_directory.cleanup()
+
+    def test_resolves_persisted_uuid_for_case_insensitive_active_account(self) -> None:
+        with patch.dict(os.environ, {"AUTH_DB_PATH": str(self.database_path)}):
+            self.assertEqual(resolve_seed_user_uuid("  authorized@example.TEST "), TEST_UUID)
+
+    def test_rejects_inactive_or_legacy_user_without_persisted_uuid(self) -> None:
+        with patch.dict(os.environ, {"AUTH_DB_PATH": str(self.database_path)}):
+            for email in (
+                "inactive@example.test",
+                "legacy@example.test",
+                "malformed@example.test",
+            ):
+                with self.subTest(account=email), self.assertRaises(SeedSafetyError):
+                    resolve_seed_user_uuid(email)
+
+    def test_read_only_resolution_does_not_mutate_tinydb(self) -> None:
+        before = self.database_path.read_bytes()
+        with patch.dict(os.environ, {"AUTH_DB_PATH": str(self.database_path)}):
+            self.assertEqual(resolve_seed_user_uuid("authorized@example.test"), TEST_UUID)
+        self.assertEqual(self.database_path.read_bytes(), before)
 
 
 class InventorySeedDataTests(unittest.TestCase):
@@ -114,32 +210,46 @@ class InventorySeedDataTests(unittest.TestCase):
             self.assertGreaterEqual(len(exits), 3)
 
             self.assertEqual(
-                [(row.quantity, row.supplier, row.office) for row in entries if row.asset_id == assets["NXV-IT-001"].id],
-                [(10.0, "TechDistrib Valencia S.L.", "Valencia"), (5.0, "TechDistrib Valencia S.L.", "Valencia")],
-            )
-            self.assertEqual(
-                {row.office for row in entries if row.asset_id == assets["NXV-IT-002"].id},
-                {"Miami"},
-            )
-            self.assertIn("Valencia", {row.office for row in entries})
-            self.assertIn("Miami", {row.office for row in entries})
-            self.assertEqual(
-                {row.supplier for row in entries if row.office == "Miami"},
-                {"Office Depot Miami"},
+                {
+                    (
+                        next(sku for sku, asset in assets.items() if asset.id == row.asset_id),
+                        row.quantity,
+                        row.supplier,
+                        row.office,
+                    )
+                    for row in entries
+                },
+                {
+                    ("NXV-IT-001", 10.0, "TechDistrib Valencia S.L.", "Valencia"),
+                    ("NXV-IT-001", 5.0, "TechDistrib Valencia S.L.", "Valencia"),
+                    ("NXV-PER-001", 8.0, "TechDistrib Valencia S.L.", "Valencia"),
+                    ("NXV-PER-002", 12.0, "Office Depot Miami", "Miami"),
+                },
             )
 
-            allocation_rows = [row for row in exits if row.exit_type == "allocation"]
-            consumption_rows = [row for row in exits if row.exit_type == "consumption"]
-            self.assertEqual(len(allocation_rows), 2)
-            self.assertTrue(all(row.assigned_to for row in allocation_rows))
-            self.assertEqual(len(consumption_rows), 1)
-            self.assertTrue(all(row.assigned_to is None for row in consumption_rows))
+            self.assertEqual(
+                {
+                    (
+                        next(sku for sku, asset in assets.items() if asset.id == row.asset_id),
+                        row.quantity,
+                        row.exit_type,
+                        row.assigned_to,
+                        row.office,
+                    )
+                    for row in exits
+                },
+                {
+                    ("NXV-IT-001", 2.0, "allocation", "María García", "Valencia"),
+                    ("NXV-IT-001", 1.0, "consumption", None, "Valencia"),
+                    ("NXV-PER-001", 1.0, "allocation", "Carlos López", "Valencia"),
+                },
+            )
 
             expected_stock = {
-                "NXV-IT-001": 10.0,
-                "NXV-IT-002": 10.0,
+                "NXV-IT-001": 12.0,
+                "NXV-IT-002": 0.0,
                 "NXV-PER-001": 7.0,
-                "NXV-PER-002": 0.0,
+                "NXV-PER-002": 12.0,
                 "NXV-OFF-001": 0.0,
                 "NXV-TRN-001": 0.0,
             }

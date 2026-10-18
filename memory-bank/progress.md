@@ -1,27 +1,51 @@
 # Progress — Nexova
 
-### Gestión de inventario — Fase 7: seed de desarrollo seguro
+### Gestión de inventario — cierre de `feature/inventory-orm-dual-database`
 
-Añadido `services/api/app/inventory/seed.py` como comando manual, no conectado
-al startup. Requiere un marcador explícito `development`/`test`, nombre de DB
-con sufijo de entorno, UUID suministrado del usuario y URL de `DATABASE_URL`;
-realiza validaciones antes de pedir el engine y no lee `.env`. No incluye URL o
-credenciales en salida. El dataset tiene seis activos, cuatro entradas y tres
-salidas; saldos netos base esperados: 10, 10, 7, 0, 0 y 0.
+Estado final documentado de la funcionalidad de inventario ORM con doble base
+de datos. `services/api/app/inventory/seed.py` es un comando manual, no forma
+parte del startup. Requiere `--environment development|test`, un `DATABASE_URL`
+que pase el guard del entorno/destino y `NEXOVA_INVENTORY_SEED_USER_EMAIL` que
+resuelva una cuenta única y activa con `user_uuid` válido ya persistido en la
+TinyDB elegida por `AUTH_DB_PATH` o su ruta por defecto. La resolución abre
+TinyDB en solo lectura mediante `app.auth.database.get_database_path()`; no
+genera UUID, no usa el ID de documento y no imprime PII ni URL.
 
-El seed solo inserta: reutiliza activos únicamente si coinciden todos sus
-campos, omite movimientos con identidad natural exacta para el mismo UUID,
-aborta ante conflicto o saldo negativo y usa lock transaccional advisory en
-PostgreSQL. Requiere una sesión sin transacción abierta. Tests aislados cubren
-dataset, destino, UUID, idempotencia, no mutación y rollback. Verificación
-focalizada: **20 passed, 13 subtests passed**. Suite backend completa con
-`SECRET_KEY` de prueba y `PYTHON_DOTENV_DISABLED=1`: **367 passed, 1 skipped,
-57 subtests passed**; el skip es concurrencia PostgreSQL opcional. SQLite no
-verifica locks PostgreSQL.
+La persistencia se mantiene separada: TinyDB contiene auth y otros dominios
+existentes; PostgreSQL/Supabase es el almacén de inventario. Los modelos
+SQLModel son `Asset`, `AssetEntry`, `AssetExit`; el stock se calcula como suma
+de entradas menos salidas y no se persiste. El seed carga 6 activos, 4 entradas
+y 3 salidas. La comprobación final fue reportada por el usuario: el seed se
+ejecutó correctamente en Supabase y `GET /api/inventory/products` devolvió los
+seis productos con `current_stock`. No se repitió la carga en este cierre.
 
-No se ejecutó el seed, no se leyó `.env`, no hubo acceso a bases externas ni
-migraciones. Documentación ampliada en
-`docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+El guard solo permite Supabase para el destino de desarrollo explícitamente
+autorizado por código; contempla el nombre estándar `postgres` y rechaza
+Supabase para tests. Otros destinos PostgreSQL/SQLite deben identificar el
+entorno mediante sufijo y SQLite en memoria se limita a `test`. El seed solo
+inserta, aborta ante conflicto/stock negativo, deduplica por identidad natural
+incluido el UUID y usa advisory transaction lock en PostgreSQL. Mantener estas
+barreras; nunca usar Supabase como DB de pruebas.
+
+Verificación final desde `services/api`: `uv run pytest` → **374 passed, 0
+failed, 1 skipped**. El skip corresponde a la prueba opcional de concurrencia
+PostgreSQL; SQLite no prueba `FOR UPDATE`, advisory locks o aislamiento real de
+PostgreSQL. No se modificó código durante la validación final.
+
+**Advertencia a futuros agentes:** antes de cambiar TinyDB o ejecutar cualquier
+seed, consultar `memory-bank/techContext.md`, `memory-bank/progress.md` y la
+documentación específica; comprobar las rutas efectivas y variables reales del
+proceso, y preservar datos existentes. No crear endpoints temporales, editar
+registros directamente ni desactivar las protecciones si existe un flujo
+normal, autorizado y seguro. No leer, copiar o registrar secretos, UUID reales
+ni emails personales en documentación.
+
+Documentación de aprendizaje: `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`.
+Hechos verificados en código y tests se distinguen allí de la carga remota y la
+comprobación API confirmadas por el usuario. Quedan pendientes la prueba real
+de concurrencia PostgreSQL en una DB desechable, las migraciones/aprovisionamiento
+formal y decisiones funcionales sobre stock por oficina/filtros/paginación y
+un eventual backfill aprobado para usuarios históricos sin UUID.
 
 ### Gestión de inventario — Fase 6: integración y regresión
 
