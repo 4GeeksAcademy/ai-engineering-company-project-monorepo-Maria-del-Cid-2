@@ -660,3 +660,40 @@ comprobación manual del login y registro en Chrome.
   archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
   lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase. Sin
   commit/push.
+
+### Frontend de inventario — Fase 5: historial de órdenes (read-only)
+
+- `app/inventory/orders/page.tsx`: server component simple (sin `searchParams`)
+  que renderiza `OrdersHistoryPanel`.
+- `components/inventory/OrdersHistoryPanel.tsx` (cliente): `loadOrders`
+  usa `Promise.all([listOrders(nexovaApi), listProducts(nexovaApi)])` →
+  estado `orders` + `products`; `productNames = useMemo(Map<asset_id, name>)`.
+  Efecto one-line + directive `react-hooks/set-state-in-effect`. Estados
+  loading (Spinner) / error (`inventoryErrorMessage`) / vacío
+  ("No inbound or outbound movements have been recorded yet.").
+- **Creador — decisión de producto**: la API no expone `user_uuid → nombre`
+  (GET /api/users no incluye `user_uuid`; JWT solo `sub` numérico +
+  `credentials_version`; `/profiles/me` solo el perfil propio). Se muestra
+  `user_uuid` abreviado (`shortUuid`: primeros 8 + `…`) en `font-mono` con
+  etiqueta **"Created by"** delante y `title="User ${user_uuid}"`. El
+  **nombre** del usuario quedó fuera de alcance por decisión explícita
+  (el nombre legible vive en `Profile.name` ligado a `user_id`; sin backend
+  no se resuelve). Nombre real requeriría ampliar backend (resolver creador en
+  `list_inventory_orders` devolviendo `email`/`name`, o exponer `user_uuid` en
+  `/api/users`) — quedó documentado como pendiente.
+- **Tarjeta read-only por orden**: badge `Inbound` (bg-green) / `Outbound`
+  (bg-orange) por `ORDER_TYPE_CLASSES`; nombre de producto o
+  `Product #<asset_id>` si el asset no está en el catálogo; `#id` mono;
+  cantidad singular/plural. `EntryDetail` (Supplier + Office) o `ExitDetail`
+  (Type `INVENTORY_EXIT_TYPE_LABELS` + Office + Assigned to si aplica).
+  Columna derecha: creador abreviado + fecha `formatDate` vía `toLocaleString`
+  (year/month/day + HH:MM). Sin acciones; orden de la API (`created_at DESC`).
+- `components/inventory/index.ts`: barrel añade `OrdersHistoryPanel` (4
+  exportaciones). `listOrders` ya estaba cubierto por el test "lists the
+  discriminated union of movement orders" (Fase 1); no se añadieron funciones
+  nuevas al data-layer.
+- Verificación Fase 5: `npm test` → **70/70 tests frontend**; ESLint limpio en
+  `OrdersHistoryPanel.tsx`, `app/inventory/orders/page.tsx`, barrel;
+  `npx tsc --noEmit` sin errores; `git diff --check` limpio. Errores
+  preexistentes de lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a
+  esta fase. Sin commit/push.

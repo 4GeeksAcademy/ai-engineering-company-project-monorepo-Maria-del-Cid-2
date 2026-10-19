@@ -129,6 +129,45 @@ preselección `?product={id}` preparada en la Fase 2.
   `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`). Sin commit/push;
   se espera confirmación para la Fase 5.
 
+### Frontend de inventario — Fase 5: historial de órdenes (read-only)
+
+Vista `/inventory/orders` que lista todos los movimientos de entrada y salida,
+la más reciente primero, con **nombre del producto** y **creador abreviado**.
+
+- `app/inventory/orders/page.tsx`: server component sin `searchParams` que
+  renderiza el panel.
+- `components/inventory/OrdersHistoryPanel.tsx` (cliente): carga en paralelo
+  `listOrders(nexovaApi)` + `listProducts(nexovaApi)` (Promise.all), construye
+  el mapa `asset_id → name` y pinta tarjetas read-only.
+- **Decisión sobre el creador (consultada con el usuario):** la API no expone
+  `user_uuid → nombre` (GET /api/users no incluye `user_uuid`, el JWT solo
+  lleva `sub` numérico + `credentials_version`, `/profiles/me` es solo el
+  propio). Se muestra el `user_uuid` abreviado (`a1b2c3d4…`) en mono con la
+  etiqueta clara **"Created by"** delante y `title="User ${user_uuid}"` para
+  ver el UUID completo. El **nombre** del usuario quedó **fuera de alcance por
+  decisión explícita** (el nombre legible vive en `Profile.name` ligado a
+  `user_id`; sin backend no se resuelve). Si se quiere el nombre real habrá
+  que ampliar el backend (exponer `user_uuid` en `/api/users` o resolver el
+  creador en `list_inventory_orders` devolviendo `email`/`name`) — fuera del
+  alcance frontend.
+- **Cada tarjeta**: badge Inbound (verde) / Outbound (ámbar), nombre del
+  producto (o `Product #<asset_id>` si no existe en el catálogo), `#id` mono,
+  cantidad con plural; detalle por tipo (entry: Supplier + Office; exit: Type +
+  Office + Assigned to si aplica); columna derecha con creador abreviado y
+  fecha `toLocaleString`. Sin acciones (read-only). Orden: la API ya devuelve
+  `ORDER BY created_at DESC`.
+- `components/inventory/index.ts`: barrel ampliado con `OrdersHistoryPanel`.
+- `listOrders` ya existía y estaba cubierto desde la Fase 1 ("lists the
+  discriminated union of movement orders"); no se añadieron funciones nuevas
+  al data-layer.
+- Verificación: `npm test` → **70/70 tests frontend**; ESLint limpio en
+  `OrdersHistoryPanel.tsx`, `app/inventory/orders/page.tsx` y el barrel;
+  `npx tsc --noEmit` sin errores; `git diff --check` limpio. Errores
+  preexistentes de lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos.
+- Documentado (sección "Fase 5 del frontend" en
+  `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`). Sin commit/push;
+  se espera confirmación del usuario.
+
 ### Gestión de inventario — cierre de `feature/inventory-orm-dual-database`
 
 Estado final documentado de la funcionalidad de inventario ORM con doble base
