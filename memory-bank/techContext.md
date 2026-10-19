@@ -599,3 +599,64 @@ comprobación manual del login y registro en Chrome.
 - Verificación Fase 2: `npm test` → **70/70 tests frontend**; ESLint limpio en
   archivos nuevos/cambios; `npx tsc --noEmit` sin errores. Errores de lint
   preexistentes en `hooks/useRecord.ts`/`hooks/useRecords.ts`. Sin commit/push.
+
+### Frontend de inventario — Fase 3: formulario de entrada (inbound)
+
+- `app/inventory/orders/inbound/page.tsx`: server component que lee
+  `searchParams` (Promise) con `product` (string o array → se toma el primero)
+  y pasa `initialProductId` al panel — patrón de `app/login/page.tsx` y
+  `app/reset-password/page.tsx`.
+- `components/inventory/InboundFormPanel.tsx` (cliente): select de producto con
+  `listProducts(nexovaApi)` al montar (placeholder por estado, disabled si no
+  hay productos, preselección `?product={id}` si aún no hay asset elegido);
+  campos `quantity` (min 1), `supplier` (requerido), `office`
+  (`INVENTORY_OFFICE_OPTIONS`); muestra "Current stock for X: N units" al
+  elegir producto; envío con `createInbound(nexovaApi, {…, quantity:Number})`;
+  estados `saving`/`error` (`inventoryErrorMessage`)/`created` (banner verde) y
+  reset tras crear; enlace "Back to current stock".
+- Corrección post-Fase 3 (probado con entrada real): el banner no aparecía
+  porque `resetForm()` hacía `setCreated(null)` tras `setCreated(...)` — con el
+  batching de React 19 quedaba `null`. Se elimina `resetForm()` (tras crear se
+  hace solo `setForm({...EMPTY_FORM})`); `created` pasa a `{ id, productName,
+  quantity }` con mensaje en inglés y amigable ("Inbound order #<id> created
+  successfully." + "N units of <producto> added to stock."); `updateField`
+  esconde el banner al editar. Verificado 70/70.
+- `components/inventory/index.ts`: barrel con `InventoryCurrentStockPanel` e
+  `InboundFormPanel`.
+- Verificación Fase 3: `npm test` → **70/70 tests frontend**; ESLint limpio en
+  archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
+  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase. Sin
+  commit/push.
+
+### Frontend de inventario — Fase 4: formulario de salida (outbound)
+
+- `app/inventory/orders/outbound/page.tsx`: server component análogo al de
+  inbound (lee `searchParams.product` en Promise, string o array → primer
+  elemento, pasa `initialProductId`).
+- `components/inventory/OutboundFormPanel.tsx` (cliente): patrón idéntico a
+  `InboundFormPanel` (loadProducts al montar con efecto one-line + directive
+  `react-hooks/set-state-in-effect`, preselección `?product={id}` si
+  `current.asset_id === 0`). Campos `AssetExitCreate`: `quantity` (min 1),
+  `exit_type` (Allocation/Consumption vía `INVENTORY_EXIT_TYPES`),
+  `office` (`INVENTORY_OFFICE_OPTIONS`) y `assigned_to` condicional (Input
+  visible solo en Allocation, requerido; al cambiar a Consumption se limpia,
+  valor `value={form.assigned_to ?? ""}` por el tipo `string | null`).
+- **Stock disponible antes de enviar**: panel "Available stock for X: N units"
+  coloreado por `stockLevelFor` (verde ≥8 / ámbar 2-7 / rojo ≤1).
+- **Aviso de stock insuficiente en cliente**: `insufficientStock` =
+  `selectedProduct && quantity > 0 && quantity > available`; advertencia roja
+  `role="alert"` "Only N units available… Reduce the quantity" + botón
+  `disabled={!canSubmit}` + guard en `submit` (no llama a la API). El backend
+  400 "Insufficient stock" queda como red de seguridad.
+- **Envío**: `createOutbound(nexovaApi, payload)`; `assigned_to` → `null` en
+  consumption, `.trim()` en allocation. `created` = `{ id, productName,
+  quantity, exitType }`; banner verde `role="status"` en inglés ("Outbound
+  order #ID created successfully." + "N units of <producto> removed from stock
+  [and allocated/consumed.]") que persiste tras resetear solo los campos
+  (evita el batching de Fase 3).
+- `components/inventory/index.ts`: barrel con `InventoryCurrentStockPanel`,
+  `InboundFormPanel` y `OutboundFormPanel`.
+- Verificación Fase 4: `npm test` → **70/70 tests frontend**; ESLint limpio en
+  archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
+  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase. Sin
+  commit/push.

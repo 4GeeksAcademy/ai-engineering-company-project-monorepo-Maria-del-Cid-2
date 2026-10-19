@@ -69,6 +69,66 @@ confirmados se vuelven visibles en la UI (verde ≥ 8, ámbar 2-7, rojo ≤ 1).
   `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`). Sin commit/push;
   se espera confirmación para la Fase 3.
 
+### Frontend de inventario — Fase 3: formulario de entrada (inbound)
+
+Formulario para registrar una entrada (recepción) en
+`POST /inventory/orders/inbound`, reutilizando `createInbound` (Fase 1) y la
+preselección `?product={id}` preparada en la Fase 2.
+
+- `app/inventory/orders/inbound/page.tsx`: server component que lee
+  `searchParams.product` (patrón login/reset-password; soporta string o array)
+  y pasa `initialProductId` al panel.
+- `components/inventory/InboundFormPanel.tsx` (cliente): select de producto
+  cargado con `listProducts(nexovaApi)` en el montaje (placeholder por estado:
+  cargando/error/vacío, deshabilitado sin productos); preselección por
+  `?product={id}`; campos `quantity` (min 1), `supplier` (requerido) y
+  `office` (`INVENTORY_OFFICE_OPTIONS`); al elegir producto muestra el stock
+  actual de contexto; envío con `createInbound` (quantity a Number), estados
+  saving/error/created (banner verde con "#ID"), reset tras crear; enlace
+  "Back to current stock".
+- Corrección posterior (probado con entrada real): `resetForm()` limpiaba
+  `created` con `setCreated(null)` justo tras haberse fijado, y con el batching
+  de React 19 el banner nunca se renderizaba. Se elimina `resetForm()`, tras
+  crear solo se hace `setForm({ ...EMPTY_FORM })`; `created` guarda ahora
+  `{ id, productName, quantity }` para un mensaje en inglés y amigable
+  ("Inbound order #<id> created successfully." + "N units of <producto> added
+  to stock."); `updateField` oculta el banner al editar. Verificado 70/70.
+- `components/inventory/index.ts`: barrel ampliado con `InboundFormPanel`.
+- Verificación: `npm test` → **70/70 tests frontend**; ESLint limpio en los
+  archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
+  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase.
+- Documentado (sección "Fase 3 del frontend" en
+  `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`). Sin commit/push;
+  se esperaba confirmación para la Fase 4.
+
+### Frontend de inventario — Fase 4: formulario de salida (outbound)
+
+- `app/inventory/orders/outbound/page.tsx`: server component análogo al de
+  inbound (lee `searchParams.product`, string o array, pasa `initialProductId`).
+- `components/inventory/OutboundFormPanel.tsx` (cliente): select de producto
+  con `listProducts(nexovaApi)` al montar (placeholder por estado, disabled sin
+  productos, preselección `?product={id}`); campos `quantity` (min 1),
+  `exit_type` (Allocation/Consumption), `office` y `assigned_to` (visible y
+  requerido solo en Allocation; al pasar a Consumption se limpia).
+- **Stock disponible antes de enviar**: panel "Available stock for X: N units"
+  coloreado por nivel (verde/ámbar/rojo, umbrales de Fase 2).
+- **Aviso en cliente de stock insuficiente**: si `quantity > current_stock`,
+  advertencia roja "Only N units available… Reduce the quantity" y botón
+  deshabilitado; `submit` no llama a la API (doble salvaguarda; el backend 400
+  "Insufficient stock" queda como red de seguridad).
+- **Envío**: `createOutbound(nexovaApi, payload)`; `assigned_to` → null en
+  consumption, texto recortado en allocation; estados saving/error/created
+  (banner verde en inglés: "Outbound order #ID created successfully." + "N
+  units of <producto> removed from stock [and allocated/consumed.]"), reset de
+  campos sin borrar el banner (patrón corregido en Fase 3).
+- `components/inventory/index.ts`: barrel ampliado con `OutboundFormPanel`.
+- Verificación: `npm test` → **70/70 tests frontend**; ESLint limpio en los
+  archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
+  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase.
+- Documentado (sección "Fase 4 del frontend" en
+  `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`). Sin commit/push;
+  se espera confirmación para la Fase 5.
+
 ### Gestión de inventario — cierre de `feature/inventory-orm-dual-database`
 
 Estado final documentado de la funcionalidad de inventario ORM con doble base

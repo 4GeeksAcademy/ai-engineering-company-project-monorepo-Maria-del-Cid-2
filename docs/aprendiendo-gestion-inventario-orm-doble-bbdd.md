@@ -411,3 +411,129 @@ ESLint limpio en `InventoryCurrentStockPanel.tsx`, `AuthShell.tsx`,
 `auth-navigation.ts`, `types/inventory.ts`, `types/index.ts` y el nuevo barrel.
 El lint de la app sigue mostrando los errores preexistentes de
 `hooks/useRecord.ts` y `hooks/useRecords.ts` (no se tocaron en esta fase).
+
+## Fase 3 del frontend: formulario de entrada (inbound)
+
+Esta fase añade el formulario para registrar una entrada (recepción de
+productos) en `POST /inventory/orders/inbound`, reutilizando la capa
+`createInbound` de la Fase 1 y la preselección `?product={id}` preparada en la
+Fase 2.
+
+### Página y componente
+
+- `app/inventory/orders/inbound/page.tsx` — server component que lee
+  `searchParams.product` (patrón de `app/login/page.tsx` y
+  `app/reset-password/page.tsx`) y pasa `initialProductId` al panel. Maneja
+  `product` como string o array de strings.
+- `components/inventory/InboundFormPanel.tsx` — componente cliente con el
+  estado del formulario (`AssetEntryCreate`), la carga de productos para el
+  select, la preselección del producto y el envío vía `createInbound`.
+- `components/inventory/index.ts` — barrel ampliado con `InboundFormPanel`.
+
+### Comportamiento del formulario
+
+- **Select de producto**: se carga con `listProducts(nexovaApi)` al montar.
+  Muestra `name (sku)` como opción; `placeholder` cambia según el estado
+  (cargando / error / vacío) y el select se deshabilita si no hay productos.
+  Si llega `?product={id}` y no hay producto preseleccionado todavía, se
+  preselecciona la primera opción con ese id. El error de carga de productos se
+  muestra aparte con `inventoryErrorMessage`.
+- **Campos**: `quantity` (número, mínimo 1), `supplier` (texto requerido) y
+  `office` (select con `INVENTORY_OFFICE_OPTIONS`: Valencia / Miami).
+- **Resumen contextual**: al elegir un producto se muestra el stock actual de
+  ese producto ("Current stock for X: N units") para dar contexto al operario.
+- **Envío**: `createInbound(nexovaApi, payload)` con `quantity` convertido a
+  número. Estados: `saving` (botón con spinner vía `loading`), `error` (mensaje
+  con `inventoryErrorMessage`, p. ej. rechazo 400/428) y `created` (banner
+  verde `role="status"` en inglés y amigable: "Inbound order #ID created
+  successfully." + "N units of <producto> added to stock."). Tras crear se
+  resetean solo los campos del formulario (el banner se mantiene visible).
+  Cualquier edición posterior del formulario (`updateField`) oculta el banner
+  para que el mensaje solo aparezca justo después de una creación correcta.
+- **Acceso secundario**: enlace "Back to current stock" hacia
+  `/inventory/products`.
+
+### Corrección posterior (mensaje de confirmación)
+
+Al probar una entrada real junto al API se detectó que el mensaje verde de
+confirmación nunca aparecía: `submit()` hacía `setCreated(...)` y después
+`resetForm()`, y este último limpiaba `created` con `setCreated(null)` — con el
+batching de React 19 ambas actualizaciones se agrupaban y el estado final era
+`null`, por lo que el banner no llegaba a renderizarse (aunque la entrada sí se
+creaba correctamente en el backend y sumaba la cantidad al producto).
+
+Arreglo:
+
+- `resetForm()` se elimina; tras crear solo se resetea el formulario con
+  `setForm({ ...EMPTY_FORM })`, dejando `created` intacto.
+- El estado `created` pasa a guardar `{ id, productName, quantity }` (se captura
+  el nombre del producto seleccionado antes de resetear) para un mensaje claro:
+  "Inbound order #<id> created successfully." y "N units of <producto> added to
+  stock."
+- `updateField` oculta el banner (y el error) al editar, para que la
+  confirmación solo se muestre justo tras una creación.
+
+Verificado con **70/70 tests**, `tsc --noEmit` limpio y ESLint limpio en
+`InboundFormPanel.tsx`. Sin commit/push.
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde**, `tsc --noEmit` sin errores y
+ESLint limpio en `InboundFormPanel.tsx`, `app/inventory/orders/inbound/page.tsx`
+y el barrel actualizado. Los errores de lint en `hooks/useRecord.ts` y
+`hooks/useRecords.ts` siguen siendo preexistentes y ajenos a esta fase.
+
+## Fase 4 del frontend: formulario de salida (outbound)
+
+Esta fase añade el formulario para registrar una salida (allocation a una
+persona o consumption) en `POST /inventory/orders/outbound`, reutilizando la
+capa `createOutbound` de la Fase 1 y la preselección `?product={id}` de la
+Fase 2. El requisito central es **mostrar el stock disponible antes de enviar**
+y **avisar en cliente cuando la cantidad pedida supera ese stock**, además de
+la advertencia que el propio backend devuelve (400 "Insufficient stock") como
+red de seguridad.
+
+### Página y componente
+
+- `app/inventory/orders/outbound/page.tsx` — server component análogo al del
+  inbound: lee `searchParams.product` (string o array) y pasa
+  `initialProductId` a `OutboundFormPanel`.
+- `components/inventory/OutboundFormPanel.tsx` — componente cliente con el
+  formulario (`AssetExitCreate`), la carga de productos, la preselección y el
+  envío vía `createOutbound`.
+- `components/inventory/index.ts` — barrel ampliado con `OutboundFormPanel`.
+
+### Comportamiento del formulario
+
+- **Select de producto**: igual que inbound (`listProducts(nexovaApi)` al
+  montar, placeholder por estado, disabled sin productos, preselección
+  `?product={id}` si aún no hay asset elegido).
+- **Campos**: `quantity` (número, mínimo 1), `exit_type` (select
+  Allocation / Consumption), `office` (Valencia / Miami) y `assigned_to`
+  (solo visible en Allocation, requerido). Al cambiar a Consumption se limpia
+  `assigned_to`; al volver a Allocation se conserva el texto.
+- **Stock disponible antes de enviar**: al elegir producto se muestra un panel
+  "Available stock for X: N units" coloreado por nivel (verde / ámbar / rojo,
+  mismos umbrales que Fase 2).
+- **Aviso de stock insuficiente en cliente**: si `quantity > current_stock` se
+  muestra una advertencia roja "Only N units available… Reduce the quantity" y
+  se deshabilita el botón "Create outbound"; el `submit` tampoco llega a llamar
+  a la API en ese caso (doble salvaguarda). El backend sigue protegiendo con
+  400 "Insufficient stock for this outbound movement." como red de seguridad.
+- **Envío**: `createOutbound(nexovaApi, payload)`; para `consumption` se envía
+  `assigned_to: null`, para `allocation` el texto recortado. Estados
+  `saving` / `error` (`inventoryErrorMessage`) / `created` (banner verde
+  `role="status"` en inglés: "Outbound order #ID created successfully." + "N
+  units of <producto> removed from stock [and allocated/consumed.]"). Tras
+  crear se resetean solo los campos (el banner persiste) — mismo patrón
+  corregido en Fase 3, evitando el batching que ocultaba el mensaje.
+- **Acceso secundario**: enlace "Back to current stock" hacia
+  `/inventory/products`.
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde**, `tsc --noEmit` sin errores y
+ESLint limpio en `OutboundFormPanel.tsx`, `app/inventory/orders/outbound/page.tsx`
+y el barrel actualizado. Los errores de lint en `hooks/useRecord.ts` y
+`hooks/useRecords.ts` siguen siendo preexistentes y ajenos a esta fase. Sin
+commit/push.
