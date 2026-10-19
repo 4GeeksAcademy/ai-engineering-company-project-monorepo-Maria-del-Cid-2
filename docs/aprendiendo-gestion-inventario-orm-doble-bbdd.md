@@ -283,3 +283,131 @@ formal; filtros, paginación y stock por oficina; política futura de backfill
 para usuarios antiguos sin UUID. SQLite no valida el lock PostgreSQL.
 
 Cada fase debe comprobar explícitamente que no altera el comportamiento de TinyDB y que sus pruebas usan almacenamiento aislado. Este orden es orientativo; no autoriza por sí mismo ninguna operación futura.
+
+## Fase 1 del frontend: capa de integración (inventario)
+
+Esta fase construye la base del frontend de inventario en
+`uis/backoffice/talent-pipeline-tracker` (Next.js App Router sobre la API de
+`services/api`). No crea todavía vistas: define los tipos, la capa API
+centralizada y sus pruebas. Cada fase posterior del frontend debe apoyarse en
+estos módulos y no abrir `fetch` directamente.
+
+### Tipos compartidos (`types/inventory.ts`)
+
+Espejo de los schemas de `services/api/app/inventory/schemas.py`:
+
+- Constantes: `INVENTORY_OFFICES = ["Valencia", "Miami"]`,
+  `INVENTORY_EXIT_TYPES = ["allocation", "consumption"]` y sus etiquetas de UI
+  (`INVENTORY_OFFICE_LABELS`, `INVENTORY_OFFICE_OPTIONS`,
+  `INVENTORY_EXIT_TYPE_LABELS`).
+- `AssetWithStock`: producto + `current_stock` derivado (solo respuesta).
+- `AssetEntryCreate` / `AssetEntry`: entradas (inbound); `user_uuid` solo en la
+  respuesta, no en la creación.
+- `AssetExitCreate` / `AssetExit`: salidas (outbound) con `exit_type`
+  (`allocation` | `consumption`) y `assigned_to` opcional.
+- `InventoryOrder = InventoryEntryOrder | InventoryExitOrder`: unión
+  discriminada por el campo `type` (`"entry"` | `"exit"`).
+
+`types/index.ts` re-exporta todo para que los componentes puedan importar desde
+`@/types`.
+
+### Capa de integración (`lib/inventory.ts`)
+
+Todas las llamadas al API de inventario pasan por `nexovaApi.request` con
+`auth: true` (Bearer desde `nexova_access_token`). Sigue el patrón inyectable
+de `lib/profile-api.ts`: cada función recibe
+`client: InventoryApiClient = Pick<NexovaApiClient, "request">`. Las páginas
+pasan el singleton `nexovaApi`; los tests inyectan un cliente con fetch y
+storage simulados (mismo patrón que `tests/profile-api.test.mjs`).
+
+Funciones:
+
+- `listProducts(client)` → `GET /inventory/products`.
+- `getProduct(client, assetId)` → `GET /inventory/products/{asset_id}`.
+- `listOrders(client)` → `GET /inventory/orders` (unión discriminada).
+- `createInbound(client, payload)` → `POST /inventory/orders/inbound`.
+- `createOutbound(client, payload)` → `POST /inventory/orders/outbound`.
+- `inventoryErrorMessage(error, fallback)` → mensaje de usuario en español:
+  prefiere el `detail` de la API para 4xx que no sea el texto genérico (así se
+  muestran mensajes como el de stock insuficiente o el 428 de UUID); usa
+  `getUserFacingApiError` para network/timeout/5xx; devuelve `null` para
+  peticiones canceladas.
+
+Verificación en esta rama: **70 tests frontend en verde** (incluye
+`tests/inventory-api.test.mjs`), lint sin errores en los archivos nuevos y
+`tsc --noEmit` sin errores. Los errores de lint en `hooks/useRecords.ts` son
+preexistentes y no se tocaron en esta fase.
+
+### Umbrales de stock (decisión confirmada)
+
+Los umbrales para colorear el stock se aplicarán en fases posteriores:
+verde cuando haya **8 o más** unidades; ámbar desde **2 hasta 7** (inclusive);
+rojo cuando haya **1 o 0** (por debajo de 2). Se documentará en el código de la
+vista de productos cuando se implemente.
+
+## Fase 2 del frontend: vista de stock actual con colores
+
+Esta fase añade la primera vista del inventario: la lista de productos con el
+stock derivado coloreado, navegación en el header y rutas protegidas. Es la
+fase donde los umbrales de stock confirmados se hacen visibles en la UI.
+
+### Umbrales implementados (`types/inventory.ts`)
+
+Se añaden dos piezas reutilizables:
+
+- `stockLevelFor(currentStock): StockLevel` — clasifica un valor de stock:
+  `>= 8 → "healthy"`, `>= 2 → "low"`, resto → `"out"`. El JSDoc documenta los
+  umbrales confirmados (verde ≥ 8, ámbar 2–7, rojo 1 o 0).
+- `STOCK_LEVEL_LABELS: Record<StockLevel, string>` — `"Healthy"`, `"Low"`,
+  `"Out of stock"` para los badges de la UI.
+
+`types/index.ts` re-exporta `stockLevelFor` y `STOCK_LEVEL_LABELS` junto al
+resto de constantes de inventario.
+
+### Vista de stock actual (`/inventory/products`)
+
+- `app/inventory/products/page.tsx` — wrapper fino que devuelve el panel
+  (mismo patrón que `app/suppliers/page.tsx`).
+- `components/inventory/InventoryCurrentStockPanel.tsx` — componente cliente
+  que carga `listProducts(nexovaApi)` en el montaje. Estados: loading
+  (`Spinner`), error (alerta roja con mensaje vía `inventoryErrorMessage`) y
+  vacío (caja con borde discontinuo que sugiere crear una entrada).
+- `components/inventory/index.ts` — barrel del dominio.
+- Por cada producto se muestra: avatar con el stock numérico coloreado (con la
+  palabra "units" debajo dentro del mismo cuadro), nombre, SKU · categoría ·
+  oficina y un badge de nivel de stock (`Healthy`/`Low`/`Out of stock` con su
+  recuento de unidades). Colores: `healthy` verde, `low` ámbar, `out` rojo
+  (clases Tailwind definidas en `STOCK_BADGE_CLASSES` /
+  `STOCK_AVATAR_CLASSES`).
+- Cada fila tiene accesos directos "Create inbound" y "Create outbound" que
+  navegan a `/inventory/orders/inbound?product={id}` y
+  `/inventory/orders/outbound?product={id}` (preselección preparada para las
+  fases 3 y 4). Ambos botones comparten la misma estética secundaria (borde y
+  fondo claro); en escritorio se apilan en vertical uno encima del otro.
+- La cabecera resume `N productos · M unidades en total`.
+
+### Navegación del header (`components/auth/AuthShell.tsx`)
+
+- `DropdownName` ahora incluye `"inventory"`.
+- Nuevo dropdown **Inventory** (escritorio) entre Incidents y Suppliers, y
+  bloque etiquetado correspondiente en móvil. Enlaces: Current Stock
+  (`/inventory/products`), Inbounds (`/inventory/orders/inbound`), Outbounds
+  (`/inventory/orders/outbound`) y All Orders (`/inventory/orders`). Sigue el
+  patrón de `renderIncidentLinks` con `menuLinkClass` y `closeNavigation` en
+  `onSelect`.
+
+### Rutas protegidas (`lib/auth-navigation.ts`)
+
+`protectedRoutes` incorpora los cuatro endpoints de inventario:
+`/inventory/products`, `/inventory/orders/inbound`,
+`/inventory/orders/outbound` y `/inventory/orders`. Un usuario sin sesión que
+visite cualquiera de ellas es redirigido a `/login` (lógica existente de
+`AuthShell` + `requiresAuthentication`).
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde**, `tsc --noEmit` sin errores y
+ESLint limpio en `InventoryCurrentStockPanel.tsx`, `AuthShell.tsx`,
+`auth-navigation.ts`, `types/inventory.ts`, `types/index.ts` y el nuevo barrel.
+El lint de la app sigue mostrando los errores preexistentes de
+`hooks/useRecord.ts` y `hooks/useRecords.ts` (no se tocaron en esta fase).

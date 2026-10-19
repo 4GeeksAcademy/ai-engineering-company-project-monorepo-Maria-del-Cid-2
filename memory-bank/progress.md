@@ -1,5 +1,74 @@
 # Progress — Nexova
 
+### Frontend de inventario — Fase 1: capa de integración
+
+Iniciado el frontend del módulo de inventario en
+`uis/backoffice/talent-pipeline-tracker` (Next.js App Router sobre la API de
+`services/api`). Esta fase no añade vistas: define los tipos, la capa API
+centralizada y sus pruebas. Fases posteriores añadirán las 4 vistas
+(productos con stock coloreado, entrada, salida e histórico de órdenes),
+siguiendo esta capa sin abrir `fetch` directamente.
+
+- `types/inventory.ts`: espejo de `services/api/app/inventory/schemas.py`.
+  Constantes `INVENTORY_OFFICES = ["Valencia", "Miami"]`,
+  `INVENTORY_EXIT_TYPES = ["allocation", "consumption"]` con etiquetas de UI;
+  `AssetWithStock` (producto + `current_stock` derivado), `AssetEntry(Create)` y
+  `AssetExit(Create)`, y `InventoryOrder` como unión discriminada por `type`
+  (`entry` | `exit`). `types/index.ts` re-exporta todo desde `@/types`.
+- `lib/inventory.ts`: capa de integración autenticada. Todas las llamadas pasan
+  por `nexovaApi.request` con `auth: true` (Bearer). Sigue el patrón inyectable
+  de `lib/profile-api.ts`: cada función recibe
+  `client: InventoryApiClient = Pick<NexovaApiClient, "request">`; las páginas
+  pasan el singleton `nexovaApi`, los tests inyectan un cliente simulado.
+  Funciones: `listProducts`, `getProduct(client, id)`, `listOrders`,
+  `createInbound(client, payload)`, `createOutbound(client, payload)` e
+  `inventoryErrorMessage(error, fallback)` (4xx → detail de la API si no es
+  genérico; network/timeout/5xx → `getUserFacingApiError`; cancelado → `null`).
+- `tests/inventory-api.test.mjs`: mismo patrón que `tests/profile-api.test.mjs`
+  (`MemoryStorage` + `NexovaApiClient` con fetch mock). Cubre GET/POST,
+  cabecera Bearer, payload JSON, rechazo 400 por stock insuficiente, 428,
+  409, 503 y el traductor de mensajes.
+- Verificación desde `uis/backoffice/talent-pipeline-tracker`: `npm test` →
+  **70/70 tests frontend**; `npx eslint lib/inventory.ts tests/inventory-api.test.mjs`
+  sin errores; `npx tsc --noEmit` sin errores. Los errores de lint en
+  `hooks/useRecords.ts` son preexistentes y no se tocaron en esta fase.
+- Documentado en `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`
+  (sección "Fase 1 del frontend"). Los umbrales confirmados para la vista de
+  stock se documentarán en su fase: verde ≥ 8, ámbar 2-7, rojo ≤ 1.
+- No se creó commit ni push; se espera confirmación del usuario para la Fase 2.
+
+### Frontend de inventario — Fase 2: vista de stock actual con colores
+
+Primera vista de inventario: lista de productos con el stock derivado
+coloreado, navegación en el header y rutas protegidas. Los umbrales
+confirmados se vuelven visibles en la UI (verde ≥ 8, ámbar 2-7, rojo ≤ 1).
+
+- `types/inventory.ts`: `stockLevelFor(currentStock)` clasifica
+  `>= 8 → "healthy"`, `>= 2 → "low"`, resto → `"out"`; `STOCK_LEVEL_LABELS`
+  (`Healthy`/`Low`/`Out of stock`). Re-exportados en `types/index.ts`.
+- `app/inventory/products/page.tsx`: wrapper fino → panel (patrón suppliers).
+- `components/inventory/InventoryCurrentStockPanel.tsx`: carga
+  `listProducts(nexovaApi)` al montar; estados loading (Spinner), error
+  (`inventoryErrorMessage`) y vacío; por producto muestra avatar stock
+  coloreado (número + "units" dentro del cuadro), nombre, SKU · categoría ·
+  oficina y badge de nivel; resumen "N productos · M unidades en total";
+  accesos "Create inbound"/"Create outbound" con preselección `?product={id}`
+  (para fases 3/4). Ambos botones comparten la misma estética secundaria y en
+  escritorio se apilan en vertical uno encima del otro.
+- `components/inventory/index.ts`: barrel del dominio.
+- `components/auth/AuthShell.tsx`: dropdown **Inventory** (escritorio y móvil)
+  con Current Stock, Inbounds, Outbounds y All Orders; `DropdownName` incluye
+  `"inventory"`.
+- `lib/auth-navigation.ts`: `protectedRoutes` incluye `/inventory/products`,
+  `/inventory/orders/inbound`, `/inventory/orders/outbound`,
+  `/inventory/orders`.
+- Verificación: `npm test` → **70/70 tests frontend**; ESLint limpio en
+  archivos nuevos/cambiados; `npx tsc --noEmit` sin errores. Los errores de
+  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` son preexistentes.
+- Documentado (sección "Fase 2 del frontend" en
+  `docs/aprendiendo-gestion-inventario-orm-doble-bbdd.md`). Sin commit/push;
+  se espera confirmación para la Fase 3.
+
 ### Gestión de inventario — cierre de `feature/inventory-orm-dual-database`
 
 Estado final documentado de la funcionalidad de inventario ORM con doble base

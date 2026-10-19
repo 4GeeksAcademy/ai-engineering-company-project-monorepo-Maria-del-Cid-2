@@ -5,6 +5,10 @@ const protectedRoutes = [
   "/incidents/manager",
   "/account/profile",
   "/account/change-password",
+  "/inventory/products",
+  "/inventory/orders/inbound",
+  "/inventory/orders/outbound",
+  "/inventory/orders",
 ];
 
 export interface AccountNavigationLink {

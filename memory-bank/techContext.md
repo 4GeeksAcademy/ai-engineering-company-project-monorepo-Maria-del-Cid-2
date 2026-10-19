@@ -546,3 +546,56 @@ comprobación manual del login y registro en Chrome.
   decidir si se requiere saldo por oficina, filtros/paginación y una estrategia
   aprobada para usuarios históricos sin UUID. El resultado de pytest y la
   confirmación del usuario no sustituyen dichas comprobaciones pendientes.
+### Frontend de inventario — Fase 1: capa de integración (inventario)
+
+- Ruta del frontend: `uis/backoffice/talent-pipeline-tracker` (Next.js App
+  Router). La API de inventario se consume bajo `/api/inventory` con
+  `NEXT_PUBLIC_NEXOVA_API_BASE` (por defecto `http://localhost:8000/api`).
+- `types/inventory.ts`: espejo de los schemas de `services/api` de inventario.
+  Constantes `INVENTORY_OFFICES = ["Valencia", "Miami"]` y
+  `INVENTORY_EXIT_TYPES = ["allocation", "consumption"]` con sus etiquetas de
+  UI. Modelos: `AssetWithStock` (producto + `current_stock` derivado),
+  `AssetEntryCreate`/`AssetEntry`, `AssetExitCreate`/`AssetExit` (con
+  `exit_type` y `assigned_to` opcional) e `InventoryOrder` como unión
+  discriminada por `type`: `"entry" | "exit"`. `types/index.ts` re-exporta
+  todo para `@/types`.
+- `lib/inventory.ts`: capa de integración autenticada. Todas las llamadas van a
+  través de `nexovaApi.request` con `auth: true` (Bearer desde
+  `nexova_access_token`). Sigue el patrón inyectable de `lib/profile-api.ts`
+  (funciones reciben `InventoryApiClient = Pick<NexovaApiClient, "request">`);
+  las páginas pasan el singleton `nexovaApi` y los tests inyectan un cliente
+  con fetch/storage simulados. Importa con rutas relativas y extensión `.ts`
+  para que el runner de Node (`node --experimental-strip-types`) lo ejecute.
+  Exporta `listProducts`, `getProduct`, `listOrders`, `createInbound`,
+  `createOutbound` e `inventoryErrorMessage`.
+- `tests/inventory-api.test.mjs`: patrón de `tests/profile-api.test.mjs`
+  (`MemoryStorage` + `NexovaApiClient` mock). Cubre GET, POST, Bearer, payloads
+  JSON, rechazo 400 stock insuficiente, 428 UUID, 409, 503 y traducción de
+  mensajes de error.
+- Umbrales confirmados para la vista de stock (fases posteriores): verde ≥ 8,
+  ámbar 2-7 inclusive, rojo ≤ 1.
+- Verificación Fase 1: `npm test` → **70/70 tests frontend**; lint de los
+  archivos nuevos y `npx tsc --noEmit` sin errores. Errores preexistentes de
+  lint en `hooks/useRecords.ts` ajenos a esta fase. Sin commit/push.
+
+### Frontend de inventario — Fase 2: vista de stock actual (inventario)
+
+- Umbrales implementados en `types/inventory.ts`: `stockLevelFor(currentStock)`
+  (`>= 8 → "healthy"`, `>= 2 → "low"`, resto → `"out"`) y `STOCK_LEVEL_LABELS`
+  (`Healthy`/`Low`/`Out of stock`). Re-exportados en `types/index.ts`.
+- `app/inventory/products/page.tsx` (wrapper fino) +
+  `components/inventory/InventoryCurrentStockPanel.tsx` (cliente): carga
+  `listProducts(nexovaApi)` al montar; Spinner/error/estado vacío; por fila
+  avatar de stock coloreado, nombre, SKU · categoría · oficina y badge
+  `Healthy`/`Low`/`Out of stock`; resumen "N productos · M unidades"; enlaces
+  "Create inbound"/"Create outbound" con `?product={id}` (fases 3/4).
+  `components/inventory/index.ts` = barrel del dominio.
+- `components/auth/AuthShell.tsx`: `DropdownName` incluye `"inventory"`;
+  dropdown **Inventory** (desktop) y bloque etiquetado (móvil) entre
+  Incidents y Suppliers con Current Stock, Inbounds, Outbounds, All Orders.
+- `lib/auth-navigation.ts`: `protectedRoutes` añade `/inventory/products`,
+  `/inventory/orders/inbound`, `/inventory/orders/outbound`,
+  `/inventory/orders` (redirección a `/login` ya existente en `AuthShell`).
+- Verificación Fase 2: `npm test` → **70/70 tests frontend**; ESLint limpio en
+  archivos nuevos/cambios; `npx tsc --noEmit` sin errores. Errores de lint
+  preexistentes en `hooks/useRecord.ts`/`hooks/useRecords.ts`. Sin commit/push.
