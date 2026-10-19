@@ -29,3 +29,4 @@ __pycache__/
 docs/Aprendiendo-*.md
 !docs/Aprendiendo-password-reset.mdbuild/
 /packages/shared/python/build/
+.vscode/
