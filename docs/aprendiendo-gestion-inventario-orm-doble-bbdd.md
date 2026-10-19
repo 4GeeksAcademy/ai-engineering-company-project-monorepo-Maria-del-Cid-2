@@ -537,3 +537,74 @@ ESLint limpio en `OutboundFormPanel.tsx`, `app/inventory/orders/outbound/page.ts
 y el barrel actualizado. Los errores de lint en `hooks/useRecord.ts` y
 `hooks/useRecords.ts` siguen siendo preexistentes y ajenos a esta fase. Sin
 commit/push.
+
+## Fase 5 del frontend: historial de órdenes (read-only)
+
+Esta fase añade la vista `/inventory/orders` (read-only) que lista todos los
+movimientos de entrada y salida, **la más reciente primero**, mostrando el
+**nombre del producto** y, como creador, un **identificador de usuario
+abreviado** (decisión de producto: la API actual no expone un mapeo
+`user_uuid → nombre`).
+
+### Decisión sobre el creador
+
+El requisito inicial pedía mostrar "product name and creator". Investigación:
+
+- `GET /inventory/orders` devuelve por movimiento `asset_id`, `quantity`, `type`,
+  `office`, `created_at` y `user_uuid` (sin nombre de producto ni de creador).
+- El nombre del producto se resuelve fácil en cliente con `listProducts`
+  (mapa `asset_id → name`, mismo catálogo que la Fase 2).
+- El creador NO es resoluble con la API actual: `GET /api/users` no expone
+  `user_uuid` (solo `id`, `email`, `role`), el JWT solo contiene
+  `sub` numérico + `credentials_version`, y `/profiles/me` es solo el perfil
+  propio.
+
+**Decisión (consultada con el product owner):** Fase 5 queda 100% con la API
+actual — la columna creador muestra el `user_uuid` abreviado (`a1b2c3d4…`) con
+`title` para ver el UUID completo y con la etiqueta clara **"Created by"**
+delante, para que se entienda que el código identifica al usuario que registró
+la order (inbound o outbound). El requisito adicional de mostrar el **nombre**
+del usuario quedó **fuera de alcance por decisión explícita**: el nombre
+legible vive en `Profile.name` (ligado a `user_id`, no a `user_uuid`), el
+`user_uuid` no se expone en `GET /api/users` ni en las orders, y el JWT solo
+contiene `sub` numérico + `credentials_version` — sin backend no hay forma de
+resolver `user_uuid → nombre`. Si en el futuro se quiere el nombre real, habrá
+que ampliar el backend (p. ej. resolver el creador dentro de
+`list_inventory_orders` devolviendo `email`/`name`) y luego adaptar esta vista;
+ya se documentó como pendiente.
+
+### Página y componente
+
+- `app/inventory/orders/page.tsx` — server component simple que renderiza el
+  panel (sin `searchParams`).
+- `components/inventory/OrdersHistoryPanel.tsx` — componente cliente "use
+  client" que carga en paralelo `listOrders(nexovaApi)` y
+  `listProducts(nexovaApi)` (Promise.all), construye el mapa `asset_id → name`
+  y pinta la lista.
+- `components/inventory/index.ts` — barrel ampliado con `OrdersHistoryPanel`.
+
+### Comportamiento
+
+- **Load**: `loading` inicial con `Spinner`; error de API mostrado en rojo con
+  `inventoryErrorMessage`; estado vacío con mensaje
+  "No inbound or outbound movements have been recorded yet."
+- **Cada tarjeta (read-only)**: badge `Inbound` (verde) / `Outbound` (ámbar),
+  nombre del producto (o `Product #<asset_id>` si el asset no existe en el
+  catálogo), `#id` en mono, cantidad con plural, y detalle según tipo:
+  - Entry: `Supplier`, `Office`.
+  - Exit: `Type` (Allocation / Consumption), `Office` y `Assigned to` si aplica.
+- **Columna derecha**: etiqueta pequeña en mayúsculas **"Created by"** seguida
+  del `user_uuid` abreviado en mono (con `title="User ${user_uuid}"` para ver
+  el UUID completo y dejar claro que identifica al usuario creador) y fecha
+  formateada con `toLocaleString` (año/mes/día + hora:minuto).
+- **Orden**: la API ya devuelve `ORDER BY created_at DESC`; no se reordena en
+  cliente. Sin acciones ni enlaces (vista solo de lectura).
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde** (`listOrders` ya estaba cubierto
+desde la Fase 1 — "lists the discriminated union of movement orders"—, no se
+añadieron funciones nuevas al data-layer), `tsc --noEmit` sin errores y ESLint
+limpio en `OrdersHistoryPanel.tsx`, `app/inventory/orders/page.tsx` y el barrel
+actualizado. Los errores de lint en `hooks/useRecord.ts` y `hooks/useRecords.ts`
+siguen siendo preexistentes y ajenos a esta fase. Sin commit/push.
