@@ -283,3 +283,257 @@ formal; filtros, paginación y stock por oficina; política futura de backfill
 para usuarios antiguos sin UUID. SQLite no valida el lock PostgreSQL.
 
 Cada fase debe comprobar explícitamente que no altera el comportamiento de TinyDB y que sus pruebas usan almacenamiento aislado. Este orden es orientativo; no autoriza por sí mismo ninguna operación futura.
+
+## Fase 1 del frontend: capa de integración (inventario)
+
+Esta fase construye la base del frontend de inventario en
+`uis/backoffice/talent-pipeline-tracker` (Next.js App Router sobre la API de
+`services/api`). No crea todavía vistas: define los tipos, la capa API
+centralizada y sus pruebas. Cada fase posterior del frontend debe apoyarse en
+estos módulos y no abrir `fetch` directamente.
+
+### Tipos compartidos (`types/inventory.ts`)
+
+Espejo de los schemas de `services/api/app/inventory/schemas.py`:
+
+- Constantes: `INVENTORY_OFFICES = ["Valencia", "Miami"]`,
+  `INVENTORY_EXIT_TYPES = ["allocation", "consumption"]` y sus etiquetas de UI
+  (`INVENTORY_OFFICE_LABELS`, `INVENTORY_OFFICE_OPTIONS`,
+  `INVENTORY_EXIT_TYPE_LABELS`).
+- `AssetWithStock`: producto + `current_stock` derivado (solo respuesta).
+- `AssetEntryCreate` / `AssetEntry`: entradas (inbound); `user_uuid` solo en la
+  respuesta, no en la creación.
+- `AssetExitCreate` / `AssetExit`: salidas (outbound) con `exit_type`
+  (`allocation` | `consumption`) y `assigned_to` opcional.
+- `InventoryOrder = InventoryEntryOrder | InventoryExitOrder`: unión
+  discriminada por el campo `type` (`"entry"` | `"exit"`).
+
+`types/index.ts` re-exporta todo para que los componentes puedan importar desde
+`@/types`.
+
+### Capa de integración (`lib/inventory.ts`)
+
+Todas las llamadas al API de inventario pasan por `nexovaApi.request` con
+`auth: true` (Bearer desde `nexova_access_token`). Sigue el patrón inyectable
+de `lib/profile-api.ts`: cada función recibe
+`client: InventoryApiClient = Pick<NexovaApiClient, "request">`. Las páginas
+pasan el singleton `nexovaApi`; los tests inyectan un cliente con fetch y
+storage simulados (mismo patrón que `tests/profile-api.test.mjs`).
+
+Funciones:
+
+- `listProducts(client)` → `GET /inventory/products`.
+- `getProduct(client, assetId)` → `GET /inventory/products/{asset_id}`.
+- `listOrders(client)` → `GET /inventory/orders` (unión discriminada).
+- `createInbound(client, payload)` → `POST /inventory/orders/inbound`.
+- `createOutbound(client, payload)` → `POST /inventory/orders/outbound`.
+- `inventoryErrorMessage(error, fallback)` → mensaje de usuario en español:
+  prefiere el `detail` de la API para 4xx que no sea el texto genérico (así se
+  muestran mensajes como el de stock insuficiente o el 428 de UUID); usa
+  `getUserFacingApiError` para network/timeout/5xx; devuelve `null` para
+  peticiones canceladas.
+
+Verificación en esta rama: **70 tests frontend en verde** (incluye
+`tests/inventory-api.test.mjs`), lint sin errores en los archivos nuevos y
+`tsc --noEmit` sin errores. Los errores de lint en `hooks/useRecords.ts` son
+preexistentes y no se tocaron en esta fase.
+
+### Umbrales de stock (decisión confirmada)
+
+Los umbrales para colorear el stock se aplicarán en fases posteriores:
+verde cuando haya **8 o más** unidades; ámbar desde **2 hasta 7** (inclusive);
+rojo cuando haya **1 o 0** (por debajo de 2). Se documentará en el código de la
+vista de productos cuando se implemente.
+
+## Fase 2 del frontend: vista de stock actual con colores
+
+Esta fase añade la primera vista del inventario: la lista de productos con el
+stock derivado coloreado, navegación en el header y rutas protegidas. Es la
+fase donde los umbrales de stock confirmados se hacen visibles en la UI.
+
+### Umbrales implementados (`types/inventory.ts`)
+
+Se añaden dos piezas reutilizables:
+
+- `stockLevelFor(currentStock): StockLevel` — clasifica un valor de stock:
+  `>= 8 → "healthy"`, `>= 2 → "low"`, resto → `"out"`. El JSDoc documenta los
+  umbrales confirmados (verde ≥ 8, ámbar 2–7, rojo 1 o 0).
+- `STOCK_LEVEL_LABELS: Record<StockLevel, string>` — `"Healthy"`, `"Low"`,
+  `"Out of stock"` para los badges de la UI.
+
+`types/index.ts` re-exporta `stockLevelFor` y `STOCK_LEVEL_LABELS` junto al
+resto de constantes de inventario.
+
+### Vista de stock actual (`/inventory/products`)
+
+- `app/inventory/products/page.tsx` — wrapper fino que devuelve el panel
+  (mismo patrón que `app/suppliers/page.tsx`).
+- `components/inventory/InventoryCurrentStockPanel.tsx` — componente cliente
+  que carga `listProducts(nexovaApi)` en el montaje. Estados: loading
+  (`Spinner`), error (alerta roja con mensaje vía `inventoryErrorMessage`) y
+  vacío (caja con borde discontinuo que sugiere crear una entrada).
+- `components/inventory/index.ts` — barrel del dominio.
+- Por cada producto se muestra: avatar con el stock numérico coloreado (con la
+  palabra "units" debajo dentro del mismo cuadro), nombre, SKU · categoría ·
+  oficina y un badge de nivel de stock (`Healthy`/`Low`/`Out of stock` con su
+  recuento de unidades). Colores: `healthy` verde, `low` ámbar, `out` rojo
+  (clases Tailwind definidas en `STOCK_BADGE_CLASSES` /
+  `STOCK_AVATAR_CLASSES`).
+- Cada fila tiene accesos directos "Create inbound" y "Create outbound" que
+  navegan a `/inventory/orders/inbound?product={id}` y
+  `/inventory/orders/outbound?product={id}` (preselección preparada para las
+  fases 3 y 4). Ambos botones comparten la misma estética secundaria (borde y
+  fondo claro); en escritorio se apilan en vertical uno encima del otro.
+- La cabecera resume `N productos · M unidades en total`.
+
+### Navegación del header (`components/auth/AuthShell.tsx`)
+
+- `DropdownName` ahora incluye `"inventory"`.
+- Nuevo dropdown **Inventory** (escritorio) entre Incidents y Suppliers, y
+  bloque etiquetado correspondiente en móvil. Enlaces: Current Stock
+  (`/inventory/products`), Inbounds (`/inventory/orders/inbound`), Outbounds
+  (`/inventory/orders/outbound`) y All Orders (`/inventory/orders`). Sigue el
+  patrón de `renderIncidentLinks` con `menuLinkClass` y `closeNavigation` en
+  `onSelect`.
+
+### Rutas protegidas (`lib/auth-navigation.ts`)
+
+`protectedRoutes` incorpora los cuatro endpoints de inventario:
+`/inventory/products`, `/inventory/orders/inbound`,
+`/inventory/orders/outbound` y `/inventory/orders`. Un usuario sin sesión que
+visite cualquiera de ellas es redirigido a `/login` (lógica existente de
+`AuthShell` + `requiresAuthentication`).
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde**, `tsc --noEmit` sin errores y
+ESLint limpio en `InventoryCurrentStockPanel.tsx`, `AuthShell.tsx`,
+`auth-navigation.ts`, `types/inventory.ts`, `types/index.ts` y el nuevo barrel.
+El lint de la app sigue mostrando los errores preexistentes de
+`hooks/useRecord.ts` y `hooks/useRecords.ts` (no se tocaron en esta fase).
+
+## Fase 3 del frontend: formulario de entrada (inbound)
+
+Esta fase añade el formulario para registrar una entrada (recepción de
+productos) en `POST /inventory/orders/inbound`, reutilizando la capa
+`createInbound` de la Fase 1 y la preselección `?product={id}` preparada en la
+Fase 2.
+
+### Página y componente
+
+- `app/inventory/orders/inbound/page.tsx` — server component que lee
+  `searchParams.product` (patrón de `app/login/page.tsx` y
+  `app/reset-password/page.tsx`) y pasa `initialProductId` al panel. Maneja
+  `product` como string o array de strings.
+- `components/inventory/InboundFormPanel.tsx` — componente cliente con el
+  estado del formulario (`AssetEntryCreate`), la carga de productos para el
+  select, la preselección del producto y el envío vía `createInbound`.
+- `components/inventory/index.ts` — barrel ampliado con `InboundFormPanel`.
+
+### Comportamiento del formulario
+
+- **Select de producto**: se carga con `listProducts(nexovaApi)` al montar.
+  Muestra `name (sku)` como opción; `placeholder` cambia según el estado
+  (cargando / error / vacío) y el select se deshabilita si no hay productos.
+  Si llega `?product={id}` y no hay producto preseleccionado todavía, se
+  preselecciona la primera opción con ese id. El error de carga de productos se
+  muestra aparte con `inventoryErrorMessage`.
+- **Campos**: `quantity` (número, mínimo 1), `supplier` (texto requerido) y
+  `office` (select con `INVENTORY_OFFICE_OPTIONS`: Valencia / Miami).
+- **Resumen contextual**: al elegir un producto se muestra el stock actual de
+  ese producto ("Current stock for X: N units") para dar contexto al operario.
+- **Envío**: `createInbound(nexovaApi, payload)` con `quantity` convertido a
+  número. Estados: `saving` (botón con spinner vía `loading`), `error` (mensaje
+  con `inventoryErrorMessage`, p. ej. rechazo 400/428) y `created` (banner
+  verde `role="status"` en inglés y amigable: "Inbound order #ID created
+  successfully." + "N units of <producto> added to stock."). Tras crear se
+  resetean solo los campos del formulario (el banner se mantiene visible).
+  Cualquier edición posterior del formulario (`updateField`) oculta el banner
+  para que el mensaje solo aparezca justo después de una creación correcta.
+- **Acceso secundario**: enlace "Back to current stock" hacia
+  `/inventory/products`.
+
+### Corrección posterior (mensaje de confirmación)
+
+Al probar una entrada real junto al API se detectó que el mensaje verde de
+confirmación nunca aparecía: `submit()` hacía `setCreated(...)` y después
+`resetForm()`, y este último limpiaba `created` con `setCreated(null)` — con el
+batching de React 19 ambas actualizaciones se agrupaban y el estado final era
+`null`, por lo que el banner no llegaba a renderizarse (aunque la entrada sí se
+creaba correctamente en el backend y sumaba la cantidad al producto).
+
+Arreglo:
+
+- `resetForm()` se elimina; tras crear solo se resetea el formulario con
+  `setForm({ ...EMPTY_FORM })`, dejando `created` intacto.
+- El estado `created` pasa a guardar `{ id, productName, quantity }` (se captura
+  el nombre del producto seleccionado antes de resetear) para un mensaje claro:
+  "Inbound order #<id> created successfully." y "N units of <producto> added to
+  stock."
+- `updateField` oculta el banner (y el error) al editar, para que la
+  confirmación solo se muestre justo tras una creación.
+
+Verificado con **70/70 tests**, `tsc --noEmit` limpio y ESLint limpio en
+`InboundFormPanel.tsx`. Sin commit/push.
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde**, `tsc --noEmit` sin errores y
+ESLint limpio en `InboundFormPanel.tsx`, `app/inventory/orders/inbound/page.tsx`
+y el barrel actualizado. Los errores de lint en `hooks/useRecord.ts` y
+`hooks/useRecords.ts` siguen siendo preexistentes y ajenos a esta fase.
+
+## Fase 4 del frontend: formulario de salida (outbound)
+
+Esta fase añade el formulario para registrar una salida (allocation a una
+persona o consumption) en `POST /inventory/orders/outbound`, reutilizando la
+capa `createOutbound` de la Fase 1 y la preselección `?product={id}` de la
+Fase 2. El requisito central es **mostrar el stock disponible antes de enviar**
+y **avisar en cliente cuando la cantidad pedida supera ese stock**, además de
+la advertencia que el propio backend devuelve (400 "Insufficient stock") como
+red de seguridad.
+
+### Página y componente
+
+- `app/inventory/orders/outbound/page.tsx` — server component análogo al del
+  inbound: lee `searchParams.product` (string o array) y pasa
+  `initialProductId` a `OutboundFormPanel`.
+- `components/inventory/OutboundFormPanel.tsx` — componente cliente con el
+  formulario (`AssetExitCreate`), la carga de productos, la preselección y el
+  envío vía `createOutbound`.
+- `components/inventory/index.ts` — barrel ampliado con `OutboundFormPanel`.
+
+### Comportamiento del formulario
+
+- **Select de producto**: igual que inbound (`listProducts(nexovaApi)` al
+  montar, placeholder por estado, disabled sin productos, preselección
+  `?product={id}` si aún no hay asset elegido).
+- **Campos**: `quantity` (número, mínimo 1), `exit_type` (select
+  Allocation / Consumption), `office` (Valencia / Miami) y `assigned_to`
+  (solo visible en Allocation, requerido). Al cambiar a Consumption se limpia
+  `assigned_to`; al volver a Allocation se conserva el texto.
+- **Stock disponible antes de enviar**: al elegir producto se muestra un panel
+  "Available stock for X: N units" coloreado por nivel (verde / ámbar / rojo,
+  mismos umbrales que Fase 2).
+- **Aviso de stock insuficiente en cliente**: si `quantity > current_stock` se
+  muestra una advertencia roja "Only N units available… Reduce the quantity" y
+  se deshabilita el botón "Create outbound"; el `submit` tampoco llega a llamar
+  a la API en ese caso (doble salvaguarda). El backend sigue protegiendo con
+  400 "Insufficient stock for this outbound movement." como red de seguridad.
+- **Envío**: `createOutbound(nexovaApi, payload)`; para `consumption` se envía
+  `assigned_to: null`, para `allocation` el texto recortado. Estados
+  `saving` / `error` (`inventoryErrorMessage`) / `created` (banner verde
+  `role="status"` en inglés: "Outbound order #ID created successfully." + "N
+  units of <producto> removed from stock [and allocated/consumed.]"). Tras
+  crear se resetean solo los campos (el banner persiste) — mismo patrón
+  corregido en Fase 3, evitando el batching que ocultaba el mensaje.
+- **Acceso secundario**: enlace "Back to current stock" hacia
+  `/inventory/products`.
+
+### Verificación
+
+En esta rama: **70 tests frontend en verde**, `tsc --noEmit` sin errores y
+ESLint limpio en `OutboundFormPanel.tsx`, `app/inventory/orders/outbound/page.tsx`
+y el barrel actualizado. Los errores de lint en `hooks/useRecord.ts` y
+`hooks/useRecords.ts` siguen siendo preexistentes y ajenos a esta fase. Sin
+commit/push.

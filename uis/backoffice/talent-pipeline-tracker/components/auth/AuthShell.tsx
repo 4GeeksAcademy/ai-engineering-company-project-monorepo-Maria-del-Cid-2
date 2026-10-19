@@ -12,7 +12,7 @@ import {
   requiresAuthentication,
 } from "@/lib/auth-navigation";
 
-type DropdownName = "incidents" | "account";
+type DropdownName = "incidents" | "inventory" | "account";
 
 const baseLinkClass =
   "text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite/75 transition-colors hover:text-brand-anthracite focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange";
@@ -155,6 +155,25 @@ export function AuthShell({ children }: { children: ReactNode }) {
     );
   }
 
+  function renderInventoryLinks(menuItems = false) {
+    return (
+      <>
+        <NavigationLink href="/inventory/products" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          Current Stock
+        </NavigationLink>
+        <NavigationLink href="/inventory/orders/inbound" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          Inbounds
+        </NavigationLink>
+        <NavigationLink href="/inventory/orders/outbound" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          Outbounds
+        </NavigationLink>
+        <NavigationLink href="/inventory/orders" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          All Orders
+        </NavigationLink>
+      </>
+    );
+  }
+
   function renderAccountLinks(menuItems = false) {
     return (
       <>
@@ -195,6 +214,22 @@ export function AuthShell({ children }: { children: ReactNode }) {
             onSelect={closeNavigation}
           >
             {renderIncidentLinks(true)}
+          </NavigationDropdown>
+        )}
+        {mobile ? (
+          <div className="border-t border-brand-lightgray/70 pt-2">
+            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/50">Inventory</p>
+            {renderInventoryLinks()}
+          </div>
+        ) : (
+          <NavigationDropdown
+            id="desktop-inventory-menu"
+            label="Inventory"
+            open={openDropdown === "inventory"}
+            onToggle={() => toggleDropdown("inventory")}
+            onSelect={closeNavigation}
+          >
+            {renderInventoryLinks(true)}
           </NavigationDropdown>
         )}
         <NavigationLink href="/suppliers" onSelect={closeNavigation} className={mobile ? menuLinkClass : baseLinkClass}>
