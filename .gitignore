@@ -30,3 +30,7 @@ docs/Aprendiendo-*.md
 !docs/Aprendiendo-password-reset.mdbuild/
 /packages/shared/python/build/
 .vscode/
+
+# Workspace skills (instalación local)
+.agents/skills/
+skills-lock.json
