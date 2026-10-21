@@ -77,12 +77,10 @@ function HomePageContent() {
         />
       </div>
 
-      {/* Results count */}
-      {!loading && !error && (
-        <p className="mt-6 text-xs font-medium uppercase tracking-[0.12em] text-brand-anthracite/65">
-          {total} resultado{total !== 1 ? "s" : ""}
-        </p>
-      )}
+      {/* Results count — espacio reservado siempre para evitar CLS al cargar */}
+      <p className="mt-6 min-h-4 text-xs font-medium uppercase tracking-[0.12em] text-brand-anthracite/65">
+        {!loading && !error && `${total} resultado${total !== 1 ? "s" : ""}`}
+      </p>
 
       {/* List */}
       <div className="mt-4">
