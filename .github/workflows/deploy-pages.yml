@@ -51,6 +51,8 @@ jobs:
           test -f site/application-candidates.html
           test -f site/application-companies.html
           test -f site/validation.js
+          # C7: favicon local (evita el 404 /favicon.ico)
+          test -f site/favicon.ico
           test -f "site/Logo nexova Negro y naranja.png"
           # C2: imagen del hero (LCP) servida local
           test -f site/hero-team-768.webp
