@@ -109,28 +109,28 @@ export function CandidateDetail({ recordId }: CandidateDetailProps) {
       {/* Info */}
       <div className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-2">
         <div>
-          <span className="text-xs font-medium text-zinc-400">Email</span>
+          <span className="text-xs font-medium text-zinc-500">Email</span>
           <p className="text-sm text-zinc-900">{record.email}</p>
         </div>
         <div>
-          <span className="text-xs font-medium text-zinc-400">Teléfono</span>
+          <span className="text-xs font-medium text-zinc-500">Teléfono</span>
           <p className="text-sm text-zinc-900">{record.phone}</p>
         </div>
         <div>
-          <span className="text-xs font-medium text-zinc-400">
+          <span className="text-xs font-medium text-zinc-500">
             Años de experiencia
           </span>
           <p className="text-sm text-zinc-900">{record.experience_years}</p>
         </div>
         <div>
-          <span className="text-xs font-medium text-zinc-400">
+          <span className="text-xs font-medium text-zinc-500">
             Fecha de aplicación
           </span>
           <p className="text-sm text-zinc-900">{formattedDate}</p>
         </div>
         {record.linkedin_url && (
           <div className="sm:col-span-2">
-            <span className="text-xs font-medium text-zinc-400">LinkedIn</span>
+            <span className="text-xs font-medium text-zinc-500">LinkedIn</span>
             <a
               href={record.linkedin_url}
               target="_blank"
@@ -143,7 +143,7 @@ export function CandidateDetail({ recordId }: CandidateDetailProps) {
         )}
         {record.cv_url && (
           <div className="sm:col-span-2">
-            <span className="text-xs font-medium text-zinc-400">CV</span>
+            <span className="text-xs font-medium text-zinc-500">CV</span>
             <a
               href={record.cv_url}
               target="_blank"

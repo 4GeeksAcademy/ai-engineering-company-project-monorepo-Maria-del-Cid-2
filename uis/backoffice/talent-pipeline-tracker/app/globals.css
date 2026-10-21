@@ -10,6 +10,8 @@
   /* Anthracite = #1F2328, Orange = #F97316, Lightgray = #E5E7EB, White = #FFFFFF */
   --color-brand-anthracite: #1f2328;
   --color-brand-orange: #f97316;
+  /* Accessible orange for text & primary buttons (5.18:1 on white) */
+  --color-brand-orange-dark: #c2410c;
   --color-brand-lightgray: #e5e7eb;
   --color-brand-white: #ffffff;
 

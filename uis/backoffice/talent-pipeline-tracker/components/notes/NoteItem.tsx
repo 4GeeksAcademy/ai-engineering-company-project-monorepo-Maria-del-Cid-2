@@ -34,12 +34,12 @@ export function NoteItem({ note, onDelete }: NoteItemProps) {
         <p className="whitespace-pre-wrap text-sm text-zinc-700">
           {note.content}
         </p>
-        <p className="mt-1 text-xs text-zinc-400">{formattedDate}</p>
+        <p className="mt-1 text-xs text-zinc-500">{formattedDate}</p>
       </div>
       <button
         onClick={handleDelete}
         disabled={deleting}
-        className="shrink-0 rounded p-1 text-zinc-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
+        className="shrink-0 rounded p-1 text-zinc-500 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
         aria-label="Eliminar nota"
       >
         {deleting ? (

@@ -21,7 +21,7 @@ export function NoteList({ notes, loading, onDelete }: NoteListProps) {
 
   if (notes.length === 0) {
     return (
-      <p className="py-4 text-center text-sm text-zinc-400">
+      <p className="py-4 text-center text-sm text-zinc-500">
         No hay notas internas todavía.
       </p>
     );

@@ -46,7 +46,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         <h2 className="text-lg font-semibold text-zinc-900">{title}</h2>
         <button
           onClick={onClose}
-          className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+          className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600"
           aria-label="Cerrar"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

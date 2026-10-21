@@ -100,7 +100,7 @@ function IncidentForm({ onCreated }: { onCreated: (incident: Incident) => void }
 
   return (
     <section className="rounded-2xl border border-brand-lightgray bg-brand-white p-5 shadow-sm sm:p-6">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">New record</p>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">New record</p>
       <h2 className="mt-1 text-xl font-black tracking-tight">Register incident</h2>
       <form className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={submit}>
         <Input label="Title" required maxLength={120} value={form.title} error={field === "title" ? error ?? undefined : undefined} onChange={(event) => updateField("title", event.target.value)} />
@@ -148,7 +148,7 @@ function IncidentRow({ incident, onUpdated }: { incident: Incident; onUpdated: (
       <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-brand-anthracite/80">{incident.description}</p>
       {nextStatuses.length > 0 && (
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-anthracite/50">Move to</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-brand-anthracite/65">Move to</span>
           {nextStatuses.map((status) => <Button key={status} variant="secondary" disabled={busy} loading={busy} onClick={() => void changeStatus(status)}>{INCIDENT_MANAGER_STATUS_LABELS[status]}</Button>)}
         </div>
       )}
@@ -161,7 +161,7 @@ function Summary({ summary }: { summary: IncidentSummary | null }) {
   if (!summary) return null;
   return (
     <section>
-      <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">Operational view</p><h2 className="mt-1 text-xl font-black">Incident summary</h2></div></div>
+      <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">Operational view</p><h2 className="mt-1 text-xl font-black">Incident summary</h2></div></div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard label="Total" value={summary.total} />
         <SummaryCard label="Open" value={summary.by_status.open ?? 0} tone="text-red-700" />
@@ -213,13 +213,13 @@ export function IncidentManagerPanel() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">Nexova operations</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Incident Manager</h1><p className="mt-3 text-sm leading-6 text-brand-anthracite/70">Capture operational incidents, keep ownership visible and move records through a controlled lifecycle.</p></div>
+      <div className="max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">Nexova operations</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Incident Manager</h1><p className="mt-3 text-sm leading-6 text-brand-anthracite/70">Capture operational incidents, keep ownership visible and move records through a controlled lifecycle.</p></div>
       <div className="mt-8"><IncidentForm onCreated={addIncident} /></div>
       <div className="mt-10"><Summary summary={summary} />{summaryError && <p role="alert" className="mt-3 text-sm text-red-700">{summaryError}</p>}</div>
-      <section className="mt-10"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">Current records</p><h2 className="mt-1 text-xl font-black">{incidents.length} incident{incidents.length === 1 ? "" : "s"}</h2></div>{loading && <Spinner size="sm" />}</div>
+      <section className="mt-10"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">Current records</p><h2 className="mt-1 text-xl font-black">{incidents.length} incident{incidents.length === 1 ? "" : "s"}</h2></div>{loading && <Spinner size="sm" />}</div>
         <div className="mt-5 grid gap-4 rounded-2xl border border-brand-lightgray bg-brand-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4"><Select label="Filter by status" placeholder="All statuses" options={statusOptions} value={status} onChange={(event) => setStatus(event.target.value as IncidentManagerStatus | "")} /><Select label="Filter by origin" placeholder="All origins" options={originOptions} value={origin} onChange={(event) => setOrigin(event.target.value as IncidentManagerOrigin | "")} /><Select label="Filter by branch" placeholder="All branches" options={branchOptions} value={branch} onChange={(event) => setBranch(event.target.value as IncidentManagerBranch | "")} /><Select label="Filter by category" placeholder="All categories" options={categoryOptions} value={category} onChange={(event) => setCategory(event.target.value as IncidentManagerCategory | "")} /></div>
         {error && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
-        {!loading && !error && incidents.length === 0 && <p className="mt-5 rounded-2xl border border-dashed border-brand-lightgray p-8 text-center text-sm text-brand-anthracite/60">No incidents match the selected filters.</p>}
+        {!loading && !error && incidents.length === 0 && <p className="mt-5 rounded-2xl border border-dashed border-brand-lightgray p-8 text-center text-sm text-brand-anthracite/65">No incidents match the selected filters.</p>}
         {!error && <div className="mt-5 space-y-4">{incidents.map((incident) => <IncidentRow key={incident.id} incident={incident} onUpdated={updateIncident} />)}</div>}
       </section>
     </div>

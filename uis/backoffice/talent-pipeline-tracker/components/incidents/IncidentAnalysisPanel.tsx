@@ -88,7 +88,7 @@ function Results({ result }: { result: IncidentAnalysisResult }) {
     <div className="mt-10 space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
             Analysis complete
           </p>
           <h2 className="mt-1 text-xl font-black tracking-tight">Aggregated results</h2>
@@ -201,7 +201,7 @@ export function IncidentAnalysisPanel() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">Nexova operations</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">Nexova operations</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Incident Analysis</h1>
         <p className="mt-3 text-sm leading-6 text-brand-anthracite/70">
           Upload an incident CSV to review aggregate quality and satisfaction metrics. Original rows are never displayed.
@@ -223,11 +223,12 @@ export function IncidentAnalysisPanel() {
         <div className="flex flex-col items-center text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-nexova-100 text-xl text-nexova-700">↑</span>
           <h2 className="mt-4 text-lg font-bold">Choose a CSV file</h2>
-          <p className="mt-1 text-sm text-brand-anthracite/60">or drag and drop it here</p>
+          <p className="mt-1 text-sm text-brand-anthracite/65">or drag and drop it here</p>
           <input
             ref={inputRef}
             className="sr-only"
             type="file"
+            aria-label="Choose CSV file to upload"
             accept=".csv,text/csv"
             onChange={(event) => selectFile(event.target.files?.[0])}
           />
@@ -249,7 +250,7 @@ export function IncidentAnalysisPanel() {
           {analyzing ? "Analyzing" : "Analyze incidents"}
         </Button>
         {analyzing && (
-          <span className="flex items-center gap-2 text-sm text-brand-anthracite/60">
+          <span className="flex items-center gap-2 text-sm text-brand-anthracite/65">
             <Spinner size="sm" /> Processing securely…
           </span>
         )}

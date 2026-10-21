@@ -110,14 +110,14 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
   if (invalidResetLink) {
     return (
       <section className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           {content.eyebrow}
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight">Enlace no válido</h1>
         <p className="mt-3 text-sm leading-6 text-brand-anthracite/70">
           Solicita un enlace nuevo para restablecer tu contraseña.
         </p>
-        <Link className="mt-6 inline-flex font-semibold text-brand-orange underline" href="/forgot-password">
+        <Link className="mt-6 inline-flex font-semibold text-brand-orange-dark underline" href="/forgot-password">
           Solicitar otro enlace
         </Link>
       </section>
@@ -127,7 +127,7 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
   if (completed) {
     return (
       <section className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           {content.eyebrow}
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight">Solicitud completada</h1>
@@ -136,7 +136,7 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
             ? "Si existe una cuenta asociada, recibirás instrucciones para restablecer la contraseña."
             : "Tu contraseña se ha restablecido correctamente."}
         </p>
-        <Link className="mt-6 inline-flex font-semibold text-brand-orange underline" href="/login">
+        <Link className="mt-6 inline-flex font-semibold text-brand-orange-dark underline" href="/login">
           Ir a iniciar sesión
         </Link>
       </section>
@@ -146,7 +146,7 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
   return (
     <section className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           {content.eyebrow}
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight">{content.title}</h1>
@@ -223,7 +223,7 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
 
       {mode === "forgot" || mode === "reset" ? (
         <p className="mt-6 text-sm text-brand-anthracite/70">
-          <Link className="font-semibold text-brand-orange underline" href="/login">
+          <Link className="font-semibold text-brand-orange-dark underline" href="/login">
             Volver a iniciar sesión
           </Link>
         </p>

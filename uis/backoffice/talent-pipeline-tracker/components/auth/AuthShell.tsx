@@ -202,7 +202,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </NavigationLink>
         {mobile ? (
           <div className="border-t border-brand-lightgray/70 pt-2">
-            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/50">Incidents</p>
+            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/65">Incidents</p>
             {renderIncidentLinks()}
           </div>
         ) : (
@@ -218,7 +218,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         )}
         {mobile ? (
           <div className="border-t border-brand-lightgray/70 pt-2">
-            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/50">Inventory</p>
+            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/65">Inventory</p>
             {renderInventoryLinks()}
           </div>
         ) : (
@@ -237,7 +237,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </NavigationLink>
         {mobile ? (
           <div className="border-t border-brand-lightgray/70 pt-2">
-            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/50">
+            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/65">
               {status === "authenticated" ? "Profile" : "Account"}
             </p>
             {renderAccountLinks()}

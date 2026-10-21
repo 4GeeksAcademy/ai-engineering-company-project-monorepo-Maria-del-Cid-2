@@ -122,7 +122,7 @@ export function InventoryCurrentStockPanel() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           Nexova operations
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
@@ -137,7 +137,7 @@ export function InventoryCurrentStockPanel() {
       <section className="mt-10">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
               Assets
             </p>
             <h2 className="mt-1 text-xl font-black">
@@ -158,7 +158,7 @@ export function InventoryCurrentStockPanel() {
         )}
 
         {!loading && !error && products.length === 0 && (
-          <p className="mt-5 rounded-2xl border border-dashed border-brand-lightgray p-8 text-center text-sm text-brand-anthracite/60">
+          <p className="mt-5 rounded-2xl border border-dashed border-brand-lightgray p-8 text-center text-sm text-brand-anthracite/65">
             {emptyLabel}
           </p>
         )}

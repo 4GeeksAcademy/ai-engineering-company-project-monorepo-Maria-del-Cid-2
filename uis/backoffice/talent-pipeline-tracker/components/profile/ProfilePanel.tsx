@@ -97,7 +97,7 @@ export function ProfilePanel() {
         <p className="mt-3 text-sm text-brand-anthracite/70">
           Inicia sesión para consultar y editar tu perfil.
         </p>
-        <Link className="mt-5 inline-flex font-semibold text-brand-orange underline" href="/login">
+        <Link className="mt-5 inline-flex font-semibold text-brand-orange-dark underline" href="/login">
           Ir a iniciar sesión
         </Link>
       </section>
@@ -121,7 +121,7 @@ export function ProfilePanel() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           Cuenta Nexova
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight">Mi perfil</h1>

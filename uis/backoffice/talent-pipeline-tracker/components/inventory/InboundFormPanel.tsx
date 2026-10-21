@@ -110,7 +110,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           Nexova operations
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
@@ -228,7 +228,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
             </Link>
           </div>
           {loadingProducts && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-brand-anthracite/60">
+            <div className="mt-4 flex items-center gap-2 text-sm text-brand-anthracite/65">
               <Spinner size="sm" /> Loading products…
             </div>
           )}

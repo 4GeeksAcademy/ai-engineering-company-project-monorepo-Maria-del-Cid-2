@@ -90,7 +90,7 @@ function OrderRow({
             <Badge className={typeInfo.badge}>{typeInfo.label}</Badge>
             <h3 className="text-lg font-black">{productName ?? `Product #${order.asset_id}`}</h3>
           </div>
-          <p className="mt-1 text-sm text-brand-anthracite/60">
+          <p className="mt-1 text-sm text-brand-anthracite/65">
             <span className="font-mono text-xs">#{order.id}</span>
             <span className="mx-1.5">·</span>
             {order.quantity} unit{order.quantity === 1 ? "" : "s"}
@@ -103,14 +103,14 @@ function OrderRow({
         </div>
         <div className="shrink-0 text-left sm:text-right">
           <p className="text-sm font-semibold text-brand-anthracite">
-            <span className="mr-1.5 text-xs font-bold uppercase tracking-wide text-brand-anthracite/50">
+            <span className="mr-1.5 text-xs font-bold uppercase tracking-wide text-brand-anthracite/65">
               Created by
             </span>
             <span className="font-mono" title={`User ${order.user_uuid}`}>
               {shortUuid(order.user_uuid)}
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-brand-anthracite/60" title={order.created_at}>
+          <p className="mt-0.5 text-xs text-brand-anthracite/65" title={order.created_at}>
             {formatDate(order.created_at)}
           </p>
         </div>
@@ -158,7 +158,7 @@ export function OrdersHistoryPanel() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
           Nexova operations
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
@@ -174,7 +174,7 @@ export function OrdersHistoryPanel() {
       <section className="mt-10">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-orange-dark">
               Movements
             </p>
             <h2 className="mt-1 text-xl font-black">
@@ -194,7 +194,7 @@ export function OrdersHistoryPanel() {
         )}
 
         {!loading && !error && orders.length === 0 && (
-          <p className="mt-5 rounded-2xl border border-dashed border-brand-lightgray p-8 text-center text-sm text-brand-anthracite/60">
+          <p className="mt-5 rounded-2xl border border-dashed border-brand-lightgray p-8 text-center text-sm text-brand-anthracite/65">
             {emptyLabel}
           </p>
         )}

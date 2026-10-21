@@ -79,7 +79,7 @@ function HomePageContent() {
 
       {/* Results count */}
       {!loading && !error && (
-        <p className="mt-6 text-xs font-medium uppercase tracking-[0.12em] text-brand-anthracite/50">
+        <p className="mt-6 text-xs font-medium uppercase tracking-[0.12em] text-brand-anthracite/65">
           {total} resultado{total !== 1 ? "s" : ""}
         </p>
       )}

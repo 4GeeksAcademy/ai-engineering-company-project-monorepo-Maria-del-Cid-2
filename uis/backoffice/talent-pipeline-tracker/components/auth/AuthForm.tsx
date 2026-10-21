@@ -102,7 +102,7 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
 
         <div className="flex items-center p-6 sm:p-10 lg:p-14">
           <div className="mx-auto w-full max-w-md">
-            <p className="text-sm font-semibold text-brand-orange">
+            <p className="text-sm font-semibold text-brand-orange-dark">
               {isLogin ? "Accede a tu espacio" : "Nuevo acceso"}
             </p>
             <h1 className="mt-2 text-2xl font-bold text-brand-anthracite sm:text-3xl">
@@ -147,7 +147,7 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
                 </p>
                 <Link
                   href="/login"
-                  className="mt-4 inline-flex font-semibold text-brand-orange underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
+                  className="mt-4 inline-flex font-semibold text-brand-orange-dark underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
                 >
                   Ir a iniciar sesión
                 </Link>
@@ -235,7 +235,7 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
             {isLogin && !registered && (
               <Link
                 href="/forgot-password"
-                className="mt-5 inline-flex text-sm font-semibold text-brand-orange underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
+                className="mt-5 inline-flex text-sm font-semibold text-brand-orange-dark underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
               >
                 ¿Has olvidado tu contraseña?
               </Link>
@@ -246,7 +246,7 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
                 {isLogin ? "¿Aún no tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
                 <Link
                   href={isLogin ? "/register" : "/login"}
-                  className="font-semibold text-brand-orange underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
+                  className="font-semibold text-brand-orange-dark underline decoration-2 underline-offset-4 hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange"
                 >
                   {isLogin ? "Regístrate" : "Inicia sesión"}
                 </Link>

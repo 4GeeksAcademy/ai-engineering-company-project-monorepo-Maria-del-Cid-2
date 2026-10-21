@@ -27,7 +27,7 @@ export default function Error({
         aria-labelledby="error-title"
         className="w-full rounded-2xl border border-brand-lightgray bg-brand-white p-8 shadow-sm sm:p-12"
       >
-        <p className="text-sm font-bold uppercase tracking-[0.14em] text-brand-orange">
+        <p className="text-sm font-bold uppercase tracking-[0.14em] text-brand-orange-dark">
           Nexova
         </p>
         <h1 id="error-title" className="mt-4 text-3xl font-black tracking-tight text-brand-anthracite">
