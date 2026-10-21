@@ -1,0 +1,81 @@
+name: Deploy website to GitHub Pages
+
+# Publica el website estático (uis/website) en GitHub Pages.
+# El sitio se ensambla en ./site con:
+#   - uis/website/*          → raíz del sitio (HTML, validation.js, styles.css, logo)
+#   - data/location-catalog.es.js → site/data/  (cargado por application-companies.html)
+#   - demo.html              → raíz (enlazado desde las 3 páginas)
+#   - src/demo/demo.js       → site/src/demo/  (lo carga demo.html)
+#   - src/runtime-ts/**      → site/src/runtime-ts/  (imports ES de demo.js)
+#   - nexova offices official map.webp (raíz del repo) → raíz del sitio
+#
+# Requisito manual (una sola vez): Settings → Pages → Source = "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          mkdir -p site/data site/src/demo
+          # Páginas y assets locales del website (logo y validation.js viven aquí)
+          cp -r uis/website/. site/
+          # Catálogo de ubicaciones (~1 MB) usado por application-companies.html
+          cp data/location-catalog.es.js site/data/
+          # Demo (enlazada desde la navegación de las 3 páginas)
+          cp demo.html site/
+          cp src/demo/demo.js site/src/demo/
+          cp -r src/runtime-ts site/src/
+          # Mapa del hero "Por qué Nexova" (referenciado como ./map.webp)
+          cp "nexova offices official map.webp" site/
+          # Verificación de que las rutas referenciadas existen
+          test -f site/index.html
+          test -f site/application-candidates.html
+          test -f site/application-companies.html
+          test -f site/validation.js
+          test -f "site/Logo nexova Negro y naranja.png"
+          test -f site/data/location-catalog.es.js
+          test -f site/demo.html
+          test -f site/src/demo/demo.js
+          test -f site/src/runtime-ts/data/data.js
+          test -f "site/nexova offices official map.webp"
+          # Ninguna página debe quedar con rutas ../ (se saldrían del sitio)
+          if grep -l '\.\./' site/*.html; then
+            echo "::error::Hay rutas ../ en las páginas: no resolverían en Pages"
+            exit 1
+          fi
+          echo "Site listo:" && find site -type f | sort
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
