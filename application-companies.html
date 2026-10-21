@@ -523,9 +523,10 @@
 		</footer>
 
 		<!-- Catálogo local de países y ciudades para evitar dependencias remotas en el formulario -->
-		<script src="data/location-catalog.es.js"></script>
+		<!-- C5: defer para no bloquear el parseo del DOM (1 MB); validation.js también difiere y lo consume en DOMContentLoaded -->
+		<script defer src="data/location-catalog.es.js"></script>
 
 		<!-- Lógica de interacción y validación extraída a un archivo dedicado -->
-		<script src="validation.js"></script>
+		<script defer src="validation.js"></script>
 	</body>
 </html>
