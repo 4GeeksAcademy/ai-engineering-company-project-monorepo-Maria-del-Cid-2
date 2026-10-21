@@ -18,7 +18,14 @@
 		<!-- Preconnect al proveedor de Tailwind: abre la conexión TLS antes de pedir el script -->
 		<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
 
-		<!--
+                <!-- C2: preload de la imagen del hero (LCP), con el mismo srcset/sizes que el <img> para que la selección coincida -->
+                <link
+                        rel="preload"
+                        as="image"
+                        imagesrcset="hero-team-768.webp 768w, hero-team-1024.webp 1024w, hero-team-1600.webp 1600w"
+                        imagesizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc(100vw - 3rem), (max-width: 1280px) calc(100vw - 4rem), 80rem"
+                        fetchpriority="high"
+                />
 			C3b: CSS crítico inline (above-the-fold). Subconjunto del Preflight de Tailwind 3.4
 			más las utilidades del header y el hero, con los valores resueltos de la config de marca.
 			Pinta el contenido visible sin esperar a descargar/compilar el CDN (sin FOUC ni CLS).
@@ -164,9 +171,16 @@
 				<!-- Banner principal con imagen de contexto profesional, superposición oscura y composición adaptable a cualquier pantalla -->
 				<div class="relative overflow-hidden rounded-[2rem] bg-brand-anthracite shadow-2xl">
 					<!-- Imagen decorativa del hero orientada a tecnología, juventud e innovación aplicada a recursos humanos -->
-					<img
-						src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80"
-						alt="equipo de recursos humanos especializado en selección de perfiles tecnológicos, reunidos en una mesa."
+                                        <!-- C2: servida local (WebP dimensionado, ~63 KB en móvil vs 633 KB de Unsplash),
+                                             fetchpriority=high para que sea candidata LCP inmediata -->
+                                        <img
+                                                src="hero-team-1024.webp"
+                                                srcset="hero-team-768.webp 768w, hero-team-1024.webp 1024w, hero-team-1600.webp 1600w"
+                                                sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc(100vw - 3rem), (max-width: 1280px) calc(100vw - 4rem), 80rem"
+                                                width="1600"
+                                                height="2399"
+                                                fetchpriority="high"
+                                                decoding="async"
 						class="absolute inset-0 h-full w-full object-cover"
 						aria-hidden="true"
 					/>

@@ -52,6 +52,10 @@ jobs:
           test -f site/application-companies.html
           test -f site/validation.js
           test -f "site/Logo nexova Negro y naranja.png"
+          # C2: imagen del hero (LCP) servida local
+          test -f site/hero-team-768.webp
+          test -f site/hero-team-1024.webp
+          test -f site/hero-team-1600.webp
           test -f site/data/location-catalog.es.js
           test -f site/demo.html
           test -f site/src/demo/demo.js
