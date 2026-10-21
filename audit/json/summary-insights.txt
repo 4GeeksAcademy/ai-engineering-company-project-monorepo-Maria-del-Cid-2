@@ -1,0 +1,182 @@
+
+======================================================================
+### companies-desktop
+-- render-blocking-insight score=0 display=Est savings of 320 ms
+   {"url": "https://cdn.tailwindcss.com/3.4.17", "totalBytes": 126858, "wastedMs": 211}
+-- image-delivery-insight score=0 display=Est savings of 807 KiB
+   {"node": {"type": "node", "lhId": "page-0-IMG", "path": "1,HTML,1,BODY,1,HEADER,1,DIV,0,DIV,1,A,1,IMG", "selector": "div.mx-auto > div.flex > a.flex > img.h-14", "boundingRect": {"top": 20, "bottom": 116, "left": 60, "right": 156, "width": 96, "height": 96}, "snippet": "<img src=\"Logo%20nexova%20Negro%20y%20naranja.png\" alt=\"Logo de Nexova Solutions en negro y naranja\" class=\"h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] 
+-- cache-insight score=0 display=Est savings of 1,059 KiB
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%20y%20naranja.png", "cacheLifetimeMs": 600000, "totalBytes": 828644, "wastedBytes": 759590.3333333333}
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/location-catalog.es.js", "cacheLifetimeMs": 600000, "totalBytes": 351283, "wastedBytes": 322009.4166666666}
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/validation.js", "cacheLifetimeMs": 600000, "totalBytes": 2832, "wastedBytes": 2596}
+-- network-dependency-tree-insight score=0 display=
+   {"type": "list-section", "value": {"type": "network-tree", "chains": {"D89FFA2C35D972C258EB6C156FDC4612": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-companies.html", "navStartToEndTime": 169, "transferSize": 6305, "isLongest": true, "children": {"17725.4": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/location-catalog.es.js", 
+   {"type": "list-section", "title": "Preconnected origins", "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.", "value": {"type": "text", "value": "no origins were preconnected"}}
+   {"type": "list-section", "title": "Preconnect candidates", "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.", "value": {"type": "text", "value": "No additional origins are good candidates for preconnecting"}}
+-- duplicated-javascript-insight score=1 display=
+-- third-parties-insight score=1 display=
+   {"entity": "tailwindcss.com", "mainThreadTime": 47.41800000006333, "transferSize": 126858, "subItems": {"type": "subitems", "items": [{"url": "https://cdn.tailwindcss.com/", "mainThreadTime": 47.41800000006333, "transferSize": 0}, {"url": "https://cdn.tailwindcss.com/3.4.17", "mainThreadTime": 0, "transferSize": 126858}]}}
+-- forced-reflow-insight score=1 display=
+   {"type": "table", "headings": [{"key": "source", "valueType": "source-location", "label": "Source"}, {"key": "reflowTime", "valueType": "ms", "granularity": 1, "label": "Total reflow time"}], "items": []}
+-- legacy-javascript-insight score=1 display=
+-- modern-http-insight score=1 display=
+-- cls-culprits-insight score=1 display=
+-- document-latency-insight score=1 display= details={"type": "checklist", "items": {"noRedirects": {"label": "Avoids redirects", "value": true}, "serverResponseIsFast": {"label": "Server responds quickly (observed 119 ms)", "value": true}, "usesCompression": {"label": "Applies text compression", "value": true}}, "debugData": {"type": "debugdata", "redirectDuration": 0, "serverResponseTime": 119, "uncompressedResponseBytes": 0, "wastedBytes": 0}}
+-- dom-size-insight score=1 display=
+   {"statistic": "Total elements", "value": {"type": "numeric", "granularity": 1, "value": 223}}
+   {"statistic": "DOM depth", "node": {"type": "node", "lhId": "page-4-path", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,DIV,3,FORM,1,FIELDSET,2,DIV,1,DIV,2,P,0,svg,0,path", "selector": "div.space-y-2 > p#contact-name-error > svg.mt-0.5 > path", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<path fill-rule=\"evenodd\" d=\"M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.2
+   {"statistic": "Most children", "node": {"type": "node", "lhId": "page-3-DATALIST", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,DIV,3,FORM,1,FIELDSET,2,DIV,13,DIV,5,DATALIST", "selector": "fieldset.space-y-4 > div.grid > div.space-y-2 > datalist#country-options", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<datalist id=\"country-options\">", "nodeLabel": "fieldset.space-y-4 > div.grid > 
+-- console error: {"source": "network", "description": "Failed to load resource: the server responded with a status of 404 ()", "sourceLocation": {"type": "source-location", "url": "https://4geeksacademy.github.io/favicon.ico", "urlProvider": "network", "line": 0, "column": 0}}
+
+======================================================================
+### companies-mobile
+-- render-blocking-insight score=0 display=Est savings of 1,510 ms
+   {"url": "https://cdn.tailwindcss.com/3.4.17", "totalBytes": 126857, "wastedMs": 772}
+-- image-delivery-insight score=0 display=Est savings of 808 KiB
+   {"node": {"type": "node", "lhId": "page-0-IMG", "path": "1,HTML,1,BODY,1,HEADER,1,DIV,0,DIV,1,A,1,IMG", "selector": "div.mx-auto > div.flex > a.flex > img.h-14", "boundingRect": {"top": 20, "bottom": 76, "left": 16, "right": 72, "width": 56, "height": 56}, "snippet": "<img src=\"Logo%20nexova%20Negro%20y%20naranja.png\" alt=\"Logo de Nexova Solutions en negro y naranja\" class=\"h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg
+-- cache-insight score=0 display=Est savings of 1,059 KiB
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%20y%20naranja.png", "cacheLifetimeMs": 600000, "totalBytes": 828631, "wastedBytes": 759578.4166666666}
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/location-catalog.es.js", "cacheLifetimeMs": 600000, "totalBytes": 351125, "wastedBytes": 321864.5833333333}
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/validation.js", "cacheLifetimeMs": 600000, "totalBytes": 2834, "wastedBytes": 2597.833333333333}
+-- network-dependency-tree-insight score=0 display=
+   {"type": "list-section", "value": {"type": "network-tree", "chains": {"5A3E3F380E1035D4F2F56F827B72E3BE": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-companies.html", "navStartToEndTime": 43, "transferSize": 6303, "isLongest": true, "children": {"18104.2": {"url": "https://cdn.tailwindcss.com/3.4.17", "navStartToEndTime": 127, "transferSize": 126857, "isLongest": true, "children": {
+   {"type": "list-section", "title": "Preconnected origins", "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.", "value": {"type": "text", "value": "no origins were preconnected"}}
+   {"type": "list-section", "title": "Preconnect candidates", "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.", "value": {"type": "text", "value": "No additional origins are good candidates for preconnecting"}}
+-- duplicated-javascript-insight score=1 display=
+-- third-parties-insight score=1 display=
+   {"entity": "tailwindcss.com", "mainThreadTime": 68.82100000046194, "transferSize": 126857, "subItems": {"type": "subitems", "items": [{"url": "https://cdn.tailwindcss.com/", "mainThreadTime": 68.82100000046194, "transferSize": 0}, {"url": "https://cdn.tailwindcss.com/3.4.17", "mainThreadTime": 0, "transferSize": 126857}]}}
+-- forced-reflow-insight score=1 display=
+   {"type": "table", "headings": [{"key": "source", "valueType": "source-location", "label": "Source"}, {"key": "reflowTime", "valueType": "ms", "granularity": 1, "label": "Total reflow time"}], "items": []}
+-- legacy-javascript-insight score=1 display=
+-- modern-http-insight score=1 display=
+-- cls-culprits-insight score=1 display=
+-- document-latency-insight score=1 display= details={"type": "checklist", "items": {"noRedirects": {"label": "Avoids redirects", "value": true}, "serverResponseIsFast": {"label": "Server responds quickly (observed 2 ms)", "value": true}, "usesCompression": {"label": "Applies text compression", "value": true}}, "debugData": {"type": "debugdata", "redirectDuration": 0, "serverResponseTime": 2, "uncompressedResponseBytes": 0, "wastedBytes": 0}}
+-- dom-size-insight score=1 display=
+   {"statistic": "Total elements", "value": {"type": "numeric", "granularity": 1, "value": 223}}
+   {"statistic": "DOM depth", "node": {"type": "node", "lhId": "page-4-path", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,DIV,3,FORM,1,FIELDSET,2,DIV,1,DIV,2,P,0,svg,0,path", "selector": "div.space-y-2 > p#contact-name-error > svg.mt-0.5 > path", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<path fill-rule=\"evenodd\" d=\"M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.2
+   {"statistic": "Most children", "node": {"type": "node", "lhId": "page-3-DATALIST", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,DIV,3,FORM,1,FIELDSET,2,DIV,13,DIV,5,DATALIST", "selector": "fieldset.space-y-4 > div.grid > div.space-y-2 > datalist#country-options", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<datalist id=\"country-options\">", "nodeLabel": "fieldset.space-y-4 > div.grid > 
+-- console error: {"source": "network", "description": "Failed to load resource: the server responded with a status of 404 ()", "sourceLocation": {"type": "source-location", "url": "https://4geeksacademy.github.io/favicon.ico", "urlProvider": "network", "line": 0, "column": 0}}
+
+======================================================================
+### index-desktop
+-- render-blocking-insight score=0 display=Est savings of 320 ms
+   {"url": "https://cdn.tailwindcss.com/3.4.17", "totalBytes": 126852, "wastedMs": 209}
+-- image-delivery-insight score=0 display=Est savings of 1,002 KiB
+   {"node": {"type": "node", "lhId": "page-0-IMG", "path": "1,HTML,1,BODY,1,HEADER,1,DIV,0,DIV,1,A,1,IMG", "selector": "div.mx-auto > div.flex > a.flex > img.h-14", "boundingRect": {"top": 20, "bottom": 116, "left": 60, "right": 156, "width": 96, "height": 96}, "snippet": "<img src=\"Logo%20nexova%20Negro%20y%20naranja.png\" alt=\"Logo de Nexova Solutions en negro y naranja\" class=\"h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] 
+   {"node": {"type": "node", "lhId": "page-1-IMG", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,IMG", "selector": "main > section#hero > div.relative > img.absolute", "boundingRect": {"top": 185, "bottom": 851, "left": 60, "right": 1276, "width": 1216, "height": 666}, "snippet": "<img src=\"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;f…\" alt=\"equipo de recursos humanos especializado en selección de perfiles tecn
+   {"node": {"type": "node", "lhId": "page-2-IMG", "path": "1,HTML,1,BODY,3,MAIN,5,SECTION,3,DIV,1,ARTICLE,3,DIV,0,DIV,0,IMG", "selector": "article.flex > div.mt-6 > div.relative > img.h-auto", "boundingRect": {"top": 2153, "bottom": 2556, "left": 158, "right": 554, "width": 396, "height": 403}, "snippet": "<img src=\"nexova%20offices%20official%20map.webp\" alt=\"Mapa oficial de las oficinas de Nexova con presencia en España, Estados Un…\" class=\"
+-- cache-insight score=0 display=Est savings of 804 KiB
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%20y%20naranja.png", "cacheLifetimeMs": 600000, "totalBytes": 828614, "wastedBytes": 759562.8333333333}
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/nexova%20offices%20official%20map.webp", "cacheLifetimeMs": 600000, "totalBytes": 69707, "wastedBytes": 63898.08333333333}
+-- lcp-discovery-insight score=0 display=
+   {"type": "checklist", "items": {"priorityHinted": {"label": "fetchpriority=high should be applied", "value": false}, "requestDiscoverable": {"label": "Request is discoverable in initial document", "value": true}, "eagerlyLoaded": {"label": "LCP resources should not use loading=lazy", "value": true}}}
+   {"type": "node", "lhId": "page-1-IMG", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,IMG", "selector": "main > section#hero > div.relative > img.absolute", "boundingRect": {"top": 185, "bottom": 851, "left": 60, "right": 1276, "width": 1216, "height": 666}, "snippet": "<img src=\"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;f…\" alt=\"equipo de recursos humanos especializado en selección de perfiles tecnológ…\" c
+-- network-dependency-tree-insight score=0 display=
+   {"type": "list-section", "value": {"type": "network-tree", "chains": {"2BDD8D7FB6BC015F0AD3F2DAC4A033D5": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/index.html", "navStartToEndTime": 34, "transferSize": 9964, "isLongest": true, "children": {"16885.2": {"url": "https://cdn.tailwindcss.com/3.4.17", "navStartToEndTime": 142, "transferSize": 126852, "isLongest": true, "children": {"16885.2": {"url
+   {"type": "list-section", "title": "Preconnected origins", "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.", "value": {"type": "text", "value": "no origins were preconnected"}}
+   {"type": "list-section", "title": "Preconnect candidates", "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.", "value": {"type": "text", "value": "No additional origins are good candidates for preconnecting"}}
+-- duplicated-javascript-insight score=1 display=
+-- third-parties-insight score=1 display=
+   {"entity": "tailwindcss.com", "mainThreadTime": 44.05300000007264, "transferSize": 126852, "subItems": {"type": "subitems", "items": [{"url": "https://cdn.tailwindcss.com/", "mainThreadTime": 44.05300000007264, "transferSize": 0}, {"url": "https://cdn.tailwindcss.com/3.4.17", "mainThreadTime": 0, "transferSize": 126852}]}}
+   {"entity": "unsplash.com", "mainThreadTime": 0, "transferSize": 374687, "subItems": {"type": "subitems", "items": [{"url": "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80", "mainThreadTime": 0, "transferSize": 374687}]}}
+-- forced-reflow-insight score=1 display=
+   {"type": "table", "headings": [{"key": "source", "valueType": "source-location", "label": "Source"}, {"key": "reflowTime", "valueType": "ms", "granularity": 1, "label": "Total reflow time"}], "items": []}
+-- legacy-javascript-insight score=1 display=
+-- modern-http-insight score=1 display=
+-- cls-culprits-insight score=1 display=
+-- document-latency-insight score=1 display= details={"type": "checklist", "items": {"noRedirects": {"label": "Avoids redirects", "value": true}, "serverResponseIsFast": {"label": "Server responds quickly (observed 2 ms)", "value": true}, "usesCompression": {"label": "Applies text compression", "value": true}}, "debugData": {"type": "debugdata", "redirectDuration": 0, "serverResponseTime": 2, "uncompressedResponseBytes": 0, "wastedBytes": 0}}
+-- dom-size-insight score=1 display=
+   {"statistic": "Total elements", "value": {"type": "numeric", "granularity": 1, "value": 284}}
+   {"statistic": "DOM depth", "node": {"type": "node", "lhId": "page-5-path", "path": "1,HTML,1,BODY,3,MAIN,5,SECTION,3,DIV,3,ARTICLE,2,DIV,3,DIV,1,DIV,1,DIV,0,DIV,0,svg,0,path", "selector": "div.flex > div.flex > svg.h-7 > path", "boundingRect": {"top": 2390, "bottom": 2404, "left": 805, "right": 823, "width": 19, "height": 14}, "snippet": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-
+   {"statistic": "Most children", "node": {"type": "node", "lhId": "page-4-UL", "path": "1,HTML,1,BODY,1,HEADER,1,DIV,0,DIV,5,DIV,1,NAV,0,UL", "selector": "div.flex > div.hidden > nav > ul.flex", "boundingRect": {"top": 58, "bottom": 78, "left": 695, "right": 1276, "width": 581, "height": 20}, "snippet": "<ul class=\"flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] …\">", "nodeLabel": "SERVICIOS\nTALENTO\nEMPRESAS\nDEMO\nCON
+-- console error: {"source": "network", "description": "Failed to load resource: the server responded with a status of 404 ()", "sourceLocation": {"type": "source-location", "url": "https://4geeksacademy.github.io/favicon.ico", "urlProvider": "network", "line": 0, "column": 0}}
+
+======================================================================
+### index-mobile
+-- render-blocking-insight score=0 display=Est savings of 1,480 ms
+   {"url": "https://cdn.tailwindcss.com/3.4.17", "totalBytes": 126858, "wastedMs": 767}
+-- image-delivery-insight score=0 display=Est savings of 1,196 KiB
+   {"node": {"type": "node", "lhId": "page-0-IMG", "path": "1,HTML,1,BODY,1,HEADER,1,DIV,0,DIV,1,A,1,IMG", "selector": "div.mx-auto > div.flex > a.flex > img.h-14", "boundingRect": {"top": 20, "bottom": 76, "left": 16, "right": 72, "width": 56, "height": 56}, "snippet": "<img src=\"Logo%20nexova%20Negro%20y%20naranja.png\" alt=\"Logo de Nexova Solutions en negro y naranja\" class=\"h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg
+   {"node": {"type": "node", "lhId": "page-1-IMG", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,IMG", "selector": "main > section#hero > div.relative > img.absolute", "boundingRect": {"top": 129, "bottom": 848, "left": 16, "right": 396, "width": 380, "height": 719}, "snippet": "<img src=\"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;f…\" alt=\"equipo de recursos humanos especializado en selección de perfiles tecnol
+   {"node": {"type": "node", "lhId": "page-2-IMG", "path": "1,HTML,1,BODY,3,MAIN,5,SECTION,3,DIV,1,ARTICLE,3,DIV,0,DIV,0,IMG", "selector": "article.flex > div.mt-6 > div.relative > img.h-auto", "boundingRect": {"top": 3194, "bottom": 3447, "left": 82, "right": 331, "width": 249, "height": 253}, "snippet": "<img src=\"nexova%20offices%20official%20map.webp\" alt=\"Mapa oficial de las oficinas de Nexova con presencia en España, Estados Un…\" class=\"h
+-- cache-insight score=0 display=Est savings of 804 KiB
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%20y%20naranja.png", "cacheLifetimeMs": 600000, "totalBytes": 828629, "wastedBytes": 759576.5833333333}
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/nexova%20offices%20official%20map.webp", "cacheLifetimeMs": 600000, "totalBytes": 69773, "wastedBytes": 63958.58333333333}
+-- lcp-discovery-insight score=0 display=
+   {"type": "checklist", "items": {"priorityHinted": {"label": "fetchpriority=high should be applied", "value": false}, "requestDiscoverable": {"label": "Request is discoverable in initial document", "value": true}, "eagerlyLoaded": {"label": "LCP resources should not use loading=lazy", "value": true}}}
+   {"type": "node", "lhId": "page-1-IMG", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,IMG", "selector": "main > section#hero > div.relative > img.absolute", "boundingRect": {"top": 129, "bottom": 848, "left": 16, "right": 396, "width": 380, "height": 719}, "snippet": "<img src=\"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;f…\" alt=\"equipo de recursos humanos especializado en selección de perfiles tecnológ…\" cla
+-- network-dependency-tree-insight score=0 display=
+   {"type": "list-section", "value": {"type": "network-tree", "chains": {"592BA4C3B38A44F4247022A3993D3989": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/index.html", "navStartToEndTime": 180, "transferSize": 9964, "isLongest": true, "children": {"17354.2": {"url": "https://cdn.tailwindcss.com/3.4.17", "navStartToEndTime": 250, "transferSize": 126858, "isLongest": true, "children": {"17354.2": {"ur
+   {"type": "list-section", "title": "Preconnected origins", "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.", "value": {"type": "text", "value": "no origins were preconnected"}}
+   {"type": "list-section", "title": "Preconnect candidates", "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.", "value": {"type": "text", "value": "No additional origins are good candidates for preconnecting"}}
+-- duplicated-javascript-insight score=1 display=
+-- third-parties-insight score=1 display=
+   {"entity": "tailwindcss.com", "mainThreadTime": 40.636000000173226, "transferSize": 126858, "subItems": {"type": "subitems", "items": [{"url": "https://cdn.tailwindcss.com/", "mainThreadTime": 40.636000000173226, "transferSize": 0}, {"url": "https://cdn.tailwindcss.com/3.4.17", "mainThreadTime": 0, "transferSize": 126858}]}}
+   {"entity": "unsplash.com", "mainThreadTime": 0, "transferSize": 374687, "subItems": {"type": "subitems", "items": [{"url": "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80", "mainThreadTime": 0, "transferSize": 374687}]}}
+-- forced-reflow-insight score=1 display=
+   {"type": "table", "headings": [{"key": "source", "valueType": "source-location", "label": "Source"}, {"key": "reflowTime", "valueType": "ms", "granularity": 1, "label": "Total reflow time"}], "items": []}
+-- legacy-javascript-insight score=1 display=
+-- modern-http-insight score=1 display=
+-- cls-culprits-insight score=1 display=
+-- document-latency-insight score=1 display= details={"type": "checklist", "items": {"noRedirects": {"label": "Avoids redirects", "value": true}, "serverResponseIsFast": {"label": "Server responds quickly (observed 134 ms)", "value": true}, "usesCompression": {"label": "Applies text compression", "value": true}}, "debugData": {"type": "debugdata", "redirectDuration": 0, "serverResponseTime": 134, "uncompressedResponseBytes": 0, "wastedBytes": 0}}
+-- dom-size-insight score=1 display=
+   {"statistic": "Total elements", "value": {"type": "numeric", "granularity": 1, "value": 284}}
+   {"statistic": "DOM depth", "node": {"type": "node", "lhId": "page-5-path", "path": "1,HTML,1,BODY,3,MAIN,5,SECTION,3,DIV,3,ARTICLE,2,DIV,3,DIV,1,DIV,1,DIV,0,DIV,0,svg,0,path", "selector": "div.flex > div.flex > svg.h-7 > path", "boundingRect": {"top": 3952, "bottom": 3966, "left": 97, "right": 115, "width": 19, "height": 14}, "snippet": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2
+   {"statistic": "Most children", "node": {"type": "node", "lhId": "page-4-UL", "path": "1,HTML,1,BODY,1,HEADER,1,DIV,0,DIV,5,DIV,1,NAV,0,UL", "selector": "div.flex > div.hidden > nav > ul.flex", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<ul class=\"flex items-center gap-8 text-sm font-semibold uppercase tracking-[0.16em] …\">", "nodeLabel": "\n\t\t\t\t\t\t\t\tServicios\n\t\t\t\t\t\t\t\tTale
+-- console error: {"source": "network", "description": "Failed to load resource: the server responded with a status of 404 ()", "sourceLocation": {"type": "source-location", "url": "https://4geeksacademy.github.io/favicon.ico", "urlProvider": "network", "line": 0, "column": 0}}
+
+======================================================================
+### talento-desktop
+-- render-blocking-insight score=0 display=Est savings of 360 ms
+   {"url": "https://cdn.tailwindcss.com/3.4.17", "totalBytes": 126862, "wastedMs": 240}
+-- image-delivery-insight score=0 display=Est savings of 807 KiB
+   {"node": {"type": "node", "lhId": "page-0-IMG", "path": "1,HTML,1,BODY,1,HEADER,0,DIV,0,DIV,0,A,0,IMG", "selector": "div.mx-auto > div.flex > a.flex > img.h-14", "boundingRect": {"top": 20, "bottom": 116, "left": 60, "right": 156, "width": 96, "height": 96}, "snippet": "<img src=\"Logo%20nexova%20Negro%20y%20naranja.png\" alt=\"Logo de Nexova Solutions en negro y naranja\" class=\"h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] 
+-- cache-insight score=0 display=Est savings of 742 KiB
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%20y%20naranja.png", "cacheLifetimeMs": 600000, "totalBytes": 828644, "wastedBytes": 759590.3333333333}
+-- network-dependency-tree-insight score=0 display=
+   {"type": "list-section", "value": {"type": "network-tree", "chains": {"D1F32E6C3D1210954A3415F634B0E903": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-candidates.html", "navStartToEndTime": 162, "transferSize": 7362, "isLongest": true, "children": {"18462.2": {"url": "https://cdn.tailwindcss.com/3.4.17", "navStartToEndTime": 281, "transferSize": 126862, "isLongest": true, "children":
+   {"type": "list-section", "title": "Preconnected origins", "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.", "value": {"type": "text", "value": "no origins were preconnected"}}
+   {"type": "list-section", "title": "Preconnect candidates", "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.", "value": {"type": "text", "value": "No additional origins are good candidates for preconnecting"}}
+-- duplicated-javascript-insight score=1 display=
+-- third-parties-insight score=1 display=
+   {"entity": "tailwindcss.com", "mainThreadTime": 49.096999999601394, "transferSize": 126862, "subItems": {"type": "subitems", "items": [{"url": "https://cdn.tailwindcss.com/", "mainThreadTime": 49.096999999601394, "transferSize": 0}, {"url": "https://cdn.tailwindcss.com/3.4.17", "mainThreadTime": 0, "transferSize": 126862}]}}
+-- forced-reflow-insight score=1 display=
+   {"type": "table", "headings": [{"key": "source", "valueType": "source-location", "label": "Source"}, {"key": "reflowTime", "valueType": "ms", "granularity": 1, "label": "Total reflow time"}], "items": []}
+-- legacy-javascript-insight score=1 display=
+-- modern-http-insight score=1 display=
+-- cls-culprits-insight score=1 display=
+-- document-latency-insight score=1 display= details={"type": "checklist", "items": {"noRedirects": {"label": "Avoids redirects", "value": true}, "serverResponseIsFast": {"label": "Server responds quickly (observed 115 ms)", "value": true}, "usesCompression": {"label": "Applies text compression", "value": true}}, "debugData": {"type": "debugdata", "redirectDuration": 0, "serverResponseTime": 115, "uncompressedResponseBytes": 0, "wastedBytes": 0}}
+-- dom-size-insight score=1 display=
+   {"statistic": "Total elements", "value": {"type": "numeric", "granularity": 1, "value": 213}}
+   {"statistic": "DOM depth", "node": {"type": "node", "lhId": "page-4-path", "path": "1,HTML,1,BODY,3,MAIN,0,SECTION,0,DIV,0,DIV,5,FORM,0,FIELDSET,1,DIV,1,DIV,2,P,0,svg,0,path", "selector": "div.space-y-2 > p#full-name-error > svg.mt-0.5 > path", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<path fill-rule=\"evenodd\" d=\"M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.
+   {"statistic": "Most children", "node": {"type": "node", "lhId": "page-3-DIV", "path": "1,HTML,1,BODY,3,MAIN,0,SECTION,0,DIV,0,DIV,5,FORM,0,FIELDSET,1,DIV", "selector": "div.rounded-[2rem] > form#candidate-form > fieldset.space-y-4 > div.grid", "boundingRect": {"top": 643, "bottom": 1025, "left": 100, "right": 1236, "width": 1136, "height": 382}, "snippet": "<div class=\"grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6\">", "nodeLabel": "NOMBRE COMP
+-- console error: {"source": "network", "description": "Failed to load resource: the server responded with a status of 404 ()", "sourceLocation": {"type": "source-location", "url": "https://4geeksacademy.github.io/favicon.ico", "urlProvider": "network", "line": 0, "column": 0}}
+
+======================================================================
+### talento-mobile
+-- render-blocking-insight score=0 display=Est savings of 1,480 ms
+   {"url": "https://cdn.tailwindcss.com/3.4.17", "totalBytes": 126855, "wastedMs": 764}
+-- image-delivery-insight score=0 display=Est savings of 808 KiB
+   {"node": {"type": "node", "lhId": "page-0-IMG", "path": "1,HTML,1,BODY,1,HEADER,0,DIV,0,DIV,0,A,0,IMG", "selector": "div.mx-auto > div.flex > a.flex > img.h-14", "boundingRect": {"top": 20, "bottom": 76, "left": 16, "right": 72, "width": 56, "height": 56}, "snippet": "<img src=\"Logo%20nexova%20Negro%20y%20naranja.png\" alt=\"Logo de Nexova Solutions en negro y naranja\" class=\"h-14 w-auto max-w-[220px] object-contain sm:h-16 sm:max-w-[260px] lg
+-- cache-insight score=0 display=Est savings of 742 KiB
+   {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%20y%20naranja.png", "cacheLifetimeMs": 600000, "totalBytes": 828635, "wastedBytes": 759582.0833333333}
+-- network-dependency-tree-insight score=0 display=
+   {"type": "list-section", "value": {"type": "network-tree", "chains": {"F75CAFA76F61FFE476D880656A680D05": {"url": "https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-candidates.html", "navStartToEndTime": 34, "transferSize": 7360, "isLongest": true, "children": {"18821.2": {"url": "https://cdn.tailwindcss.com/3.4.17", "navStartToEndTime": 112, "transferSize": 126855, "isLongest": true, "children": 
+   {"type": "list-section", "title": "Preconnected origins", "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.", "value": {"type": "text", "value": "no origins were preconnected"}}
+   {"type": "list-section", "title": "Preconnect candidates", "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.", "value": {"type": "text", "value": "No additional origins are good candidates for preconnecting"}}
+-- duplicated-javascript-insight score=1 display=
+-- third-parties-insight score=1 display=
+   {"entity": "tailwindcss.com", "mainThreadTime": 42.42299999971874, "transferSize": 126855, "subItems": {"type": "subitems", "items": [{"url": "https://cdn.tailwindcss.com/", "mainThreadTime": 42.42299999971874, "transferSize": 0}, {"url": "https://cdn.tailwindcss.com/3.4.17", "mainThreadTime": 0, "transferSize": 126855}]}}
+-- forced-reflow-insight score=1 display=
+   {"type": "table", "headings": [{"key": "source", "valueType": "source-location", "label": "Source"}, {"key": "reflowTime", "valueType": "ms", "granularity": 1, "label": "Total reflow time"}], "items": []}
+-- legacy-javascript-insight score=1 display=
+-- modern-http-insight score=1 display=
+-- cls-culprits-insight score=1 display=
+-- document-latency-insight score=1 display= details={"type": "checklist", "items": {"noRedirects": {"label": "Avoids redirects", "value": true}, "serverResponseIsFast": {"label": "Server responds quickly (observed 2 ms)", "value": true}, "usesCompression": {"label": "Applies text compression", "value": true}}, "debugData": {"type": "debugdata", "redirectDuration": 0, "serverResponseTime": 2, "uncompressedResponseBytes": 0, "wastedBytes": 0}}
+-- dom-size-insight score=1 display=
+   {"statistic": "Total elements", "value": {"type": "numeric", "granularity": 1, "value": 213}}
+   {"statistic": "DOM depth", "node": {"type": "node", "lhId": "page-4-path", "path": "1,HTML,1,BODY,3,MAIN,0,SECTION,0,DIV,0,DIV,5,FORM,0,FIELDSET,1,DIV,1,DIV,2,P,0,svg,0,path", "selector": "div.space-y-2 > p#full-name-error > svg.mt-0.5 > path", "boundingRect": {"top": 0, "bottom": 0, "left": 0, "right": 0, "width": 0, "height": 0}, "snippet": "<path fill-rule=\"evenodd\" d=\"M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 0-1.5 0v4.25a.
+   {"statistic": "Most children", "node": {"type": "node", "lhId": "page-3-DIV", "path": "1,HTML,1,BODY,3,MAIN,0,SECTION,0,DIV,0,DIV,5,FORM,0,FIELDSET,1,DIV", "selector": "div.rounded-[2rem] > form#candidate-form > fieldset.space-y-4 > div.grid", "boundingRect": {"top": 765, "bottom": 1425, "left": 40, "right": 372, "width": 332, "height": 660}, "snippet": "<div class=\"grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6\">", "nodeLabel": "NOMBRE COMPLET
+-- console error: {"source": "network", "description": "Failed to load resource: the server responded with a status of 404 ()", "sourceLocation": {"type": "source-location", "url": "https://4geeksacademy.github.io/favicon.ico", "urlProvider": "network", "line": 0, "column": 0}}
+
+DONE

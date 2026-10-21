@@ -1,0 +1,166 @@
+
+======================================================================
+### companies-desktop
+-- lcp-breakdown-insight: score=1 display=None
+   item: {"type": "table", "headings": [{"key": "label", "valueType": "text", "label": "Subpart"}, {"key": "duration", "valueType": "ms", "label": "Duration"}], "items": [{"subpart": "timeToFirstByte", "label": "Time to first byte", "duration": 134.606}, {"subpart": "elementRenderDelay", "label": "Element re
+   item: {"type": "node", "lhId": "page-1-H2", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,DIV,1,DIV,3,H2", "selector": "div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > h2#application-title", "boundingRect": {"top": 301, "bottom": 445, "left": 100, "right": 996, "width": 896, "height": 144}, "snippet"
+-- render-blocking: score=None display=None
+-- image-size-responsive: score=1 display= overallSavingsBytes=None items=0
+-- layout-shifts: score=None display=
+-- third-party: score=None display=
+-- unused-js: {"url": "https://cdn.tailwindcss.com/", "totalBytes": 126507, "wastedBytes": 39428, "wastedPercent": 31.166595871626086}
+-- network (clave):
+   ?          proto=h2 status=302 transfer=456 resource=0 startTime=0ms https://cdn.tailwindcss.com/
+   Image      proto=h2 status=200 transfer=828644 resource=828004 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexov
+   Script     proto=h2 status=200 transfer=351283 resource=1030880 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/locatio
+   Script     proto=h2 status=200 transfer=2832 resource=11062 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/validation.j
+   Script     proto=h2 status=200 transfer=126858 resource=407279 startTime=0ms https://cdn.tailwindcss.com/3.4.17
+-- font-display: score=None display= items=0
+-- mainthread: display=0.4 s
+   scriptEvaluation         227.70499999999998ms
+   other                    92.17100000000005ms
+   scriptParseCompile       66.44899999999998ms
+   garbageCollection        14.600000000000005ms
+   styleLayout              13.106ms
+   parseHTML                4.9959999999999996ms
+   paintCompositeRender     4.143999999999999ms
+-- bootup-time: 0.2 s
+-- critical-request-chains: display=
+
+======================================================================
+### companies-mobile
+-- lcp-breakdown-insight: score=1 display=None
+   item: {"type": "table", "headings": [{"key": "label", "valueType": "text", "label": "Subpart"}, {"key": "duration", "valueType": "ms", "label": "Duration"}], "items": [{"subpart": "timeToFirstByte", "label": "Time to first byte", "duration": 18.12500000023842}, {"subpart": "elementRenderDelay", "label": "
+   item: {"type": "node", "lhId": "page-1-P", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,DIV,1,DIV,5,P", "selector": "div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > p.mt-6", "boundingRect": {"top": 429, "bottom": 717, "left": 40, "right": 372, "width": 332, "height": 288}, "snippet": "<p class=\"mt-
+-- render-blocking: score=None display=None
+-- image-size-responsive: score=1 display= overallSavingsBytes=None items=0
+-- layout-shifts: score=None display=
+-- third-party: score=None display=
+-- unused-js: {"url": "https://cdn.tailwindcss.com/", "totalBytes": 126507, "wastedBytes": 39428, "wastedPercent": 31.166595871626086}
+-- network (clave):
+   ?          proto=h2 status=302 transfer=461 resource=0 startTime=0ms https://cdn.tailwindcss.com/
+   Image      proto=h2 status=200 transfer=828631 resource=828004 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexov
+   Script     proto=h2 status=200 transfer=351125 resource=1030880 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/locatio
+   Script     proto=h2 status=200 transfer=2834 resource=11062 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/validation.j
+   Script     proto=h2 status=200 transfer=126857 resource=407279 startTime=0ms https://cdn.tailwindcss.com/3.4.17
+-- font-display: score=None display= items=0
+-- mainthread: display=1.4 s
+   scriptEvaluation         831.147999999998ms
+   other                    276.1159999999999ms
+   scriptParseCompile       131.20399999999998ms
+   garbageCollection        55.70000000000001ms
+   styleLayout              46.912ms
+   parseHTML                14.624000000000002ms
+   paintCompositeRender     8.955999999999998ms
+-- bootup-time: 0.9 s
+-- critical-request-chains: display=
+
+======================================================================
+### index-desktop
+-- lcp-breakdown-insight: score=1 display=None
+   item: {"type": "table", "headings": [{"key": "label", "valueType": "text", "label": "Subpart"}, {"key": "duration", "valueType": "ms", "label": "Duration"}], "items": [{"subpart": "timeToFirstByte", "label": "Time to first byte", "duration": 18.133}, {"subpart": "resourceLoadDelay", "label": "Resource loa
+   item: {"type": "node", "lhId": "page-1-IMG", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,IMG", "selector": "main > section#hero > div.relative > img.absolute", "boundingRect": {"top": 185, "bottom": 851, "left": 60, "right": 1276, "width": 1216, "height": 666}, "snippet": "<img src=\"https://images.un
+-- render-blocking: score=None display=None
+-- image-size-responsive: score=1 display= overallSavingsBytes=None items=0
+-- layout-shifts: score=None display=
+-- third-party: score=None display=
+-- unused-js: {"url": "https://cdn.tailwindcss.com/", "totalBytes": 126507, "wastedBytes": 39229, "wastedPercent": 31.00920990279391}
+-- network (clave):
+   ?          proto=h2 status=302 transfer=457 resource=0 startTime=0ms https://cdn.tailwindcss.com/
+   Image      proto=h2 status=200 transfer=828614 resource=828004 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexov
+   Image      proto=h2 status=200 transfer=374687 resource=374112 startTime=0ms https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80
+   Script     proto=h2 status=200 transfer=126852 resource=407279 startTime=0ms https://cdn.tailwindcss.com/3.4.17
+   Image      proto=h2 status=200 transfer=69707 resource=69520 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/nexova%20off
+-- font-display: score=None display= items=0
+-- mainthread: display=0.4 s
+   scriptEvaluation         208.49700000000027ms
+   other                    85.92000000000004ms
+   garbageCollection        48.96399999999998ms
+   styleLayout              24.123ms
+   scriptParseCompile       10.578ms
+   paintCompositeRender     4.109999999999999ms
+   parseHTML                2.5669999999999993ms
+-- bootup-time: 0.2 s
+-- critical-request-chains: display=
+
+======================================================================
+### index-mobile
+-- lcp-breakdown-insight: score=1 display=None
+   item: {"type": "table", "headings": [{"key": "label", "valueType": "text", "label": "Subpart"}, {"key": "duration", "valueType": "ms", "label": "Duration"}], "items": [{"subpart": "timeToFirstByte", "label": "Time to first byte", "duration": 152.687}, {"subpart": "resourceLoadDelay", "label": "Resource lo
+   item: {"type": "node", "lhId": "page-1-IMG", "path": "1,HTML,1,BODY,3,MAIN,1,SECTION,1,DIV,1,IMG", "selector": "main > section#hero > div.relative > img.absolute", "boundingRect": {"top": 129, "bottom": 848, "left": 16, "right": 396, "width": 380, "height": 719}, "snippet": "<img src=\"https://images.unsp
+-- render-blocking: score=None display=None
+-- image-size-responsive: score=1 display= overallSavingsBytes=None items=0
+-- layout-shifts: score=None display=
+-- third-party: score=None display=
+-- unused-js: {"url": "https://cdn.tailwindcss.com/", "totalBytes": 126507, "wastedBytes": 39229, "wastedPercent": 31.00920990279391}
+-- network (clave):
+   ?          proto=h2 status=302 transfer=456 resource=0 startTime=0ms https://cdn.tailwindcss.com/
+   Image      proto=h2 status=200 transfer=828629 resource=828004 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexov
+   Image      proto=h2 status=200 transfer=374687 resource=374112 startTime=0ms https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80
+   Script     proto=h2 status=200 transfer=126858 resource=407279 startTime=0ms https://cdn.tailwindcss.com/3.4.17
+   Image      proto=h2 status=200 transfer=69773 resource=69520 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/nexova%20off
+-- font-display: score=None display= items=0
+-- mainthread: display=1.1 s
+   scriptEvaluation         647.3359999999965ms
+   other                    268.0080000000008ms
+   styleLayout              58.708ms
+   garbageCollection        51.928ms
+   scriptParseCompile       42.784000000000006ms
+   paintCompositeRender     16.356ms
+   parseHTML                9.299999999999997ms
+-- bootup-time: 0.7 s
+-- critical-request-chains: display=
+
+======================================================================
+### talento-desktop
+-- lcp-breakdown-insight: score=1 display=None
+   item: {"type": "table", "headings": [{"key": "label", "valueType": "text", "label": "Subpart"}, {"key": "duration", "valueType": "ms", "label": "Duration"}], "items": [{"subpart": "timeToFirstByte", "label": "Time to first byte", "duration": 136.987}, {"subpart": "elementRenderDelay", "label": "Element re
+   item: {"type": "node", "lhId": "page-1-H1", "path": "1,HTML,1,BODY,3,MAIN,0,SECTION,0,DIV,0,DIV,1,DIV,1,H1", "selector": "div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > h1#application-title", "boundingRect": {"top": 301, "bottom": 397, "left": 100, "right": 996, "width": 896, "height": 96}, "snippet":
+-- render-blocking: score=None display=None
+-- image-size-responsive: score=1 display= overallSavingsBytes=None items=0
+-- layout-shifts: score=None display=
+-- third-party: score=None display=
+-- unused-js: {"url": "https://cdn.tailwindcss.com/", "totalBytes": 126507, "wastedBytes": 39370, "wastedPercent": 31.12092693215216}
+-- network (clave):
+   ?          proto=h2 status=302 transfer=463 resource=0 startTime=0ms https://cdn.tailwindcss.com/
+   Image      proto=h2 status=200 transfer=828644 resource=828004 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexov
+   Script     proto=h2 status=200 transfer=126862 resource=407279 startTime=0ms https://cdn.tailwindcss.com/3.4.17
+-- font-display: score=None display= items=0
+-- mainthread: display=0.3 s
+   scriptEvaluation         159.676ms
+   other                    75.03700000000009ms
+   scriptParseCompile       16.814000000000004ms
+   styleLayout              15.293999999999999ms
+   garbageCollection        9.507000000000001ms
+   paintCompositeRender     4.589ms
+   parseHTML                4.1819999999999995ms
+-- bootup-time: 0.1 s
+-- critical-request-chains: display=
+
+======================================================================
+### talento-mobile
+-- lcp-breakdown-insight: score=1 display=None
+   item: {"type": "table", "headings": [{"key": "label", "valueType": "text", "label": "Subpart"}, {"key": "duration", "valueType": "ms", "label": "Duration"}], "items": [{"subpart": "timeToFirstByte", "label": "Time to first byte", "duration": 14.36}, {"subpart": "elementRenderDelay", "label": "Element rend
+   item: {"type": "node", "lhId": "page-1-P", "path": "1,HTML,1,BODY,3,MAIN,0,SECTION,0,DIV,0,DIV,1,DIV,2,P", "selector": "div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > p.mt-6", "boundingRect": {"top": 391, "bottom": 551, "left": 40, "right": 372, "width": 332, "height": 160}, "snippet": "<p class=\"mt-
+-- render-blocking: score=None display=None
+-- image-size-responsive: score=1 display= overallSavingsBytes=None items=0
+-- layout-shifts: score=None display=
+-- third-party: score=None display=
+-- unused-js: {"url": "https://cdn.tailwindcss.com/", "totalBytes": 126507, "wastedBytes": 39370, "wastedPercent": 31.12092693215216}
+-- network (clave):
+   ?          proto=h2 status=302 transfer=463 resource=0 startTime=0ms https://cdn.tailwindcss.com/
+   Image      proto=h2 status=200 transfer=828635 resource=828004 startTime=0ms https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexov
+   Script     proto=h2 status=200 transfer=126855 resource=407279 startTime=0ms https://cdn.tailwindcss.com/3.4.17
+-- font-display: score=None display= items=0
+-- mainthread: display=1.1 s
+   scriptEvaluation         649.4639999999997ms
+   other                    246.3720000000003ms
+   garbageCollection        59.348ms
+   styleLayout              52ms
+   scriptParseCompile       49.74000000000001ms
+   parseHTML                11.248000000000001ms
+   paintCompositeRender     9.811999999999998ms
+-- bootup-time: 0.7 s
+-- critical-request-chains: display=
+
+DONE

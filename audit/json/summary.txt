@@ -1,0 +1,239 @@
+
+======================================================================
+### companies-desktop  (URL: https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-companies.html)
+    emulación: formFactor=desktop throttling=simulate
+  Scores: performance=94 | accessibility=90 | best-practices=96 | seo=100
+  Métricas:
+    FCP       676ms  (score=0.98)
+    LCP        1.5s  (score=0.79)
+    TBT        80ms  (score=0.99)
+    CLS         0ms  (score=1)
+    SI        885ms  (score=0.98)
+    TTI        1.5s  (score=0.99)
+  Diagnósticos (con ahorro/situación):
+    ✓ total-byte-weight: Total size was 1,291 KiB
+    ✓ mainthread-work-breakdown: Minimizes main-thread work 0.4 s
+        - Script Evaluation: 228ms
+        - Other: 92ms
+        - Script Parsing & Compilation: 66ms
+        - Garbage Collection: 15ms
+        - Style & Layout: 13ms
+        - Parse HTML & CSS: 5ms
+    ✓ long-tasks: Avoid long main-thread tasks 2 long tasks found
+        - 210ms en 595.7560000000001ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+        - 50ms en 1477.5610000000001ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+    ✓ unminified-css: Minify CSS 
+    ✓ unminified-javascript: Minify JavaScript 
+    ✓ unused-css-rules: Reduce unused CSS 
+        (bytes implicados: 0 KiB, 0 recursos)
+    ~ unused-javascript: Reduce unused JavaScript Est savings of 39 KiB 39 KiB
+        (bytes implicados: 124 KiB, 1 recursos)
+    ~ layout-shifts: Avoid large layout shifts 
+  Top transferencias:
+      809 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%
+      343 KiB  Script       https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/location-catalog.
+      124 KiB  Script       https://cdn.tailwindcss.com/3.4.17
+        6 KiB  Document     https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-companies.
+        5 KiB  Other        https://4geeksacademy.github.io/favicon.ico
+        3 KiB  Script       https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/validation.js
+        0 KiB  ?            https://cdn.tailwindcss.com/
+  Oportunidades ordenadas (ahorro potencial):
+
+======================================================================
+### companies-mobile  (URL: https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-companies.html)
+    emulación: formFactor=mobile throttling=simulate
+  Scores: performance=55 | accessibility=90 | best-practices=96 | seo=100
+  Métricas:
+    FCP        2.3s  (score=0.73)
+    LCP        8.4s  (score=0.02)
+    TBT       687ms  (score=0.43)
+    CLS         0ms  (score=1)
+    SI         2.8s  (score=0.96)
+    TTI        8.4s  (score=0.39)
+  Diagnósticos (con ahorro/situación):
+    ✓ total-byte-weight: Total size was 1,291 KiB
+    ✓ mainthread-work-breakdown: Minimizes main-thread work 1.4 s
+        - Script Evaluation: 831ms
+        - Other: 276ms
+        - Script Parsing & Compilation: 131ms
+        - Garbage Collection: 56ms
+        - Style & Layout: 47ms
+        - Parse HTML & CSS: 15ms
+    ✓ long-tasks: Avoid long main-thread tasks 3 long tasks found
+        - 737ms en 7652.1990000000005ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+        - 227ms en 1580.5074999999997ms  https://cdn.tailwindcss.com/
+        - 57ms en 752.199ms  Unattributable
+    ✓ unminified-css: Minify CSS 
+    ✓ unminified-javascript: Minify JavaScript 
+    ✓ unused-css-rules: Reduce unused CSS 
+        (bytes implicados: 0 KiB, 0 recursos)
+    ~ unused-javascript: Reduce unused JavaScript Est savings of 39 KiB 39 KiB
+        (bytes implicados: 124 KiB, 1 recursos)
+    ~ layout-shifts: Avoid large layout shifts 
+  Top transferencias:
+      809 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%
+      343 KiB  Script       https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/data/location-catalog.
+      124 KiB  Script       https://cdn.tailwindcss.com/3.4.17
+        6 KiB  Document     https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-companies.
+        5 KiB  Other        https://4geeksacademy.github.io/favicon.ico
+        3 KiB  Script       https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/validation.js
+        0 KiB  ?            https://cdn.tailwindcss.com/
+  Oportunidades ordenadas (ahorro potencial):
+
+======================================================================
+### index-desktop  (URL: https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/index.html)
+    emulación: formFactor=desktop throttling=simulate
+  Scores: performance=96 | accessibility=96 | best-practices=96 | seo=100
+  Métricas:
+    FCP       549ms  (score=0.99)
+    LCP        1.4s  (score=0.83)
+    TBT        56ms  (score=1)
+    CLS         0ms  (score=1)
+    SI        650ms  (score=1)
+    TTI        1.4s  (score=0.99)
+  Diagnósticos (con ahorro/situación):
+    ✓ total-byte-weight: Total size was 1,382 KiB
+    ✓ mainthread-work-breakdown: Minimizes main-thread work 0.4 s
+        - Script Evaluation: 208ms
+        - Other: 86ms
+        - Garbage Collection: 49ms
+        - Style & Layout: 24ms
+        - Script Parsing & Compilation: 11ms
+        - Rendering: 4ms
+    ✓ long-tasks: Avoid long main-thread tasks 1 long task found
+        - 190ms en 464.97499999999997ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+    ✓ unminified-css: Minify CSS 
+    ✓ unminified-javascript: Minify JavaScript 
+    ✓ unused-css-rules: Reduce unused CSS 
+        (bytes implicados: 0 KiB, 0 recursos)
+    ~ unused-javascript: Reduce unused JavaScript Est savings of 38 KiB 38 KiB
+        (bytes implicados: 124 KiB, 1 recursos)
+    ~ layout-shifts: Avoid large layout shifts 
+  Top transferencias:
+      809 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%
+      366 KiB  Image        https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80
+      124 KiB  Script       https://cdn.tailwindcss.com/3.4.17
+       68 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/nexova%20offices%20off
+       10 KiB  Document     https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/index.html
+        5 KiB  Other        https://4geeksacademy.github.io/favicon.ico
+        0 KiB  ?            https://cdn.tailwindcss.com/
+  Oportunidades ordenadas (ahorro potencial):
+
+======================================================================
+### index-mobile  (URL: https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/index.html)
+    emulación: formFactor=mobile throttling=simulate
+  Scores: performance=72 | accessibility=96 | best-practices=96 | seo=100
+  Métricas:
+    FCP        2.5s  (score=0.69)
+    LCP        8.1s  (score=0.02)
+    TBT         0ms  (score=1)
+    CLS         0ms  (score=1)
+    SI         2.8s  (score=0.95)
+    TTI        8.1s  (score=0.42)
+  Diagnósticos (con ahorro/situación):
+    ✓ total-byte-weight: Total size was 1,383 KiB
+    ✓ mainthread-work-breakdown: Minimizes main-thread work 1.1 s
+        - Script Evaluation: 647ms
+        - Other: 268ms
+        - Style & Layout: 59ms
+        - Garbage Collection: 52ms
+        - Script Parsing & Compilation: 43ms
+        - Rendering: 16ms
+    ✓ long-tasks: Avoid long main-thread tasks 3 long tasks found
+        - 570ms en 1848.5959999999998ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+        - 145ms en 1703.5959999999998ms  https://cdn.tailwindcss.com/
+        - 74ms en 864.4919999999998ms  Unattributable
+    ✓ unminified-css: Minify CSS 
+    ✓ unminified-javascript: Minify JavaScript 
+    ✓ unused-css-rules: Reduce unused CSS 
+        (bytes implicados: 0 KiB, 0 recursos)
+    ~ unused-javascript: Reduce unused JavaScript Est savings of 38 KiB 38 KiB
+        (bytes implicados: 124 KiB, 1 recursos)
+    ~ layout-shifts: Avoid large layout shifts 
+  Top transferencias:
+      809 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%
+      366 KiB  Image        https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80
+      124 KiB  Script       https://cdn.tailwindcss.com/3.4.17
+       68 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/nexova%20offices%20off
+       10 KiB  Document     https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/index.html
+        5 KiB  Other        https://4geeksacademy.github.io/favicon.ico
+        0 KiB  ?            https://cdn.tailwindcss.com/
+  Oportunidades ordenadas (ahorro potencial):
+
+======================================================================
+### talento-desktop  (URL: https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-candidates.html)
+    emulación: formFactor=desktop throttling=simulate
+  Scores: performance=98 | accessibility=92 | best-practices=96 | seo=100
+  Métricas:
+    FCP       600ms  (score=0.99)
+    LCP        1.1s  (score=0.91)
+    TBT        10ms  (score=1)
+    CLS         0ms  (score=1)
+    SI        626ms  (score=1)
+    TTI        1.1s  (score=1)
+  Diagnósticos (con ahorro/situación):
+    ✓ total-byte-weight: Total size was 946 KiB
+    ✓ mainthread-work-breakdown: Minimizes main-thread work 0.3 s
+        - Script Evaluation: 160ms
+        - Other: 75ms
+        - Script Parsing & Compilation: 17ms
+        - Style & Layout: 15ms
+        - Garbage Collection: 10ms
+        - Rendering: 5ms
+    ✓ long-tasks: Avoid long main-thread tasks 1 long task found
+        - 141ms en 519.317ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+    ✓ unminified-css: Minify CSS 
+    ✓ unminified-javascript: Minify JavaScript 
+    ✓ unused-css-rules: Reduce unused CSS 
+        (bytes implicados: 0 KiB, 0 recursos)
+    ~ unused-javascript: Reduce unused JavaScript Est savings of 38 KiB 38 KiB
+        (bytes implicados: 124 KiB, 1 recursos)
+    ~ layout-shifts: Avoid large layout shifts 
+  Top transferencias:
+      809 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%
+      124 KiB  Script       https://cdn.tailwindcss.com/3.4.17
+        7 KiB  Document     https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-candidates
+        5 KiB  Other        https://4geeksacademy.github.io/favicon.ico
+        0 KiB  ?            https://cdn.tailwindcss.com/
+  Oportunidades ordenadas (ahorro potencial):
+
+======================================================================
+### talento-mobile  (URL: https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-candidates.html)
+    emulación: formFactor=mobile throttling=simulate
+  Scores: performance=75 | accessibility=92 | best-practices=96 | seo=100
+  Métricas:
+    FCP        2.3s  (score=0.73)
+    LCP        6.0s  (score=0.13)
+    TBT         0ms  (score=1)
+    CLS         0ms  (score=1)
+    SI         2.8s  (score=0.96)
+    TTI        6.0s  (score=0.64)
+  Diagnósticos (con ahorro/situación):
+    ✓ total-byte-weight: Total size was 946 KiB
+    ✓ mainthread-work-breakdown: Minimizes main-thread work 1.1 s
+        - Script Evaluation: 649ms
+        - Other: 246ms
+        - Garbage Collection: 59ms
+        - Style & Layout: 52ms
+        - Script Parsing & Compilation: 50ms
+        - Parse HTML & CSS: 11ms
+    ✓ long-tasks: Avoid long main-thread tasks 3 long tasks found
+        - 567ms en 1733.6505ms  https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-de
+        - 150ms en 1583.6505ms  https://cdn.tailwindcss.com/
+        - 66ms en 750.75ms  Unattributable
+    ✓ unminified-css: Minify CSS 
+    ✓ unminified-javascript: Minify JavaScript 
+    ✓ unused-css-rules: Reduce unused CSS 
+        (bytes implicados: 0 KiB, 0 recursos)
+    ~ unused-javascript: Reduce unused JavaScript Est savings of 38 KiB 38 KiB
+        (bytes implicados: 124 KiB, 1 recursos)
+    ~ layout-shifts: Avoid large layout shifts 
+  Top transferencias:
+      809 KiB  Image        https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/Logo%20nexova%20Negro%
+      124 KiB  Script       https://cdn.tailwindcss.com/3.4.17
+        7 KiB  Document     https://4geeksacademy.github.io/ai-engineering-company-project-monorepo-Maria-del-Cid-2/application-candidates
+        5 KiB  Other        https://4geeksacademy.github.io/favicon.ico
+        0 KiB  ?            https://cdn.tailwindcss.com/
+  Oportunidades ordenadas (ahorro potencial):
+
+DONE

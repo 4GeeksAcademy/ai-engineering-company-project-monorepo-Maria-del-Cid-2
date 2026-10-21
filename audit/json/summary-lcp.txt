@@ -1,0 +1,148 @@
+
+======================================================================
+### companies-desktop
+  LCP subpart timeToFirstByte: 134.6ms (Time to first byte)
+  LCP subpart elementRenderDelay: 461.6ms (Element render delay)
+  LCP node: div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > h2#application-title
+  snippet: <h2 id="application-title" class="mt-5 text-3xl font-black leading-tight text-brand-anthracite sm:text-4xl l…">
+  LCP numericValue=1536.5610000000001
+  render-blocking: score=None display=None desc=
+  rb details keys: [] items=0
+  Auditorías con score=0 (fallidas):
+    ❌ aria-allowed-attr: `[aria-*]` attributes do not match their roles 
+    ❌ cache-insight: Use efficient cache lifetimes Est savings of 1,059 KiB
+    ❌ color-contrast: Background and foreground colors do not have a sufficient contrast rat 
+    ❌ errors-in-console: Browser errors were logged to the console 
+    ❌ image-delivery-insight: Improve image delivery Est savings of 807 KiB
+    ❌ network-dependency-tree-insight: Network dependency tree 
+    ❌ render-blocking-insight: Render-blocking requests Est savings of 320 ms
+    ❌ valid-source-maps: Missing source maps for large first-party JavaScript 
+  insight audits: ['cache-insight', 'cls-culprits-insight', 'document-latency-insight', 'dom-size-insight', 'duplicated-javascript-insight', 'font-display-insight', 'forced-reflow-insight', 'image-delivery-insight', 'inp-breakdown-insight', 'lcp-breakdown-insight', 'lcp-discovery-insight', 'legacy-javascript-insight', 'modern-http-insight', 'network-dependency-tree-insight', 'render-blocking-insight', 'third-parties-insight', 'viewport-insight']
+  third-party raw: score=None items=0 display=None
+  font-display: score=None items=0 display=None
+  savings (overallSavingsMs/Bytes):
+    unused-javascript:  ms=0 bytes=39428 items=1
+
+======================================================================
+### companies-mobile
+  LCP subpart timeToFirstByte: 18.1ms (Time to first byte)
+  LCP subpart elementRenderDelay: 1308.1ms (Element render delay)
+  LCP node: div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > p.mt-6
+  snippet: <p class="mt-6 max-w-4xl text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+  LCP numericValue=8389.199
+  render-blocking: score=None display=None desc=
+  rb details keys: [] items=0
+  Auditorías con score=0 (fallidas):
+    ❌ aria-allowed-attr: `[aria-*]` attributes do not match their roles 
+    ❌ cache-insight: Use efficient cache lifetimes Est savings of 1,059 KiB
+    ❌ color-contrast: Background and foreground colors do not have a sufficient contrast rat 
+    ❌ errors-in-console: Browser errors were logged to the console 
+    ❌ image-delivery-insight: Improve image delivery Est savings of 808 KiB
+    ❌ network-dependency-tree-insight: Network dependency tree 
+    ❌ render-blocking-insight: Render-blocking requests Est savings of 1,510 ms
+    ❌ valid-source-maps: Missing source maps for large first-party JavaScript 
+  insight audits: ['cache-insight', 'cls-culprits-insight', 'document-latency-insight', 'dom-size-insight', 'duplicated-javascript-insight', 'font-display-insight', 'forced-reflow-insight', 'image-delivery-insight', 'inp-breakdown-insight', 'lcp-breakdown-insight', 'lcp-discovery-insight', 'legacy-javascript-insight', 'modern-http-insight', 'network-dependency-tree-insight', 'render-blocking-insight', 'third-parties-insight', 'viewport-insight']
+  third-party raw: score=None items=0 display=None
+  font-display: score=None items=0 display=None
+  savings (overallSavingsMs/Bytes):
+    unused-javascript:  ms=0 bytes=39428 items=1
+
+======================================================================
+### index-desktop
+  LCP subpart timeToFirstByte: 18.1ms (Time to first byte)
+  LCP subpart resourceLoadDelay: 12.0ms (Resource load delay)
+  LCP subpart resourceLoadDuration: 54.5ms (Resource load duration)
+  LCP subpart elementRenderDelay: 576.9ms (Element render delay)
+  LCP node: main > section#hero > div.relative > img.absolute
+  snippet: <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;f…" alt="equipo de recursos humanos especializado en selección de perfiles tecnológ…" class="absolute inset-0 h-full w-full object-cover" aria-hidden="true">
+  LCP numericValue=1408.2709999999997
+  render-blocking: score=None display=None desc=
+  rb details keys: [] items=0
+  Auditorías con score=0 (fallidas):
+    ❌ cache-insight: Use efficient cache lifetimes Est savings of 804 KiB
+    ❌ color-contrast: Background and foreground colors do not have a sufficient contrast rat 
+    ❌ errors-in-console: Browser errors were logged to the console 
+    ❌ image-delivery-insight: Improve image delivery Est savings of 1,002 KiB
+    ❌ label-content-name-mismatch: Elements with visible text labels do not have matching accessible name 
+    ❌ lcp-discovery-insight: LCP request discovery 
+    ❌ network-dependency-tree-insight: Network dependency tree 
+    ❌ render-blocking-insight: Render-blocking requests Est savings of 320 ms
+  insight audits: ['cache-insight', 'cls-culprits-insight', 'document-latency-insight', 'dom-size-insight', 'duplicated-javascript-insight', 'font-display-insight', 'forced-reflow-insight', 'image-delivery-insight', 'inp-breakdown-insight', 'lcp-breakdown-insight', 'lcp-discovery-insight', 'legacy-javascript-insight', 'modern-http-insight', 'network-dependency-tree-insight', 'render-blocking-insight', 'third-parties-insight', 'viewport-insight']
+  third-party raw: score=None items=0 display=None
+  font-display: score=None items=0 display=None
+  savings (overallSavingsMs/Bytes):
+    unused-javascript:  ms=0 bytes=39229 items=1
+
+======================================================================
+### index-mobile
+  LCP subpart timeToFirstByte: 152.7ms (Time to first byte)
+  LCP subpart resourceLoadDelay: 22.7ms (Resource load delay)
+  LCP subpart resourceLoadDuration: 35.5ms (Resource load duration)
+  LCP subpart elementRenderDelay: 1116.9ms (Element render delay)
+  LCP node: main > section#hero > div.relative > img.absolute
+  snippet: <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;f…" alt="equipo de recursos humanos especializado en selección de perfiles tecnológ…" class="absolute inset-0 h-full w-full object-cover" aria-hidden="true">
+  LCP numericValue=8077.979999999999
+  render-blocking: score=None display=None desc=
+  rb details keys: [] items=0
+  Auditorías con score=0 (fallidas):
+    ❌ cache-insight: Use efficient cache lifetimes Est savings of 804 KiB
+    ❌ color-contrast: Background and foreground colors do not have a sufficient contrast rat 
+    ❌ errors-in-console: Browser errors were logged to the console 
+    ❌ image-delivery-insight: Improve image delivery Est savings of 1,196 KiB
+    ❌ label-content-name-mismatch: Elements with visible text labels do not have matching accessible name 
+    ❌ lcp-discovery-insight: LCP request discovery 
+    ❌ network-dependency-tree-insight: Network dependency tree 
+    ❌ render-blocking-insight: Render-blocking requests Est savings of 1,480 ms
+  insight audits: ['cache-insight', 'cls-culprits-insight', 'document-latency-insight', 'dom-size-insight', 'duplicated-javascript-insight', 'font-display-insight', 'forced-reflow-insight', 'image-delivery-insight', 'inp-breakdown-insight', 'lcp-breakdown-insight', 'lcp-discovery-insight', 'legacy-javascript-insight', 'modern-http-insight', 'network-dependency-tree-insight', 'render-blocking-insight', 'third-parties-insight', 'viewport-insight']
+  third-party raw: score=None items=0 display=None
+  font-display: score=None items=0 display=None
+  savings (overallSavingsMs/Bytes):
+    unused-javascript:  ms=0 bytes=39229 items=1
+
+======================================================================
+### talento-desktop
+  LCP subpart timeToFirstByte: 137.0ms (Time to first byte)
+  LCP subpart elementRenderDelay: 437.9ms (Element render delay)
+  LCP node: div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > h1#application-title
+  snippet: <h1 id="application-title" class="mt-5 text-3xl font-black leading-tight text-brand-anthracite sm:text-4xl l…">
+  LCP numericValue=1150
+  render-blocking: score=None display=None desc=
+  rb details keys: [] items=0
+  Auditorías con score=0 (fallidas):
+    ❌ aria-allowed-attr: `[aria-*]` attributes do not match their roles 
+    ❌ cache-insight: Use efficient cache lifetimes Est savings of 742 KiB
+    ❌ color-contrast: Background and foreground colors do not have a sufficient contrast rat 
+    ❌ errors-in-console: Browser errors were logged to the console 
+    ❌ image-delivery-insight: Improve image delivery Est savings of 807 KiB
+    ❌ network-dependency-tree-insight: Network dependency tree 
+    ❌ render-blocking-insight: Render-blocking requests Est savings of 360 ms
+  insight audits: ['cache-insight', 'cls-culprits-insight', 'document-latency-insight', 'dom-size-insight', 'duplicated-javascript-insight', 'font-display-insight', 'forced-reflow-insight', 'image-delivery-insight', 'inp-breakdown-insight', 'lcp-breakdown-insight', 'lcp-discovery-insight', 'legacy-javascript-insight', 'modern-http-insight', 'network-dependency-tree-insight', 'render-blocking-insight', 'third-parties-insight', 'viewport-insight']
+  third-party raw: score=None items=0 display=None
+  font-display: score=None items=0 display=None
+  savings (overallSavingsMs/Bytes):
+    unused-javascript:  ms=0 bytes=39370 items=1
+
+======================================================================
+### talento-mobile
+  LCP subpart timeToFirstByte: 14.4ms (Time to first byte)
+  LCP subpart elementRenderDelay: 1308.7ms (Element render delay)
+  LCP node: div.mx-auto > div.rounded-[2rem] > div.max-w-4xl > p.mt-6
+  snippet: <p class="mt-6 max-w-4xl text-base leading-8 text-brand-anthracite/80 sm:text-lg">
+  LCP numericValue=6000.75
+  render-blocking: score=None display=None desc=
+  rb details keys: [] items=0
+  Auditorías con score=0 (fallidas):
+    ❌ aria-allowed-attr: `[aria-*]` attributes do not match their roles 
+    ❌ cache-insight: Use efficient cache lifetimes Est savings of 742 KiB
+    ❌ color-contrast: Background and foreground colors do not have a sufficient contrast rat 
+    ❌ errors-in-console: Browser errors were logged to the console 
+    ❌ image-delivery-insight: Improve image delivery Est savings of 808 KiB
+    ❌ network-dependency-tree-insight: Network dependency tree 
+    ❌ render-blocking-insight: Render-blocking requests Est savings of 1,480 ms
+  insight audits: ['cache-insight', 'cls-culprits-insight', 'document-latency-insight', 'dom-size-insight', 'duplicated-javascript-insight', 'font-display-insight', 'forced-reflow-insight', 'image-delivery-insight', 'inp-breakdown-insight', 'lcp-breakdown-insight', 'lcp-discovery-insight', 'legacy-javascript-insight', 'modern-http-insight', 'network-dependency-tree-insight', 'render-blocking-insight', 'third-parties-insight', 'viewport-insight']
+  third-party raw: score=None items=0 display=None
+  font-display: score=None items=0 display=None
+  savings (overallSavingsMs/Bytes):
+    unused-javascript:  ms=0 bytes=39370 items=1
+
+DONE
