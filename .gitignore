@@ -7,9 +7,12 @@ out/
 
 # variables de entorno (NUNCA subir esto)
 .env
-.env.local
-.env.*.local
-.env.local.save
+.env.*
+!.env.example
+
+# claves y certificados locales
+*.pem
+*.key
 
 # bases de datos TinyDB locales (contienen emails y hashes de usuarios)
 services/data/

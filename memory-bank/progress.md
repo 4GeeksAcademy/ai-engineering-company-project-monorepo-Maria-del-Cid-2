@@ -1,5 +1,33 @@
 # Progress — Nexova
 
+### Dockerización local del monorepo — Fase 1
+
+Implementado el entorno de desarrollo local, sin cambios de producción:
+
+- `docker-compose.yml` define `interfaces` y `backend` en la red explícita
+  `nexova-dev-network`, con puertos host `3000`, `3001` y `8000`.
+- `uis/Dockerfile` usa Node Alpine, instala el backoffice Next.js y arranca
+  `uis/start.sh`; `uis/proxy-server.js` sirve la web estática en `3000`,
+  reenvía el backoffice por `3001` y deriva `/api` a `http://backend:8000`.
+- `services/Dockerfile` usa Python 3.12, instala `uv` y las dependencias de
+  `services/api/requirements.txt`, generado desde `pyproject.toml` y
+  `uv.lock`, incluyendo `packages/shared/python`.
+- Los bind mounts permiten recarga de Uvicorn y ejecución de Next.js en modo
+  desarrollo, y montan `services/data` para persistencia local. SQLite se usa solo en el `.env`
+  local para inventario, sin añadir un tercer contenedor.
+- `.env.example`, `.dockerignore` raíz, `uis/.dockerignore` y
+  `services/.dockerignore` documentan y protegen la configuración local.
+- Verificado: `docker compose config`, build de ambas imágenes, arranque de
+  ambos contenedores, website en `3000`, backoffice en `3001`, `/api` desde
+  ambos puertos, recarga de Uvicorn, bind mounts y persistencia de los JSON
+  sin modificar los datos de trabajo.
+- `npm test` (8/8) y TypeScript pasan. El lint global mantiene errores
+  preexistentes ajenos a Docker. El build local de Next no concluye porque
+  Turbopack no puede enlazar un proceso interno en el entorno de validación.
+- La web estática actual no realiza peticiones a FastAPI; el proxy queda
+  preparado para `/api`, pero no se ha inventado una integración funcional.
+- No se ha conectado ni modificado el VPS.
+
 ### Frontend de inventario — Fase 1: capa de integración
 
 Iniciado el frontend del módulo de inventario en

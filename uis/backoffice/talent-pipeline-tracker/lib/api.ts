@@ -7,7 +7,7 @@ import {
   readResponseBody,
 } from "./api-errors.ts";
 
-const API_BASE = "https://playground.4geeks.com/tracker/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_TALENT_PIPELINE_API_BASE?.trim() || "/api";
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | undefined>;

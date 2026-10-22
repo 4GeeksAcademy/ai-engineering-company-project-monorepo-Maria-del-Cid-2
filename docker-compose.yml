@@ -1,0 +1,47 @@
+services:
+  interfaces:
+    build:
+      context: .
+      dockerfile: uis/Dockerfile
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: "${BACKEND_URL}"
+      NEXT_INTERNAL_PORT: "${NEXT_INTERNAL_PORT}"
+      NEXT_PUBLIC_NEXOVA_API_BASE: "${NEXT_PUBLIC_NEXOVA_API_BASE}"
+      NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE: "${NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE}"
+    ports:
+      - "${WEBSITE_PORT}:3000"
+      - "${BACKOFFICE_PORT}:3001"
+    volumes:
+      - ./uis/website:/app/website:ro
+      - ./uis/backoffice/talent-pipeline-tracker:/app/backoffice
+      - ./uis/proxy-server.js:/app/proxy-server.js:ro
+      - ./uis/start.sh:/app/start.sh:ro
+      - interfaces_node_modules:/app/backoffice/node_modules
+      - interfaces_next_cache:/app/backoffice/.next
+    networks:
+      - nexova
+
+  backend:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_PORT}:8000"
+    volumes:
+      - ./services/api:/app/services/api
+      - ./packages/shared/python:/app/packages/shared/python
+      - ./services/data:/app/services/data
+    networks:
+      - nexova
+
+volumes:
+  interfaces_node_modules:
+  interfaces_next_cache:
+
+networks:
+  nexova:
+    name: "${DOCKER_NETWORK_NAME}"
