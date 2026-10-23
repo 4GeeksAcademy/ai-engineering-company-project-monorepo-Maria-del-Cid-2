@@ -72,6 +72,63 @@ class IncidentApiTests(unittest.TestCase):
         self.assertNotIn("ticket_id", response_text)
         self.assertNotIn("description", response_text)
 
+    def test_analyze_response_has_exactly_aggregate_keys(self) -> None:
+        """The payload is locked to exactly the eight aggregate fields.
+
+        Guards against future serialization drift (extra fields leaking or
+        aggregate fields being renamed/removed), which would break the
+        frontend ``IncidentAnalysisResult`` contract.
+        """
+        response = self.post_csv(self.csv_bytes)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(
+            set(payload.keys()),
+            {
+                "total_records",
+                "valid_records",
+                "invalid_records",
+                "by_category",
+                "by_status",
+                "satisfaction_distribution",
+                "average_satisfaction",
+                "invalid_by_type",
+            },
+        )
+
+    def test_openapi_declares_incident_analysis_response_schema(self) -> None:
+        """``POST /api/incidents/analyze`` documents a response_model contract.
+
+        Verifies Fase 2: the endpoint now declares ``IncidentAnalysisResponse``
+        in OpenAPI, exposing exactly the aggregate fields and no raw CSV input
+        fields (customer_email, ticket_id, description).
+        """
+        schema = app.openapi()
+        post_path = schema["paths"]["/api/incidents/analyze"]["post"]
+        response_schema = post_path["responses"]["200"]["content"][
+            "application/json"
+        ]["schema"]
+        self.assertEqual(response_schema["$ref"], "#/components/schemas/IncidentAnalysisResponse")
+
+        component = schema["components"]["schemas"]["IncidentAnalysisResponse"]
+        self.assertEqual(
+            set(component["properties"].keys()),
+            {
+                "total_records",
+                "valid_records",
+                "invalid_records",
+                "by_category",
+                "by_status",
+                "satisfaction_distribution",
+                "average_satisfaction",
+                "invalid_by_type",
+            },
+        )
+        self.assertNotIn("customer_email", component["properties"])
+        self.assertNotIn("ticket_id", component["properties"])
+        self.assertNotIn("description", component["properties"])
+
     def test_empty_file_returns_bad_request(self) -> None:
         response = self.post_csv(b"")
 

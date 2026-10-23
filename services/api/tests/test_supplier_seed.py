@@ -22,6 +22,12 @@ class SupplierSeedTests(unittest.TestCase):
                     {supplier["name"] for supplier in SUPPLIERS_SEED},
                 )
                 self.assertTrue(all(supplier["updated_at"] for supplier in database.all()))
+                # El seed conserva el status explícito de cada proveedor semilla.
+                seeded_statuses = {supplier["name"]: supplier["status"] for supplier in database.all()}
+                expected_statuses = {
+                    supplier["name"]: supplier["status"] for supplier in SUPPLIERS_SEED
+                }
+                self.assertEqual(seeded_statuses, expected_statuses)
             finally:
                 database.close()
 

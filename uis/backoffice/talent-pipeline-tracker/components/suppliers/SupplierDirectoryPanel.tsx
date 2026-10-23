@@ -17,7 +17,6 @@ import {
   type SupplierCategory,
   type SupplierCountry,
   type SupplierCreatePayload,
-  type SupplierStatus,
 } from "@/types/supplier";
 import { getUserFacingApiError } from "@/lib/api-error-messages";
 
@@ -26,10 +25,6 @@ const categoryOptions = SUPPLIER_CATEGORIES.map((value) => ({
   label: SUPPLIER_CATEGORY_LABELS[value],
 }));
 const countryOptions = SUPPLIER_COUNTRIES.map((value) => ({ value, label: value }));
-const statusOptions = [
-  { value: "active", label: "Active" },
-  { value: "suspended", label: "Suspended" },
-];
 
 function isRenewalSoon(date: string | null): boolean {
   if (!date) return false;
@@ -51,7 +46,6 @@ function SupplierForm({ onCreated }: { onCreated: (supplier: Supplier) => void }
     categories: ["job_boards"],
     monthly_rate: 0,
     currency: "EUR",
-    status: "active",
     contract_renewal_date: "",
     contact_email: "",
     notes: "",
@@ -100,7 +94,6 @@ function SupplierForm({ onCreated }: { onCreated: (supplier: Supplier) => void }
         <Select label="Category" options={categoryOptions} value={form.categories[0]} onChange={(event) => updateField("categories", [event.target.value as SupplierCategory])} />
         <Input label="Monthly rate" required min={0.01} step="0.01" type="number" value={form.monthly_rate || ""} onChange={(event) => updateField("monthly_rate", Number(event.target.value))} />
         <Select label="Currency" options={[{ value: "EUR", label: "EUR" }, { value: "USD", label: "USD" }]} value={form.currency} onChange={(event) => updateField("currency", event.target.value as "EUR" | "USD")} />
-        <Select label="Status" options={statusOptions} value={form.status} onChange={(event) => updateField("status", event.target.value as SupplierStatus)} />
         <Input label="Renewal date" type="date" value={form.contract_renewal_date} onChange={(event) => updateField("contract_renewal_date", event.target.value)} />
         <Input label="Contact email" type="email" value={form.contact_email} onChange={(event) => updateField("contact_email", event.target.value)} />
         <Input label="Notes" value={form.notes} onChange={(event) => updateField("notes", event.target.value)} />

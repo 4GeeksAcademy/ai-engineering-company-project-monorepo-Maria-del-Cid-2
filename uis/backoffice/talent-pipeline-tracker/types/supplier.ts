@@ -36,7 +36,6 @@ export interface SupplierCreatePayload {
   categories: SupplierCategory[];
   monthly_rate: number;
   currency: "EUR" | "USD";
-  status: SupplierStatus;
   contract_renewal_date?: string;
   contact_email?: string;
   notes?: string;

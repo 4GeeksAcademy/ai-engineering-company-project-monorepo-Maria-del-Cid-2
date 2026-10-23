@@ -17,6 +17,7 @@ from .incidents.analysis import analyze_incidents
 from .incidents.csv_reader import CsvReadError, read_incidents_csv
 from .incidents.export import export_analysis_csv
 from .incidents.models import IncidentAnalysisResult
+from .incidents.schemas import IncidentAnalysisResponse
 from .incidents.manager_router import router as incident_manager_router
 from .inventory.router import router as inventory_router
 from .suppliers.router import router as suppliers_router
@@ -131,7 +132,7 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
     )
 
 
-@app.post("/api/incidents/analyze")
+@app.post("/api/incidents/analyze", response_model=IncidentAnalysisResponse)
 async def analyze_uploaded_incidents(file: UploadFile = File(...)) -> dict[str, object]:
     """Analyze an uploaded CSV and return aggregate, privacy-safe metrics."""
 

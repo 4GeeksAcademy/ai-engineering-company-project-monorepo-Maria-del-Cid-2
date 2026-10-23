@@ -79,7 +79,6 @@ class SupplierAuthTests(unittest.TestCase):
                 "categories": ["ats_software"],
                 "monthly_rate": 100.0,
                 "currency": "EUR",
-                "status": "active",
             },
         )
         self.assertEqual(response.status_code, 401)
@@ -119,7 +118,6 @@ class SupplierAuthTests(unittest.TestCase):
                 "categories": ["ats_software"],
                 "monthly_rate": 100.0,
                 "currency": "EUR",
-                "status": "active",
             },
             headers={"Authorization": f"Bearer {_INVALID_TOKEN}"},
         )
@@ -187,10 +185,11 @@ class SupplierAuthTests(unittest.TestCase):
                 "categories": ["ats_software"],
                 "monthly_rate": 100.0,
                 "currency": "EUR",
-                "status": "active",
             },
         )
         self.assertEqual(response.status_code, 201)
+        supplier = response.json()
+        self.assertEqual(supplier["status"], "active")
 
     def test_list_suppliers_with_valid_token_returns_200(self) -> None:
         app.dependency_overrides[get_current_user] = self._override_current_user
