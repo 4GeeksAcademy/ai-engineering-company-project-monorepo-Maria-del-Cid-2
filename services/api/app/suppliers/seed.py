@@ -8,7 +8,7 @@ from tinydb import TinyDB
 from tinydb.table import Document
 
 from .database import get_database
-from .models import Supplier, SupplierCreate
+from .models import Supplier, SupplierCreate, SupplierStatus
 
 SUPPLIERS_SEED: tuple[dict[str, Any], ...] = (
     {
@@ -177,13 +177,23 @@ def seed_suppliers(database: TinyDB) -> int:
     inserted = 0
 
     for raw_supplier in SUPPLIERS_SEED:
-        payload = SupplierCreate.model_validate(raw_supplier)
+        # El cliente HTTP no envía status; el seed conserva el estado explícito
+        # de cada proveedor semilla (algunos son "suspended" intencionalmente).
+        seed_status = raw_supplier.get("status", "active")
+        if seed_status not in ("active", "suspended"):
+            raise ValueError(f"Invalid seed status {seed_status!r} for {raw_supplier.get('name')!r}")
+        status: SupplierStatus = seed_status
+
+        client_payload = {
+            key: value for key, value in raw_supplier.items() if key != "status"
+        }
+        payload = SupplierCreate.model_validate(client_payload)
         if payload.name in existing_names:
             continue
 
         existing_ids = [document.doc_id for document in database.all()]
         supplier_id = max(existing_ids, default=0) + 1
-        supplier = Supplier.from_create(supplier_id, payload)
+        supplier = Supplier.from_create(supplier_id, payload, status=status)
         database.insert(Document(supplier.model_dump(mode="json"), doc_id=supplier_id))
         existing_names.add(payload.name)
         inserted += 1

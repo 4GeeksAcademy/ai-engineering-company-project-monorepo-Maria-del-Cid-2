@@ -32,7 +32,6 @@ PAYLOAD = {
     "categories": ["ats_software"],
     "monthly_rate": 100.0,
     "currency": "EUR",
-    "status": "active",
 }
 
 
@@ -70,10 +69,21 @@ class SupplierApiTests(unittest.TestCase):
             {**PAYLOAD, "country": "USA", "currency": "EUR"},
             {**PAYLOAD, "categories": ["unknown"]},
             {**PAYLOAD, "monthly_rate": 0},
-            {**PAYLOAD, "status": "deleted"},
         ):
             with self.subTest(invalid=invalid):
                 self.assertEqual(self.create_supplier(invalid).status_code, 422)
+
+    def test_create_rejects_client_controlled_status(self) -> None:
+        # El status inicial lo controla el servidor: el cliente no puede enviarlo.
+        for status in ("active", "suspended"):
+            with self.subTest(status=status):
+                response = self.create_supplier({**PAYLOAD, "status": status})
+                self.assertEqual(response.status_code, 422)
+
+    def test_create_always_starts_supplier_active(self) -> None:
+        response = self.create_supplier()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["status"], "active")
 
     def test_list_and_filters(self) -> None:
         self.create_supplier()

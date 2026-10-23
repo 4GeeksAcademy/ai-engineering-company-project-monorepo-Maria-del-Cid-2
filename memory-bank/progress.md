@@ -164,6 +164,52 @@ Ya existe una base de aplicaciones y documentación, y se está incorporando una
 
 ## 2. Completado
 
+### Serialization-audit — Fases 0-3 (rama `serialization-audit`)
+
+Auditoría de serialización del backend FastAPI (`services/api`): inventario de
+31 rutas de negocio + infraestructura, clasificación A/B/C, dos cambios de
+contrato (Clase B) y pruebas de contrato. Inventario completo y estado final en
+`docs/serialization-audit.md`.
+
+- **Fase 1 — Suppliers, Opción A.** `SupplierCreate` separado de
+  `SupplierFields`: el cliente ya no envía `status` en `POST /api/suppliers`;
+  el servidor fija `active` (`Supplier.from_create`, parámetro interno
+  `status` para el seed). El seed conserva los 2 proveedores semilla
+  `suspended` intencionales. Frontend (`types/supplier.ts`,
+  `SupplierDirectoryPanel.tsx`) sin campo/selector de status en creación;
+  `PATCH /status` sigue funcionando. Tests adaptados y nuevos en
+  `test_supplier_models.py`, `test_supplier_api.py`, `test_supplier_seed.py`,
+  `test_auth_unit5.py` (payloads sin status).
+- **Fase 2 — Incident analysis.** Creado
+  `services/api/app/incidents/schemas.py` con `IncidentAnalysisResponse`
+  (exactamente los 8 campos agregados de `_serialize_result`). Añadido
+  `response_model=IncidentAnalysisResponse` a `POST /api/incidents/analyze`
+  en `app/main.py`. Payload de salida sin cambios (el frontend
+  `IncidentAnalysisResult` no se tocó).
+- **Fase 3 — Pruebas de contrato y documentación.** Añadidos a `test_api.py`:
+  `test_analyze_response_has_exactly_aggregate_keys` (bloquea campos
+  extra/faltantes) y `test_openapi_declares_incident_analysis_response_schema`
+  (verifica el `response_model` documentado en OpenAPI sin campos crudos).
+  Documentación finalizada en `docs/serialization-audit.md` (§7) con los
+  resultados reales.
+
+Verificación (bases TinyDB aisladas en rutas temporales + `env -u CORS_ORIGINS`):
+- Suppliers tras Fase 1: **24 passed, 8 subtests** (models/seed/api).
+- Suite completa tras Fase 1: **379 passed, 1 skipped, 63 subtests** (tras
+  corregir 3 payloads con `status` en `test_auth_unit5.py`).
+- Suite completa tras Fase 2: **379 passed, 1 skipped, 63 subtests**.
+- Suite completa tras Fase 3: **381 passed, 1 skipped, 63 subtests**.
+- Frontend backoffice: `npx tsc --noEmit` y `eslint` en los archivos
+  modificados sin errores.
+- `git diff --check` sin errores.
+
+Decisión documentada: los errores se documentan por familia (no se unifican),
+los listados no añaden paginación/proyección y la exportación CSV se conserva.
+La ruta `/__test/unexpected-error` es exclusiva de tests. Sin commits ni PR
+(no solicitados). Las advertencias sobre `.env`, rutas reales de TinyDB y
+preservación de datos se mantienen: nunca leer el `.env` real ni usar
+Supabase/BD real como base de pruebas.
+
 ### Error-handling-audit — Fase 1 backend
 
 Reforzada la gestión de errores y el diagnóstico seguro en autenticación:

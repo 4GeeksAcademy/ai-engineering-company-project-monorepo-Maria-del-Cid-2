@@ -20,17 +20,44 @@ VALID_SUPPLIER = {
     "status": "active",
 }
 
+# Payload de creación del cliente: el status NUNCA lo decide el cliente.
+VALID_CREATE_PAYLOAD = {
+    "name": "Workable",
+    "country": "Spain",
+    "categories": ["ats_software"],
+    "monthly_rate": 299.0,
+    "currency": "EUR",
+}
+
 
 class SupplierModelTests(unittest.TestCase):
     def test_valid_supplier_create_payload(self) -> None:
-        supplier = SupplierCreate.model_validate(VALID_SUPPLIER)
+        supplier = SupplierCreate.model_validate(VALID_CREATE_PAYLOAD)
 
         self.assertEqual(supplier.country, "Spain")
         self.assertEqual(supplier.currency, "EUR")
         self.assertIsNone(getattr(supplier, "updated_at", None))
+        # El cliente no envía status: no existe en SupplierCreate.
+        self.assertNotIn("status", supplier.model_dump())
+
+    def test_create_payload_cannot_set_status(self) -> None:
+        with self.assertRaises(ValidationError):
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "status": "suspended"})
+
+    def test_from_create_defaults_to_active_status(self) -> None:
+        payload = SupplierCreate.model_validate(VALID_CREATE_PAYLOAD)
+        supplier = Supplier.from_create(1, payload)
+
+        self.assertEqual(supplier.status, "active")
+
+    def test_from_create_can_preserve_seed_status(self) -> None:
+        payload = SupplierCreate.model_validate(VALID_CREATE_PAYLOAD)
+        supplier = Supplier.from_create(1, payload, status="suspended")
+
+        self.assertEqual(supplier.status, "suspended")
 
     def test_supplier_generates_updated_at_and_id_only_for_response_model(self) -> None:
-        payload = SupplierCreate.model_validate(VALID_SUPPLIER)
+        payload = SupplierCreate.model_validate(VALID_CREATE_PAYLOAD)
         supplier = Supplier.from_create(1, payload)
 
         self.assertEqual(supplier.id, 1)
@@ -39,31 +66,28 @@ class SupplierModelTests(unittest.TestCase):
 
     def test_updated_at_is_not_accepted_on_create(self) -> None:
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "updated_at": datetime.now(timezone.utc)})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "updated_at": datetime.now(timezone.utc)})
 
     def test_country_and_currency_must_match(self) -> None:
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "currency": "USD"})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "currency": "USD"})
 
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "country": "France"})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "country": "France"})
 
     def test_categories_must_be_valid_non_empty_and_unique(self) -> None:
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "categories": []})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "categories": []})
 
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "categories": ["invalid_category"]})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "categories": ["invalid_category"]})
 
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "categories": ["ats_software", "ats_software"]})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "categories": ["ats_software", "ats_software"]})
 
     def test_status_and_rate_are_strictly_validated(self) -> None:
         with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "status": "deleted"})
-
-        with self.assertRaises(ValidationError):
-            SupplierCreate.model_validate({**VALID_SUPPLIER, "monthly_rate": 0})
+            SupplierCreate.model_validate({**VALID_CREATE_PAYLOAD, "monthly_rate": 0})
 
         with self.assertRaises(ValidationError):
             SupplierRateUpdate.model_validate({"monthly_rate": -1})
@@ -74,7 +98,7 @@ class SupplierModelTests(unittest.TestCase):
     def test_optional_fields_are_supported(self) -> None:
         supplier = SupplierCreate.model_validate(
             {
-                **VALID_SUPPLIER,
+                **VALID_CREATE_PAYLOAD,
                 "contract_renewal_date": "2026-12-31",
                 "contact_email": "manager@example.com",
                 "notes": "Internal note",

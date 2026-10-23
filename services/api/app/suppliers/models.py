@@ -58,8 +58,39 @@ class SupplierFields(BaseModel):
         return self
 
 
-class SupplierCreate(SupplierFields):
-    """Payload accepted when creating a supplier."""
+class SupplierCreate(BaseModel):
+    """Payload accepted when creating a supplier.
+
+    El cliente no decide el estado inicial del proveedor: el servidor fija
+    ``status="active"`` al crear. Ver ``Supplier.from_create``.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: NonEmptyName
+    country: Country
+    categories: list[Category] = Field(min_length=1)
+    monthly_rate: PositiveRate
+    currency: Currency
+    contract_renewal_date: date | None = None
+    contact_email: EmailStr | None = None
+    notes: str | None = None
+
+    @field_validator("categories")
+    @classmethod
+    def categories_must_be_unique(cls, categories: list[Category]) -> list[Category]:
+        if len(categories) != len(set(categories)):
+            raise ValueError("categories must not contain duplicates")
+        return categories
+
+    @model_validator(mode="after")
+    def currency_must_match_country(self) -> "SupplierCreate":
+        expected_currency = CURRENCY_BY_COUNTRY[self.country]
+        if self.currency != expected_currency:
+            raise ValueError(
+                f"currency must be {expected_currency} when country is {self.country}"
+            )
+        return self
 
 
 class SupplierRateUpdate(BaseModel):
@@ -85,10 +116,23 @@ class Supplier(SupplierFields):
     updated_at: datetime
 
     @classmethod
-    def from_create(cls, supplier_id: int, payload: SupplierCreate) -> "Supplier":
+    def from_create(
+        cls,
+        supplier_id: int,
+        payload: SupplierCreate,
+        *,
+        status: SupplierStatus = "active",
+    ) -> "Supplier":
+        """Build a persisted supplier from a create payload.
+
+        El estado inicial lo controla el servidor: por defecto ``active``.
+        ``status`` es un parámetro interno (usado por el seed para conservar
+        el estado explícito de los proveedores semilla), nunca viene del cliente.
+        """
         return cls(
             id=supplier_id,
             updated_at=datetime.now(timezone.utc),
+            status=status,
             **payload.model_dump(),
         )
 
