@@ -546,154 +546,81 @@ comprobación manual del login y registro en Chrome.
   decidir si se requiere saldo por oficina, filtros/paginación y una estrategia
   aprobada para usuarios históricos sin UUID. El resultado de pytest y la
   confirmación del usuario no sustituyen dichas comprobaciones pendientes.
-### Frontend de inventario — Fase 1: capa de integración (inventario)
 
-- Ruta del frontend: `uis/backoffice/talent-pipeline-tracker` (Next.js App
-  Router). La API de inventario se consume bajo `/api/inventory` con
-  `NEXT_PUBLIC_NEXOVA_API_BASE` (por defecto `http://localhost:8000/api`).
-- `types/inventory.ts`: espejo de los schemas de `services/api` de inventario.
-  Constantes `INVENTORY_OFFICES = ["Valencia", "Miami"]` y
-  `INVENTORY_EXIT_TYPES = ["allocation", "consumption"]` con sus etiquetas de
-  UI. Modelos: `AssetWithStock` (producto + `current_stock` derivado),
-  `AssetEntryCreate`/`AssetEntry`, `AssetExitCreate`/`AssetExit` (con
-  `exit_type` y `assigned_to` opcional) e `InventoryOrder` como unión
-  discriminada por `type`: `"entry" | "exit"`. `types/index.ts` re-exporta
-  todo para `@/types`.
-- `lib/inventory.ts`: capa de integración autenticada. Todas las llamadas van a
-  través de `nexovaApi.request` con `auth: true` (Bearer desde
-  `nexova_access_token`). Sigue el patrón inyectable de `lib/profile-api.ts`
-  (funciones reciben `InventoryApiClient = Pick<NexovaApiClient, "request">`);
-  las páginas pasan el singleton `nexovaApi` y los tests inyectan un cliente
-  con fetch/storage simulados. Importa con rutas relativas y extensión `.ts`
-  para que el runner de Node (`node --experimental-strip-types`) lo ejecute.
-  Exporta `listProducts`, `getProduct`, `listOrders`, `createInbound`,
-  `createOutbound` e `inventoryErrorMessage`.
-- `tests/inventory-api.test.mjs`: patrón de `tests/profile-api.test.mjs`
-  (`MemoryStorage` + `NexovaApiClient` mock). Cubre GET, POST, Bearer, payloads
-  JSON, rechazo 400 stock insuficiente, 428 UUID, 409, 503 y traducción de
-  mensajes de error.
-- Umbrales confirmados para la vista de stock (fases posteriores): verde ≥ 8,
-  ámbar 2-7 inclusive, rojo ≤ 1.
-- Verificación Fase 1: `npm test` → **70/70 tests frontend**; lint de los
-  archivos nuevos y `npx tsc --noEmit` sin errores. Errores preexistentes de
-  lint en `hooks/useRecords.ts` ajenos a esta fase. Sin commit/push.
+## 23. Contenerización local — rama `Containerization`
 
-### Frontend de inventario — Fase 2: vista de stock actual (inventario)
+La práctica de contenerización se completó para desarrollo local en la rama
+`Containerization`. El despliegue en VPS no forma parte del alcance y no debe
+considerarse realizado ni necesario para esta fase.
 
-- Umbrales implementados en `types/inventory.ts`: `stockLevelFor(currentStock)`
-  (`>= 8 → "healthy"`, `>= 2 → "low"`, resto → `"out"`) y `STOCK_LEVEL_LABELS`
-  (`Healthy`/`Low`/`Out of stock`). Re-exportados en `types/index.ts`.
-- `app/inventory/products/page.tsx` (wrapper fino) +
-  `components/inventory/InventoryCurrentStockPanel.tsx` (cliente): carga
-  `listProducts(nexovaApi)` al montar; Spinner/error/estado vacío; por fila
-  avatar de stock coloreado, nombre, SKU · categoría · oficina y badge
-  `Healthy`/`Low`/`Out of stock`; resumen "N productos · M unidades"; enlaces
-  "Create inbound"/"Create outbound" con `?product={id}` (fases 3/4).
-  `components/inventory/index.ts` = barrel del dominio.
-- `components/auth/AuthShell.tsx`: `DropdownName` incluye `"inventory"`;
-  dropdown **Inventory** (desktop) y bloque etiquetado (móvil) entre
-  Incidents y Suppliers con Current Stock, Inbounds, Outbounds, All Orders.
-- `lib/auth-navigation.ts`: `protectedRoutes` añade `/inventory/products`,
-  `/inventory/orders/inbound`, `/inventory/orders/outbound`,
-  `/inventory/orders` (redirección a `/login` ya existente en `AuthShell`).
-- Verificación Fase 2: `npm test` → **70/70 tests frontend**; ESLint limpio en
-  archivos nuevos/cambios; `npx tsc --noEmit` sin errores. Errores de lint
-  preexistentes en `hooks/useRecord.ts`/`hooks/useRecords.ts`. Sin commit/push.
+### Arquitectura vigente
 
-### Frontend de inventario — Fase 3: formulario de entrada (inbound)
+- `docker-compose.yml` orquesta dos servicios: `interfaces` y `backend`.
+- `interfaces` construye `uis/Dockerfile`, sirve la web pública en el puerto
+  publicado `3000` y el backoffice en el puerto publicado `3001`.
+- `backend` construye `services/Dockerfile` y publica la API en el puerto
+  `8000`.
+- Ambos servicios se conectan a la red Docker compartida `nexova`, cuyo nombre
+  real se configura mediante `DOCKER_NETWORK_NAME`.
+- La comunicación interna con la API debe usar el nombre de servicio Docker
+  `backend` y el puerto interno `8000`; la configuración base es
+  `BACKEND_URL=http://backend:8000`.
 
-- `app/inventory/orders/inbound/page.tsx`: server component que lee
-  `searchParams` (Promise) con `product` (string o array → se toma el primero)
-  y pasa `initialProductId` al panel — patrón de `app/login/page.tsx` y
-  `app/reset-password/page.tsx`.
-- `components/inventory/InboundFormPanel.tsx` (cliente): select de producto con
-  `listProducts(nexovaApi)` al montar (placeholder por estado, disabled si no
-  hay productos, preselección `?product={id}` si aún no hay asset elegido);
-  campos `quantity` (min 1), `supplier` (requerido), `office`
-  (`INVENTORY_OFFICE_OPTIONS`); muestra "Current stock for X: N units" al
-  elegir producto; envío con `createInbound(nexovaApi, {…, quantity:Number})`;
-  estados `saving`/`error` (`inventoryErrorMessage`)/`created` (banner verde) y
-  reset tras crear; enlace "Back to current stock".
-- Corrección post-Fase 3 (probado con entrada real): el banner no aparecía
-  porque `resetForm()` hacía `setCreated(null)` tras `setCreated(...)` — con el
-  batching de React 19 quedaba `null`. Se elimina `resetForm()` (tras crear se
-  hace solo `setForm({...EMPTY_FORM})`); `created` pasa a `{ id, productName,
-  quantity }` con mensaje en inglés y amigable ("Inbound order #<id> created
-  successfully." + "N units of <producto> added to stock."); `updateField`
-  esconde el banner al editar. Verificado 70/70.
-- `components/inventory/index.ts`: barrel con `InventoryCurrentStockPanel` e
-  `InboundFormPanel`.
-- Verificación Fase 3: `npm test` → **70/70 tests frontend**; ESLint limpio en
-  archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
-  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase. Sin
-  commit/push.
+### Desarrollo y recarga
 
-### Frontend de inventario — Fase 4: formulario de salida (outbound)
+- `uis/start.sh` arranca Next.js con `npm run dev`, escuchando en el puerto
+  interno configurable `NEXT_INTERNAL_PORT` (por defecto `3002`), y arranca
+  `uis/proxy-server.js` en el mismo contenedor.
+- `services/Dockerfile` arranca Uvicorn con `--reload` en `0.0.0.0:8000`.
+- Los bind mounts mantienen el código fuente disponible dentro de los
+  contenedores: interfaces, proxy, script de inicio, API, paquete Python
+  compartido y `services/data`. `node_modules` y `.next` de la interfaz usan
+  volúmenes Docker para no depender del host.
 
-- `app/inventory/orders/outbound/page.tsx`: server component análogo al de
-  inbound (lee `searchParams.product` en Promise, string o array → primer
-  elemento, pasa `initialProductId`).
-- `components/inventory/OutboundFormPanel.tsx` (cliente): patrón idéntico a
-  `InboundFormPanel` (loadProducts al montar con efecto one-line + directive
-  `react-hooks/set-state-in-effect`, preselección `?product={id}` si
-  `current.asset_id === 0`). Campos `AssetExitCreate`: `quantity` (min 1),
-  `exit_type` (Allocation/Consumption vía `INVENTORY_EXIT_TYPES`),
-  `office` (`INVENTORY_OFFICE_OPTIONS`) y `assigned_to` condicional (Input
-  visible solo en Allocation, requerido; al cambiar a Consumption se limpia,
-  valor `value={form.assigned_to ?? ""}` por el tipo `string | null`).
-- **Stock disponible antes de enviar**: panel "Available stock for X: N units"
-  coloreado por `stockLevelFor` (verde ≥8 / ámbar 2-7 / rojo ≤1).
-- **Aviso de stock insuficiente en cliente**: `insufficientStock` =
-  `selectedProduct && quantity > 0 && quantity > available`; advertencia roja
-  `role="alert"` "Only N units available… Reduce the quantity" + botón
-  `disabled={!canSubmit}` + guard en `submit` (no llama a la API). El backend
-  400 "Insufficient stock" queda como red de seguridad.
-- **Envío**: `createOutbound(nexovaApi, payload)`; `assigned_to` → `null` en
-  consumption, `.trim()` en allocation. `created` = `{ id, productName,
-  quantity, exitType }`; banner verde `role="status"` en inglés ("Outbound
-  order #ID created successfully." + "N units of <producto> removed from stock
-  [and allocated/consumed.]") que persiste tras resetear solo los campos
-  (evita el batching de Fase 3).
-- `components/inventory/index.ts`: barrel con `InventoryCurrentStockPanel`,
-  `InboundFormPanel` y `OutboundFormPanel`.
-- Verificación Fase 4: `npm test` → **70/70 tests frontend**; ESLint limpio en
-  archivos nuevos; `npx tsc --noEmit` sin errores. Errores preexistentes de
-  lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a esta fase. Sin
-  commit/push.
+### URLs frontend y proxy
 
-### Frontend de inventario — Fase 5: historial de órdenes (read-only)
+- En Docker, `NEXT_PUBLIC_NEXOVA_API_BASE` y
+  `NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE` deben valer `/api`, como en `.env` y
+  `.env.example`.
+- `lib/api.ts`, `lib/nexova-api.ts` y `lib/incident-analysis-api.ts` realizan
+  peticiones al origen de la interfaz mediante `/api`. El proxy recibe esas
+  rutas y las reenvía a `http://backend:8000`.
+- El navegador no debe intentar resolver `backend`: los nombres de servicio
+  Docker solo son resolubles desde la red de contenedores. El uso de `/api`
+  permite conservar el mismo origen, evitar problemas de CORS en el navegador
+  y cumplir la comunicación interna por nombre de servicio.
+- Los clientes Nexova e Incident Analysis conservan
+  `http://localhost:8000/api` como fallback para desarrollo local fuera de
+  Docker. Ese fallback no es válido dentro del navegador cuando la interfaz se
+  ejecuta en Docker si las variables públicas no están configuradas; el
+  Compose actual las inyecta como `/api`.
+- `http://127.0.0.1:${NEXT_INTERNAL_PORT}` en el proxy apunta al proceso Next
+  del mismo contenedor y no representa una comunicación entre contenedores.
+  Asimismo, `new URL(..., "http://localhost")` se usa solo como base sintáctica
+  para analizar rutas estáticas, no como destino de red.
 
-- `app/inventory/orders/page.tsx`: server component simple (sin `searchParams`)
-  que renderiza `OrdersHistoryPanel`.
-- `components/inventory/OrdersHistoryPanel.tsx` (cliente): `loadOrders`
-  usa `Promise.all([listOrders(nexovaApi), listProducts(nexovaApi)])` →
-  estado `orders` + `products`; `productNames = useMemo(Map<asset_id, name>)`.
-  Efecto one-line + directive `react-hooks/set-state-in-effect`. Estados
-  loading (Spinner) / error (`inventoryErrorMessage`) / vacío
-  ("No inbound or outbound movements have been recorded yet.").
-- **Creador — decisión de producto**: la API no expone `user_uuid → nombre`
-  (GET /api/users no incluye `user_uuid`; JWT solo `sub` numérico +
-  `credentials_version`; `/profiles/me` solo el perfil propio). Se muestra
-  `user_uuid` abreviado (`shortUuid`: primeros 8 + `…`) en `font-mono` con
-  etiqueta **"Created by"** delante y `title="User ${user_uuid}"`. El
-  **nombre** del usuario quedó fuera de alcance por decisión explícita
-  (el nombre legible vive en `Profile.name` ligado a `user_id`; sin backend
-  no se resuelve). Nombre real requeriría ampliar backend (resolver creador en
-  `list_inventory_orders` devolviendo `email`/`name`, o exponer `user_uuid` en
-  `/api/users`) — quedó documentado como pendiente.
-- **Tarjeta read-only por orden**: badge `Inbound` (bg-green) / `Outbound`
-  (bg-orange) por `ORDER_TYPE_CLASSES`; nombre de producto o
-  `Product #<asset_id>` si el asset no está en el catálogo; `#id` mono;
-  cantidad singular/plural. `EntryDetail` (Supplier + Office) o `ExitDetail`
-  (Type `INVENTORY_EXIT_TYPE_LABELS` + Office + Assigned to si aplica).
-  Columna derecha: creador abreviado + fecha `formatDate` vía `toLocaleString`
-  (year/month/day + HH:MM). Sin acciones; orden de la API (`created_at DESC`).
-- `components/inventory/index.ts`: barrel añade `OrdersHistoryPanel` (4
-  exportaciones). `listOrders` ya estaba cubierto por el test "lists the
-  discriminated union of movement orders" (Fase 1); no se añadieron funciones
-  nuevas al data-layer.
-- Verificación Fase 5: `npm test` → **70/70 tests frontend**; ESLint limpio en
-  `OrdersHistoryPanel.tsx`, `app/inventory/orders/page.tsx`, barrel;
-  `npx tsc --noEmit` sin errores; `git diff --check` limpio. Errores
-  preexistentes de lint en `hooks/useRecord.ts`/`hooks/useRecords.ts` ajenos a
-  esta fase. Sin commit/push.
+### Configuración que debe preservarse
+
+- Mantener `BACKEND_URL=http://backend:8000` y no sustituirlo por
+  `localhost`, una IP fija o el puerto publicado del host.
+- Mantener `/api` como base pública de los clientes frontend en Compose.
+- Mantener el proxy para que `/api/*` de los puertos `3000` y `3001` llegue al
+  backend interno.
+- Revisar `.env.example` cuando se añadan variables de Compose. No registrar
+  secretos en `NEXT_PUBLIC_*`; esas variables quedan expuestas al navegador.
+- El valor de `CORS_ORIGINS` debe corresponder a los orígenes desde los que el
+  navegador accede a las interfaces (`http://localhost:3000` y
+  `http://localhost:3001` en el desarrollo local actual), no al nombre interno
+  `backend`.
+
+### Verificación y límites
+
+- Se verificó estáticamente el Compose, los Dockerfiles, el script de inicio,
+  el proxy, los clientes frontend y las variables de entorno.
+- El usuario confirmó que la web pública, el backoffice y la API funcionaron en
+  `3000`, `3001` y `8000`, y que las pruebas locales anteriores pasaron.
+- No se realizó despliegue en VPS ni debe inferirse disponibilidad de un
+  entorno remoto a partir de esta práctica.
+- Antes de cambiar esta arquitectura, comprobar siempre la URL efectiva,
+  prefijos `/api`, headers, CORS, nombre de la red y ruta de persistencia de
+  `services/data`.
