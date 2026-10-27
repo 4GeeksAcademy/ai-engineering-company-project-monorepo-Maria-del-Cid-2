@@ -5,12 +5,15 @@ from __future__ import annotations
 import io
 import logging
 import os
+import sys
 from io import StringIO
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.middleware import TimingMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .incidents.analysis import analyze_incidents
@@ -27,6 +30,12 @@ from .auth.routers.profiles_router import router as profiles_router
 
 _DEFAULT_CORS_ORIGINS = ("http://localhost:3000",)
 logger = logging.getLogger(__name__)
+
+# Ensure the root logger outputs to stderr so that child loggers (e.g.
+# app.middleware.timing) produce visible output.  Uvicorn's own logging
+# configuration does not attach a handler to the root logger, meaning
+# messages from non-uvicorn loggers are silently discarded otherwise.
+logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(message)s")
 
 
 def _sanitize_validation_errors(exc: RequestValidationError) -> list[dict[str, object]]:
@@ -74,6 +83,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(TimingMiddleware)
 app.include_router(suppliers_router)
 app.include_router(inventory_router)
 app.include_router(auth_router)

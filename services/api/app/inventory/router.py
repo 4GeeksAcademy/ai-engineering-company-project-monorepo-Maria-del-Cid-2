@@ -34,6 +34,12 @@ from app.inventory.schemas import (
     AssetWithStockResponse,
     InventoryOrderResponse,
 )
+from app.cache import TTLCache
+
+CACHE_TTL_PRODUCTS: float = 30.0
+_products_cache: TTLCache[list[AssetWithStockResponse]] = TTLCache(
+    default_ttl=CACHE_TTL_PRODUCTS
+)
 
 router = APIRouter(
     prefix="/api/inventory",
@@ -53,12 +59,22 @@ def _asset_response(asset: BaseModel, current_stock: float) -> AssetWithStockRes
 
 @router.get("/products", response_model=list[AssetWithStockResponse])
 def get_inventory_products(session: SessionDependency) -> list[AssetWithStockResponse]:
-    """List inventory products with stock derived from movement sums."""
+    """List inventory products with stock derived from movement sums.
 
-    return [
+    Results are cached in memory for ``{CACHE_TTL_PRODUCTS}`` seconds to
+    reduce repeated database aggregation queries.
+    """
+
+    cached = _products_cache.get("list")
+    if cached is not None:
+        return cached
+
+    result = [
         _asset_response(asset, stock)
         for asset, stock in list_assets_with_stock(session)
     ]
+    _products_cache.set("list", result)
+    return result
 
 
 @router.get(
@@ -112,7 +128,9 @@ def post_inventory_product(
     """Create a product; callers cannot set identity or stock."""
 
     try:
-        return create_asset(session, payload)
+        result = create_asset(session, payload)
+        _products_cache.invalidate("list")
+        return result
     except InventoryConflict as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
@@ -136,7 +154,9 @@ def post_inventory_inbound(
 
     user_uuid = _require_user_uuid(current_user)
     try:
-        return create_inbound(session, payload, user_uuid=user_uuid)
+        result = create_inbound(session, payload, user_uuid=user_uuid)
+        _products_cache.invalidate("list")
+        return result
     except InventoryConflict as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
@@ -161,7 +181,9 @@ def post_inventory_outbound(
 
     user_uuid = _require_user_uuid(current_user)
     try:
-        return create_outbound(session, payload, user_uuid=user_uuid)
+        result = create_outbound(session, payload, user_uuid=user_uuid)
+        _products_cache.invalidate("list")
+        return result
     except InsufficientStock as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except InventoryConflict as exc:

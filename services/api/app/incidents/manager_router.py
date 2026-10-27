@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import get_current_user
+from app.cache import TTLCache
 
 from .manager_database import get_database
 from .manager_models import (
@@ -21,6 +22,9 @@ from .manager_models import (
     IncidentSummary,
 )
 from .manager_repository import IncidentRepository
+
+CACHE_TTL_SUMMARY: float = 10.0
+_summary_cache: TTLCache[IncidentSummary] = TTLCache(default_ttl=CACHE_TTL_SUMMARY)
 
 router = APIRouter(
     prefix="/api/incidents",
@@ -42,7 +46,9 @@ def create_incident(
     payload: IncidentCreate,
     repository: IncidentRepository = Depends(get_repository),
 ) -> Incident:
-    return repository.create(payload)
+    incident = repository.create(payload)
+    _summary_cache.invalidate("summary")
+    return incident
 
 
 @router.get("", response_model=list[Incident])
@@ -63,7 +69,12 @@ def list_incidents(
 
 @router.get("/summary", response_model=IncidentSummary)
 def incident_summary(repository: IncidentRepository = Depends(get_repository)) -> IncidentSummary:
-    return repository.summary()
+    cached = _summary_cache.get("summary")
+    if cached is not None:
+        return cached
+    result = repository.summary()
+    _summary_cache.set("summary", result)
+    return result
 
 
 @router.get("/{incident_id}", response_model=Incident)
@@ -96,4 +107,5 @@ def update_incident_status(
             },
         )
     assert incident is not None
+    _summary_cache.invalidate("summary")
     return incident
