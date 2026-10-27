@@ -1,11 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRecord } from "@/hooks";
 import { StatusBadge, StageBadge } from "./StatusBadge";
 import { Button, Spinner } from "@/components/ui";
-import { NoteSection } from "@/components/notes";
+
+const NoteSection = dynamic(() => import("@/components/notes").then((mod) => mod.NoteSection), {
+  ssr: false,
+  loading: () => <div className="h-32 animate-pulse rounded-lg bg-zinc-100" />,
+});
 import { STATUS_OPTIONS, STAGE_OPTIONS } from "@/constants";
 import type { ApiStatus, ApiStage } from "@/types";
 

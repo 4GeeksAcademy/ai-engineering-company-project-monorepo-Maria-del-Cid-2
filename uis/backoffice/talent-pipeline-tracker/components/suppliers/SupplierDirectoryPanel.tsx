@@ -1,7 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Input, Modal, Select, Spinner } from "@/components/ui";
+import { Badge, Button, Input, Select, Spinner } from "@/components/ui";
 import {
   createSupplier,
   deleteSupplier,
@@ -19,6 +20,11 @@ import {
   type SupplierCreatePayload,
 } from "@/types/supplier";
 import { getUserFacingApiError } from "@/lib/api-error-messages";
+
+const Modal = dynamic(
+  () => import("@/components/ui").then((mod) => mod.Modal),
+  { ssr: false },
+);
 
 const categoryOptions = SUPPLIER_CATEGORIES.map((value) => ({
   value,
