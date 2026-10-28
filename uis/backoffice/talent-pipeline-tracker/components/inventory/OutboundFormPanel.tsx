@@ -82,15 +82,20 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
   const quantity = Number(form.quantity) || 0;
   const available = selectedProduct?.current_stock ?? 0;
   /** True when the client knows the requested quantity exceeds the available stock. */
-  const insufficientStock =
-    Boolean(selectedProduct) && quantity > 0 && quantity > available;
+  const insufficientStock = useMemo(
+    () => Boolean(selectedProduct) && quantity > 0 && quantity > available,
+    [selectedProduct, quantity, available],
+  );
   const assigneeText = (form.assigned_to ?? "").trim();
   /** True when the form (in its current state) can be submitted. */
-  const canSubmit =
-    Boolean(selectedProduct) &&
-    quantity > 0 &&
-    !insufficientStock &&
-    (form.exit_type === "consumption" || assigneeText !== "");
+  const canSubmit = useMemo(
+    () =>
+      Boolean(selectedProduct) &&
+      quantity > 0 &&
+      !insufficientStock &&
+      (form.exit_type === "consumption" || assigneeText !== ""),
+    [selectedProduct, quantity, insufficientStock, form.exit_type, assigneeText],
+  );
 
   function updateField<K extends keyof AssetExitCreate>(
     key: K,
