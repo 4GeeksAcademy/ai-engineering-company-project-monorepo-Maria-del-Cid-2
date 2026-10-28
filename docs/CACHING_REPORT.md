@@ -83,6 +83,38 @@ las 6 vulnerabilidades *low* de la cadena jest/deepmerge (requieren
 - `components/candidates/CandidateDetail.tsx` (línea 10):
   `const NoteSection = dynamic(() => import("@/components/notes").then(m => m.NoteSection), { ssr: false, loading: () => <div className="h-32 animate-pulse …"/> })`.
 
+**Justificación de la selección de `Modal`** (hechos verificados en el código;
+la elección no está documentada como decisión histórica, por lo que se presenta
+como evaluación de esta revisión):
+
+- El único `<Modal>` de la página se encuentra en `SupplierRow`
+  (`SupplierDirectoryPanel.tsx`, línea 164): `Modal` es un **overlay de UI puro**
+  — sin datos propios ni peticiones — que solo tiene sentido tras una interacción
+  del usuario (el botón "View notes" de un proveedor, que además solo se muestra
+  si `supplier.notes` existe).
+- El diálogo está en el árbol de render de cada fila desde la carga de la página
+  con `open={notesOpen}` (`notesOpen` inicia en `false`, línea 117), de modo que
+  su módulo viajaba en la carga inicial aunque nunca se abriera.
+- Al ser interacción rara y sin dependencias de datos, es el candidato de menor
+  riesgo para `ssr: false`.
+
+**Justificación de la selección de `NoteSection`** (misma condición: evaluación
+de esta revisión sobre hechos verificados):
+
+- `NoteSection` combina `NoteList` + `NoteForm` y, al montarse, dispara una
+  petición de datos: `useEffect(() => fetchNotes(recordId))` (`NoteSection.tsx`,
+  líneas 16-18). Es una **carga secundaria** de la página de detalle de
+  candidato: el resto del detalle (datos del candidato) es independiente de las
+  notas.
+- Se mostraba completo en el arranque de `app/candidates/[id]/page.tsx` aunque
+  el usuario nunca interactuara con la zona de notas.
+- Por ser una sección autónoma con datos propios, además de `ssr: false` se le
+  añadió `loading` con esqueleto para cubrir la ventana de descarga del chunk.
+- En `@/components/notes`, `NoteSection` es el único consumidor real en la app
+  (solo `CandidateDetail` lo importa). En cambio, `Modal` pertenece a
+  `@/components/ui`, conjunto compartido: por eso la guía señala que los
+  módulos compartidos merecen revisión si su peso crece.
+
 ### 2.6 `useMemo` en `OutboundFormPanel.tsx`
 
 - **Archivo**: `components/inventory/OutboundFormPanel.tsx`, líneas 77, 85 y 91.
@@ -95,7 +127,15 @@ las 6 vulnerabilidades *low* de la cadena jest/deepmerge (requieren
 | `canSubmit` | 91 | `[selectedProduct, quantity, insufficientStock, form.exit_type, assigneeText]` |
 
 - No se memorizaron los cálculos triviales (`quantity`, `available`,
-  `assigneeText`). `canSubmit` alimenta `disabled={!canSubmit}` (línea 302).
+  `assigneeText`). `canSubmit` alimenta `disabled={!canSubmit}` (línea 307).
+
+**Beneficio esperado vs. medido** (los datos de la sección 4 proceden solo del
+backend; el frontend no se midió):
+
+| | |
+|---|---|
+| **Beneficio esperado** (expectativa, no medido) | Evitar recalcular en cada re-render `selectedProduct` (búsqueda de producto en `products`), `insufficientStock` (comprobación de stock) y `canSubmit` (validación encadenada de 4 condiciones). Las dependencias garantizan que se recalculan solo cuando cambia algo relevante del formulario, y la habilitación del botón de envío (`disabled`) refleja el estado validado sin coste añadido por render. Expectativa cualitativa: mayor relevancia cuanto más re-renders genere el formulario y más productos haya. |
+| **Realmente medido** | Únicamente validación funcional: `npm test` → 70/70 y `npm run build` → 0 errores TypeScript, 18 páginas. **No se midió** tiempo de render, número de re-renders ni ganancia de CPU en el cliente: **no se atribuyen mejoras cuantitativas a `useMemo`** (limitación declarada en la sección 3). |
 
 ### 2.7 Commit de actualización de versión de Next.js (`a760da8`)
 
@@ -130,6 +170,76 @@ las 6 vulnerabilidades *low* de la cadena jest/deepmerge (requieren
 - **Relación con el rendimiento**: es un parche de **seguridad**, no una
   optimización de rendimiento; no se han medido efectos de rendimiento de
   16.4.0 → 16.4.3 y no se atribuye ninguna mejora cuantitativa a este commit.
+
+### 2.8 Perfil de los endpoints cacheados
+
+Los **hechos** de esta sección (consultas, llamadas y puntos de invalidación)
+proceden de la inspección del código. Las **frecuencias de llamada y de
+actualización son estimaciones cualitativas**: la aplicación no registra
+métricas de uso (no hay telemetría ni contadores de llamadas), por lo que no
+existen cifras de frecuencia que reportar.
+
+| Dimensión | `GET /api/inventory/products` | `GET /api/incidents/summary` |
+|---|---|---|
+| **Coste de la operación en miss** (verificado) | SQL con dos agregaciones (`GROUP BY` + `SUM` sobre `AssetEntry` y `AssetExit`), `LEFT JOIN` con `Asset` y construcción de la lista de respuestas (`inventory/queries.py`, `list_assets_with_stock`). | `repository.summary()` llama a `self.list()`, que lee **todos** los documentos de TinyDB, los valida uno a uno con Pydantic y después ejecuta 4 conteos en Python (`manager_repository.py`, líneas 79-87). Coste creciente con el número de incidencias. |
+| **Frecuencia de lectura** (estimación cualitativa) | Llamada por montaje de 4 paneles (`InventoryCurrentStockPanel`, `OutboundFormPanel`, `InboundFormPanel`, `OrdersHistoryPanel`), todos vía `useEffect` en el montaje. Sin *polling* ni refresco automático: lecturas **por visita a las páginas de inventario**. | Se lanza en paralelo con la lista de incidencias en `loadData` (`IncidentManagerPanel.tsx`, línea 192), que se ejecuta al montar el panel, **al cambiar cualquier filtro** y al actualizar una incidencia (línea 211). Lecturas **por visita y por interacción de filtro**. |
+| **Frecuencia de actualización** (estimación cualitativa) | Escrituras en los 3 endpoints de mutación del router (crear producto, entrada, salida): ocurren al registrar movimientos de inventario, no en segundo plano. | Escrituras en 2 endpoints (crear incidencia, cambiar estado): ocurren al gestionar incidencias, no en segundo plano. |
+| **TTL** | 30 s (`CACHE_TTL_PRODUCTS`) | 10 s (`CACHE_TTL_SUMMARY`) |
+| **Invalidación anticipada** | `invalidate("list")` en los 3 puntos de escritura | `invalidate("summary")` en crear y cambiar estado |
+| **Efecto de la caché** (verificado) | En hit, responde sin abrir consulta a la base de datos. | En hit, responde sin leer TinyDB ni validar con Pydantic. |
+
+### 2.9 Frescura frente a rendimiento (elección de los TTL)
+
+El equilibrio es: **reutilizar un resultado ya calculado** (menos coste por
+petición) frente al riesgo de **servir datos desactualizados** durante el TTL.
+En esta implementación ese equilibrio se apoya en dos mecanismos y conviene no
+confundirlos:
+
+- **Invalidación anticipada (mecanismo principal de frescura)**: cada escritura
+  borra la entrada correspondiente de forma inmediata. Con ella, una lectura
+  posterior sufre *miss* y reconstruye el valor: los datos que cambian por los
+  caminos de escritura conocidos **no dependen del TTL** para quedar frescos.
+- **TTL (red de seguridad)**: el TTL solo limita la ventana de frescura ante
+  escrituras que la invalidación no cubra. Por eso los valores escogidos son
+  cortos (30 s y 10 s): incluso en el peor caso, la antigüedad máxima de una
+  respuesta cacheada es de 30 s y 10 s respectivamente.
+- **Asimetría 30 s / 10 s**: el resumen de incidencias se lee con más frecuencia
+  (se refresca con cada cambio de filtro) y su recomputación barata en dataset
+  pequeño pero crece con el número de incidencias; su ventana máxima de
+  staleness se mantiene más corta (10 s). El listado de productos combina una
+  consulta con agregaciones SQL con escrituras que ya invalidan la entrada, y se
+  leen en cascada varios paneles de inventario; 30 s actúa como red de seguridad
+  sin exponerse en los caminos de escritura conocidos. **Estas razones de diseño
+  son una justificación a posteriori de los valores existentes (evaluación de
+  esta revisión); no constan como documentación de decisión histórica.** No se
+  han variado los TTL ni la invalidación.
+
+### 2.10 Qué no se cachea y por qué
+
+*Evaluación realizada durante esta revisión*: no existe constancia en el
+desarrollo de que se evaluara cachear otros endpoints; lo que sigue es el
+análisis efectuado ahora sobre el código, no una decisión histórica.
+
+- **`GET /api/auth/me` (candidato descartado)** — es el ejemplo de mayor riesgo
+  porque su respuesta es **personalizada por usuario** (email, rol, fechas y
+  perfil): `read_current_user` (`auth/routers/auth_router.py`, a partir de la
+  línea 68) construye `UserMeResponse` a partir del JWT de cada petición. La
+  caché actual `TTLCache` es **única por proceso, compartida entre todas las
+  sesiones y sin partición por usuario**: cachearla con una clave derivada de la
+  ruta serviría los datos de un usuario a otro (**fuga de datos**). Cachearla
+  correctamente exige claves por `user_id` y, además, invalidarla en logout,
+  cambio de contraseña y rotación de credenciales (`credentials_version`), porque
+  el JWT no es la clave de la caché. A esto se suma que su coste es bajo (dos
+  consultas puntuales) y se llama en el montaje de `AuthProvider` y en el inicio
+  de sesión, no en bucle → beneficio mínimo con riesgo máximo.
+- **`GET /api/inventory/orders` (descartado)**: su coste de consulta es
+  similar al ya cacheado (`union_all` de entradas y salidas, `queries.py`), pero
+  no se identificó ningún otro consumidor que lo usara, con lo que el beneficio
+  de cachearlo sería marginal frente a cubrir sus mutaciones.
+- **`GET /api/suppliers` y `GET /api/incidents` (descartados)**: son listados
+  sencillos y baratos; además, `GET /api/incidents` admite **filtros de query**,
+  lo que multiplicaría las claves de caché y su invalidación por el número de
+  combinaciones de filtros, para un coste de consulta que hoy es bajo.
 
 ## 3. Metodología de evaluación
 

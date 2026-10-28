@@ -354,8 +354,10 @@ Limitaciones que conviene recordar:
 3. **Decisión técnica**: `next/dynamic` con `ssr: false`.
 4. **Implementación**: `components/suppliers/SupplierDirectoryPanel.tsx`
    (línea 24): `const Modal = dynamic(() => import("@/components/ui").then(m => m.Modal), { ssr: false })`.
-5. **Funcionamiento**: el módulo se descarga al renderizarse el componente (al
-   abrir el diálogo), no en el arranque de la página.
+5. **Funcionamiento**: el módulo se descarga cuando el componente llega al
+   cliente (la interacción con el diálogo puede ocurrir antes de que el chunk
+   termine de descargarse, por lo que el diálogo se monta cuando el módulo está
+   disponible), no en el arranque de la página.
 6. **Validación**: `npm test` → 70 tests en verde; `npm run build` → compila sin
    errores de TypeScript, 18 páginas.
 7. **Aprendizaje**: `ssr: false` es apropiado para UI dependiente de interacción;
@@ -371,8 +373,9 @@ Limitaciones que conviene recordar:
    carga (`loading`), para que la zona no salte en vacío.
 4. **Implementación**: `components/candidates/CandidateDetail.tsx` (línea 10):
    `const NoteSection = dynamic(() => import("@/components/notes").then(m => m.NoteSection), { ssr: false, loading: () => <div className="h-32 animate-pulse …"/ > })`.
-5. **Funcionamiento**: al entrar en el detalle, React descarga el chunk de notas
-   en paralelo y muestra un esqueleto (`animate-pulse`) hasta que está listo.
+5. **Funcionamiento**: al montarse la sección en el cliente, React inicia la
+   descarga del chunk de notas y muestra un esqueleto (`animate-pulse`) hasta
+   que el módulo está disponible; el resto del detalle no espera a ese chunk.
 6. **Validación**: `npm test` (70) y `npm run build` (18 páginas, 0 errores TS)
    en verde.
 7. **Aprendizaje**: junto con `ssr: false`, el `loading` es lo que hace
@@ -393,7 +396,7 @@ Limitaciones que conviene recordar:
    85 y 91), con dependencias explícitas: `[products, form.asset_id]`,
    `[selectedProduct, quantity, available]` y
    `[selectedProduct, quantity, insufficientStock, form.exit_type, assigneeText]`.
-5. **Funcionamiento**: `canSubmit` alimenta `disabled={!canSubmit}` (línea 302);
+5. **Funcionamiento**: `canSubmit` alimenta `disabled={!canSubmit}` (línea 307);
    se recalcula solo cuando cambia algo relevante del formulario.
 6. **Validación**: `npm test` → **70 tests, 0 fallos**; `npm run build` →
    **0 errores TypeScript, 18 páginas**.
@@ -700,7 +703,7 @@ máximos, y repetir con orden invertido.
 | `uis/.../components/suppliers/SupplierDirectoryPanel.tsx` | `Modal` con `next/dynamic` (línea 24) |
 | `uis/.../components/candidates/CandidateDetail.tsx` | `NoteSection` con `next/dynamic` (línea 10) |
 | `uis/.../components/inventory/OutboundFormPanel.tsx` | 3 × `useMemo` (líneas 77, 85, 91) |
-| `docs/CACHING_REPORT.md` | Informe técnico: método, cifras y limitaciones |
+| `docs/CACHING_REPORT.md` | Informe técnico: método, cifras, limitaciones, perfil de endpoints, frescura (TTL) y evaluación de lo que no se cachea |
 
 Commits de la rama `feature/caching-optimisation`:
 
