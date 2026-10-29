@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexova.local/schemas/event-schemas.json",
+  "title": "Contratos de eventos de telemetría Nexova (Fase 4)",
+  "description": "Esquemas JSON (JSON Schema draft 2020-12) de los 20 eventos del catálogo principal y de los eventos auxiliares, con envelope CloudEvents 1.0. DOCUMENTACIÓN DEFINITIVA DE DISEÑO: el formato CloudEvents 1.0 y la arquitectura D1 son PROPOUESTAS, no implementadas. No existe ningún endpoint, tabla ni mecanismo de telemetría en el repositorio. El documento normativo complementario es telemetry-plan.md.",
+  "x-nexova-metadata": {
+    "fase": "Fase 4 — Documentación definitiva",
+    "estado": "Propuesta de diseño — NO implementado",
+    "formato_envelope": "CloudEvents 1.0 (propuesto, D2)",
+    "documento_normativo": "Docs/telemetry/telemetry-plan.md",
+    "catalogo_principal": "20 eventos (numerados 1–20 en telemetry-plan.md, sección 3.1)",
+    "eventos_auxiliares": "form_opened (fuera del catálogo principal, D12; solo soporta A6/A4)",
+    "idempotencia": "D3 — la propiedad `id` (UUID) del envelope funciona como clave de idempotencia (CONSTRAINT UNIQUE propuesta).",
+    "entrega": "Best-effort síncrono sin garantía de entrega (D1, propuesta).",
+    "decisiones_pendientes": ["D6", "D7", "D8", "D11", "D14", "D15", "D16"],
+    "dependencias_desarrollo": ["D9 (unit_cost y currency en AssetEntry)", "Eventos 3, 4, 5, 12, 13, 14, 15, 16, 17 no emisibles hoy"],
+    "nota_privacidad": "Nunca se emiten: body de peticiones, IP, Authorization/tokens, nombres de persona (assigned_to). user_uuid es un UUID seudonimizado (D4)."
+  },
+
+  "type": "object",
+  "required": ["specversion", "source", "id", "type", "time", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "specversion": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Versión del envelope CloudEvents. Valor fijo."
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "examples": ["/nexova/inventory", "/nexova/auth", "/nexova/infra", "/nexova/frontend", "/nexova/talent", "/nexova/incidents", "/nexova/suppliers"],
+      "description": "Origen del evento (URI del recurso emisor)."
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único del evento (UUID). Funciona como clave de idempotencia propuesta (D3)."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "inbound_order_created",
+        "outbound_order_created",
+        "stock_threshold_triggered",
+        "direct_stock_edit_rejected",
+        "kit_cost_variance_detected",
+        "login_succeeded",
+        "login_failed",
+        "account_created",
+        "session_expired",
+        "api_request_completed",
+        "unhandled_api_error",
+        "frontend_render_error",
+        "frontend_page_loaded",
+        "form_validation_failed",
+        "section_viewed",
+        "form_abandoned",
+        "candidate_record_created",
+        "incident_analysis_completed",
+        "incident_status_changed",
+        "supplier_rate_updated",
+        "form_opened"
+      ],
+      "description": "event_type del catálogo: los 20 del catálogo principal + el auxiliar form_opened."
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp RFC 3339 del momento en que ocurrió el hecho (no la ingesta)."
+    },
+    "datacontenttype": {
+      "type": "string",
+      "const": "application/json",
+      "default": "application/json",
+      "description": "Tipo MIME del payload."
+    },
+    "data": {
+      "type": "object",
+      "description": "Payload específico del evento. Su contrato se define en `events` (catálogo principal) o `auxiliary_events`. Validar contra el esquema indicado por la propiedad `type`."
+    },
+    "traceparent": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$",
+      "description": "Identificador de traza distribuida W3C Trace Context (opcional)."
+    }
+  },
+
+  "events": {
+    "inbound_order_created": {
+      "x-catalog-number": 1,
+      "x-category": "inventory",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A6", "A8"],
+      "description": "Entrada de mercancía. Soporte de A8 (coste medio ponderado por unidad). `unit_cost` es null hasta implementar D9.",
+      "type": "object",
+      "required": ["product_id", "product_sku", "product_category", "quantity", "supplier", "office", "currency", "user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "product_id": { "type": "integer", "description": "ID del producto (Asset.id)." },
+        "product_sku": { "type": "string", "description": "SKU del producto (Asset.sku)." },
+        "product_category": { "type": "string", "description": "Categoría funcional (training_kit, certification, onboarding_equipment, etc.). Vocabulario controlado pendiente." },
+        "programme_id": { "type": "string", "description": "Programa asociado. No existe en el modelo actual." },
+        "quantity": { "type": "number", "description": "Cantidad recibida (AssetEntry.quantity)." },
+        "supplier": { "type": "string", "description": "Nombre del proveedor (AssetEntry.supplier)." },
+        "office": { "type": "string", "description": "Oficina de destino (AssetEntry.office)." },
+        "currency": { "type": "string", "enum": ["EUR", "USD"], "description": "Moneda del coste. No existe en AssetEntry hoy (tomada del proveedor)." },
+        "unit_cost": { "type": ["number", "null"], "description": "Coste unitario. No existe hoy (D9); null hasta su implementación." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que realizó la entrada (seudonimizado)." }
+      }
+    },
+    "outbound_order_created": {
+      "x-catalog-number": 2,
+      "x-category": "inventory",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A6"],
+      "description": "Salida de mercancía. Puede actuar como evento de éxito que cancela un abandono en A6 si comparte instance_id (contexto de formulario).",
+      "type": "object",
+      "required": ["product_id", "product_sku", "product_category", "quantity", "exit_type", "office", "user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "product_id": { "type": "integer", "description": "ID del producto (Asset.id)." },
+        "product_sku": { "type": "string", "description": "SKU del producto (Asset.sku)." },
+        "product_category": { "type": "string", "description": "Categoría funcional." },
+        "programme_id": { "type": "string", "description": "Programa asociado. No existe en el modelo actual." },
+        "quantity": { "type": "number", "description": "Cantidad de salida (AssetExit.quantity)." },
+        "exit_type": { "type": "string", "enum": ["allocation", "consumption"], "description": "Tipo de salida." },
+        "office": { "type": "string", "description": "Oficina de origen (AssetExit.office)." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que autorizó la salida (seudonimizado)." }
+      }
+    },
+    "stock_threshold_triggered": {
+      "x-catalog-number": 3,
+      "x-category": "inventory",
+      "x-emisible-hoy": false,
+      "x-metricas": ["A9"],
+      "description": "Producto por debajo del umbral mínimo. No emisible hoy: requiere backend de umbrales.",
+      "type": "object",
+      "required": ["product_id", "product_sku", "product_category", "office", "current_stock", "threshold", "stock_level"],
+      "additionalProperties": false,
+      "properties": {
+        "product_id": { "type": "integer", "description": "ID del producto." },
+        "product_sku": { "type": "string", "description": "SKU del producto." },
+        "product_category": { "type": "string", "description": "Categoría funcional." },
+        "office": { "type": "string", "description": "Oficina (Asset.office)." },
+        "current_stock": { "type": "number", "description": "Stock tras el movimiento (SUM(entries) - SUM(exits))." },
+        "threshold": { "type": "number", "description": "Umbral mínimo configurado producto-oficina. No existe hoy en backend (solo frontend: stockLevelFor())." },
+        "stock_level": { "type": "string", "enum": ["healthy", "low", "out"], "description": "Nivel de stock." }
+      }
+    },
+    "direct_stock_edit_rejected": {
+      "x-catalog-number": 4,
+      "x-category": "inventory",
+      "x-emisible-hoy": false,
+      "x-metricas": [],
+      "description": "Intento de edición directa de stock rechazado (solo órdenes autorizadas). No emisible hoy: no existe intento.",
+      "type": "object",
+      "required": ["product_id", "product_sku", "attempted_action", "reason", "user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "product_id": { "type": "integer", "description": "ID del producto." },
+        "product_sku": { "type": "string", "description": "SKU del producto." },
+        "attempted_action": { "type": "string", "description": "Acción rechazada." },
+        "reason": { "type": "string", "description": "Motivo del rechazo." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que intentó la acción (seudonimizado)." }
+      }
+    },
+    "kit_cost_variance_detected": {
+      "x-catalog-number": 5,
+      "x-category": "inventory",
+      "x-emisible-hoy": false,
+      "x-metricas": [],
+      "description": "Desviación de coste en un kit compuesto. No emisible hoy: no existen catálogo con costes ni composición de kits.",
+      "type": "object",
+      "required": ["product_id", "product_sku", "product_category", "expected_cost", "actual_cost", "variance_percent", "currency", "office"],
+      "additionalProperties": false,
+      "properties": {
+        "product_id": { "type": "integer", "description": "ID del kit/producto compuesto." },
+        "product_sku": { "type": "string", "description": "SKU del kit." },
+        "product_category": { "type": "string", "description": "Categoría funcional." },
+        "kit_composition": { "type": "array", "items": { "type": "string" }, "description": "SKUs que componen el kit (no existe hoy)." },
+        "expected_cost": { "type": "number", "description": "Coste esperado del kit." },
+        "actual_cost": { "type": "number", "description": "Coste real calculado." },
+        "variance_percent": { "type": "number", "description": "Diferencia porcentual." },
+        "currency": { "type": "string", "enum": ["EUR", "USD"], "description": "Moneda del coste." },
+        "office": { "type": "string", "description": "Oficina." }
+      }
+    },
+    "login_succeeded": {
+      "x-catalog-number": 6,
+      "x-category": "auth",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A1"],
+      "description": "Inicio de sesión exitoso.",
+      "type": "object",
+      "required": ["user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario autenticado (seudonimizado)." }
+      }
+    },
+    "login_failed": {
+      "x-catalog-number": 7,
+      "x-category": "auth",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A1"],
+      "description": "Intento de inicio de sesión fallido.",
+      "type": "object",
+      "required": ["user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que intentó el login (seudonimizado)." },
+        "failure_reason": { "type": "string", "enum": ["invalid_credentials", "account_locked", "account_disabled"], "description": "Motivo del fallo." }
+      }
+    },
+    "account_created": {
+      "x-catalog-number": 8,
+      "x-category": "auth",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A7"],
+      "description": "Creación de cuenta de usuario.",
+      "type": "object",
+      "required": ["user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario creado (seudonimizado)." }
+      }
+    },
+    "session_expired": {
+      "x-catalog-number": 9,
+      "x-category": "auth",
+      "x-emisible-hoy": true,
+      "x-metricas": [],
+      "description": "Expiración de sesión JWT.",
+      "type": "object",
+      "required": ["user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario de la sesión expirada (seudonimizado)." },
+        "session_duration_seconds": { "type": "integer", "description": "Duración de la sesión en segundos." }
+      }
+    },
+    "api_request_completed": {
+      "x-catalog-number": 10,
+      "x-category": "infra",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A2", "A3"],
+      "description": "Petición API completada. Derivada de TimingMiddleware: no incluye body, Authorization, IP ni query params.",
+      "type": "object",
+      "required": ["method", "path", "status_code", "duration_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string", "enum": ["GET", "POST", "PATCH", "DELETE"], "description": "Método HTTP." },
+        "path": { "type": "string", "description": "Ruta del endpoint (sin query params)." },
+        "status_code": { "type": "integer", "description": "Código de respuesta HTTP." },
+        "duration_ms": { "type": "integer", "description": "Duración de la petición en milisegundos." }
+      }
+    },
+    "unhandled_api_error": {
+      "x-catalog-number": 11,
+      "x-category": "infra",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A2"],
+      "description": "Excepción no capturada en el backend.",
+      "type": "object",
+      "required": ["method", "path", "status_code", "error_type"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string", "enum": ["GET", "POST", "PATCH", "DELETE"], "description": "Método HTTP." },
+        "path": { "type": "string", "description": "Ruta del endpoint." },
+        "status_code": { "type": "integer", "description": "Código de error HTTP (5xx)." },
+        "error_type": { "type": "string", "description": "Tipo de la excepción." },
+        "error_message": { "type": "string", "description": "Mensaje de error sin datos sensibles (opcional, requiere auditoría de privacidad)." }
+      }
+    },
+    "frontend_render_error": {
+      "x-catalog-number": 12,
+      "x-category": "frontend",
+      "x-emisible-hoy": false,
+      "x-metricas": [],
+      "description": "Error de renderizado en frontend. No emisible hoy: no existen error boundaries en Next.js.",
+      "type": "object",
+      "required": ["component", "error_type"],
+      "additionalProperties": false,
+      "properties": {
+        "component": { "type": "string", "description": "Componente React afectado." },
+        "error_type": { "type": "string", "description": "Tipo de error (ej. TypeError)." },
+        "error_message": { "type": "string", "description": "Mensaje de error sin datos sensibles." }
+      }
+    },
+    "frontend_page_loaded": {
+      "x-catalog-number": 13,
+      "x-category": "frontend",
+      "x-emisible-hoy": false,
+      "x-metricas": [],
+      "description": "Página cargada en el navegador. No emisible hoy: no existe hook de navegación en Next.js.",
+      "type": "object",
+      "required": ["path", "page_load_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "description": "Ruta de la página cargada." },
+        "page_load_ms": { "type": "integer", "description": "Tiempo de carga en milisegundos." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario autenticado, si lo hay (seudonimizado)." }
+      }
+    },
+    "form_validation_failed": {
+      "x-catalog-number": 14,
+      "x-category": "frontend",
+      "x-emisible-hoy": false,
+      "x-metricas": ["A4"],
+      "description": "Fallo de validación de formulario. `instance_id` permite el emparejamiento con form_opened en A6.",
+      "type": "object",
+      "required": ["form_id", "validation_error", "instance_id"],
+      "additionalProperties": false,
+      "properties": {
+        "form_id": { "type": "string", "description": "Identificador del formulario." },
+        "field": { "type": "string", "description": "Campo que falló la validación." },
+        "validation_error": { "type": "string", "description": "Código del error de validación (ej. must_be_positive)." },
+        "instance_id": { "type": "string", "format": "uuid", "description": "Identificador de la instancia del formulario (para emparejar con A6)." }
+      }
+    },
+    "section_viewed": {
+      "x-catalog-number": 15,
+      "x-category": "frontend",
+      "x-emisible-hoy": false,
+      "x-metricas": ["A5"],
+      "description": "Visualización de una sección de UI.",
+      "type": "object",
+      "required": ["section_id", "user_uuid"],
+      "additionalProperties": false,
+      "properties": {
+        "section_id": { "type": "string", "description": "Identificador de la sección." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que visualizó (seudonimizado)." },
+        "time_on_section_ms": { "type": "integer", "description": "Tiempo estimado en la sección." }
+      }
+    },
+    "form_abandoned": {
+      "x-catalog-number": 16,
+      "x-category": "frontend",
+      "x-emisible-hoy": false,
+      "x-metricas": ["A6"],
+      "description": "Abandono de formulario. Requiere heartbeat (no fiable con beforeunload). Emparejamiento con form_opened por instance_id; ventana de exclusión de 5 min (D13); timeout de inactividad pendiente (D16).",
+      "type": "object",
+      "required": ["form_id", "instance_id"],
+      "additionalProperties": false,
+      "properties": {
+        "form_id": { "type": "string", "description": "Identificador del formulario abandonado." },
+        "instance_id": { "type": "string", "format": "uuid", "description": "Identificador de la instancia (para emparejar con form_opened y con eventos de éxito)." },
+        "abandon_reason": { "type": "string", "enum": ["navigation_away", "tab_close", "inactivity_timeout", "browser_crash"], "description": "Causa del abandono." },
+        "time_open_ms": { "type": "integer", "description": "Tiempo que el formulario estuvo abierto." },
+        "last_section": { "type": "string", "description": "Última sección/interacción registrada." }
+      }
+    },
+    "candidate_record_created": {
+      "x-catalog-number": 17,
+      "x-category": "talent",
+      "x-emisible-hoy": false,
+      "x-metricas": [],
+      "description": "Alta de candidato. No emisible hoy: módulo de talento no localizado.",
+      "type": "object",
+      "required": ["candidate_id"],
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": { "type": "string", "description": "Identificador del candidato." },
+        "programme_id": { "type": "string", "description": "Programa asociado. No existe en el modelo actual." },
+        "source": { "type": "string", "description": "Origen del candidato (ej. job_board)." }
+      }
+    },
+    "incident_analysis_completed": {
+      "x-catalog-number": 18,
+      "x-category": "incidents",
+      "x-emisible-hoy": true,
+      "x-metricas": [],
+      "description": "Análisis de incidentes completado (GET /api/incidents/analysis).",
+      "type": "object",
+      "required": ["analysis_id", "incident_count"],
+      "additionalProperties": false,
+      "properties": {
+        "analysis_id": { "type": "string", "description": "Identificador del análisis." },
+        "incident_count": { "type": "integer", "description": "Número de incidentes analizados." },
+        "top_category": { "type": "string", "description": "Categoría más frecuente." },
+        "analysis_duration_ms": { "type": "integer", "description": "Duración del análisis en milisegundos." }
+      }
+    },
+    "incident_status_changed": {
+      "x-catalog-number": 19,
+      "x-category": "incidents",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A11"],
+      "description": "Cambio de estado de incidente. Para A11, los incidentes abiertos se calculan con `created_at` (el grafo no permite reentrar en `open`); no se necesita incident_transition_log (D10).",
+      "type": "object",
+      "required": ["incident_id", "from_status", "to_status", "category", "origin", "branch"],
+      "additionalProperties": false,
+      "properties": {
+        "incident_id": { "type": "integer", "description": "ID del incidente (Incident.id)." },
+        "from_status": { "type": "string", "enum": ["open", "in_progress", "resolved", "closed"], "description": "Estado anterior." },
+        "to_status": { "type": "string", "enum": ["open", "in_progress", "resolved", "closed"], "description": "Nuevo estado (no puede volver a open una vez abandonado)." },
+        "category": { "type": "string", "description": "Categoría del incidente (Incident.category)." },
+        "origin": { "type": "string", "description": "Origen (Incident.origin)." },
+        "branch": { "type": "string", "description": "Sucursal (Incident.branch)." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que realizó el cambio (seudonimizado)." }
+      }
+    },
+    "supplier_rate_updated": {
+      "x-catalog-number": 20,
+      "x-category": "suppliers",
+      "x-emisible-hoy": true,
+      "x-metricas": ["A10"],
+      "description": "Cambio de tarifa mensual del proveedor. Mide coste fijo contractual; es ortogonal a unit_cost/A8. Umbral de alerta pendiente (D8).",
+      "type": "object",
+      "required": ["supplier_id", "supplier_name", "old_rate", "new_rate", "currency", "country"],
+      "additionalProperties": false,
+      "properties": {
+        "supplier_id": { "type": "integer", "description": "ID del proveedor." },
+        "supplier_name": { "type": "string", "description": "Nombre del proveedor." },
+        "old_rate": { "type": "number", "description": "Tarifa mensual anterior (Supplier.monthly_rate previo)." },
+        "new_rate": { "type": "number", "description": "Tarifa mensual nueva." },
+        "currency": { "type": "string", "enum": ["EUR", "USD"], "description": "Moneda de la tarifa (Supplier.currency)." },
+        "country": { "type": "string", "description": "País del proveedor (Supplier.country)." }
+      }
+    }
+  },
+
+  "auxiliary_events": {
+    "form_opened": {
+      "x-catalog": "auxiliar — fuera del catálogo principal de 20 (D12)",
+      "x-category": "frontend",
+      "x-emisible-hoy": false,
+      "x-metricas": ["A4", "A6"],
+      "description": "Apertura de formulario. Evento AUXILIAR de soporte: no cuenta como evento de producto, solo alimenta los denominadores de A4 (tasa de validación) y A6 (tasa de abandono).",
+      "type": "object",
+      "required": ["form_id", "instance_id"],
+      "additionalProperties": false,
+      "properties": {
+        "form_id": { "type": "string", "description": "Identificador del formulario." },
+        "instance_id": { "type": "string", "format": "uuid", "description": "Identificador único de esta apertura (generado en el cliente)." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que abrió el formulario (seudonimizado)." }
+      }
+    }
+  },
+
+  "x-validation": {
+    "coherencia": "Los nombres `type` y las propiedades de `data` son idénticos a las tablas de contratos de telemetry-plan.md, secciones 4.1 y 4.2.",
+    "no_implementado": "Ningún esquema de este archivo está desplegado. La validación Pydantic propuesta (D14) y el endpoint POST /api/telemetry/event (D1) no existen en el código.",
+    "formato": "JSON Schema draft 2020-12. El envelope es la raíz del esquema; los contratos de `data` cuelgan de `events` y `auxiliary_events` según la propiedad `type`."
+  }
+}
