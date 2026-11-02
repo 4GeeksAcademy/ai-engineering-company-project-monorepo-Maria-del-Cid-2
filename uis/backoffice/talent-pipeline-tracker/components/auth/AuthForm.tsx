@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button, Input } from "@/components/ui";
 import {
   AuthSubmissionGate,
@@ -13,6 +13,7 @@ import {
   validateRegistrationFields,
 } from "@/lib/auth-forms";
 import { nexovaApi } from "@/lib/nexova-api";
+import { useTelemetry } from "@/hooks/useTelemetry";
 import type { AuthFieldErrors, AuthFormMode } from "@/lib/auth-forms";
 
 interface AuthFormProps {
@@ -28,6 +29,7 @@ const getServerHydrationSnapshot = () => false;
 
 export function AuthForm({ mode, expired = false, reset = false, changed = false }: AuthFormProps) {
   const router = useRouter();
+  const telemetry = useTelemetry();
   const isHydrated = useSyncExternalStore(
     subscribeToNothing,
     getClientHydrationSnapshot,
@@ -42,6 +44,34 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
+
+  // Track session_expired event via useEffect (compliant with React hooks rules)
+  const sessionExpiredTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!expired || !isLogin) return;
+    if (sessionExpiredTrackedRef.current) return;
+    sessionExpiredTrackedRef.current = true;
+
+    // Try to extract user_uuid from the expired JWT (still in localStorage)
+    let userUuid: string | undefined;
+    try {
+      const token = nexovaApi.getAccessToken();
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        userUuid = payload.user_uuid;
+      }
+    } catch {
+      // Token may be invalid; proceed without user_uuid
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (userUuid) payload.user_uuid = userUuid;
+
+    // setTimeout ensures telemetry service is initialized
+    setTimeout(() => {
+      telemetry.track("session_expired", payload);
+    }, 0);
+  }, [expired, isLogin, telemetry]);
 
   function updateField(field: keyof AuthFieldErrors, value: string) {
     if (field === "email") setEmail(value);
@@ -58,18 +88,56 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
       : validateRegistrationFields(email, password, confirmPassword);
     setErrors(nextErrors);
     setSubmitError(null);
+    
+    // Generate a stable instance_id for this form submission
+    const formInstanceId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // Track form_validation_failed if there are validation errors
+    if (Object.keys(nextErrors).length > 0) {
+      Object.entries(nextErrors).forEach(([field, error]) => {
+        if (error) {
+          telemetry.track("form_validation_failed", {
+            form_id: isLogin ? "login-form" : "registration-form",
+            field,
+            validation_error: error,
+            instance_id: formInstanceId,
+          });
+        }
+      });
+    }
+    
     if (Object.keys(nextErrors).length > 0 || !gate.current.tryStart()) return;
 
     setSubmitting(true);
     try {
       if (isLogin) {
         await signIn(nexovaApi, email, password);
+        // Track login_succeeded AFTER successful sign-in with user_uuid from JWT
+        let userUuid: string | undefined;
+        try {
+          const token = nexovaApi.getAccessToken();
+          if (token) {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            userUuid = payload.user_uuid;
+          }
+        } catch {
+          // Token decode failed; proceed without user_uuid
+        }
+        telemetry.track("login_succeeded", userUuid ? { user_uuid: userUuid } : {});
         router.replace("/");
       } else {
         await registerUser(nexovaApi, email, password);
+        // Track account_created (user_uuid not exposed by registration API)
+        telemetry.track("account_created", {});
         setRegistered(true);
       }
     } catch (error) {
+      // Track login_failed (user not authenticated, no user_uuid available)
+      if (isLogin) {
+        telemetry.track("login_failed", {
+          failure_reason: "invalid_credentials",
+        });
+      }
       setSubmitError(getAuthErrorMessage(error, mode));
     } finally {
       gate.current.finish();

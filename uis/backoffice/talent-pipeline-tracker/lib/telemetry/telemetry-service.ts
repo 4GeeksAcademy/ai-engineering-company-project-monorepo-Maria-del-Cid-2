@@ -37,8 +37,8 @@ function generateUUID(): string {
   }
 
   // Node.js crypto API (for tests)
-  if (typeof global !== "undefined" && global.crypto?.randomUUID) {
-    return (global.crypto as any).randomUUID();
+  if (typeof global !== "undefined" && global.crypto) {
+    return global.crypto.randomUUID();
   }
 
   // Fallback: Simple UUID v4 implementation

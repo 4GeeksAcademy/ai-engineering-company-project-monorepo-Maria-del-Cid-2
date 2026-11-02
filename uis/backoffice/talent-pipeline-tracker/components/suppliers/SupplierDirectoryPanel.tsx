@@ -10,6 +10,7 @@ import {
   updateSupplierRate,
   updateSupplierStatus,
 } from "@/lib/suppliers-api";
+import { useTelemetry } from "@/hooks/useTelemetry";
 import {
   SUPPLIER_CATEGORIES,
   SUPPLIER_CATEGORY_LABELS,
@@ -111,6 +112,7 @@ function SupplierForm({ onCreated }: { onCreated: (supplier: Supplier) => void }
 }
 
 function SupplierRow({ supplier, onChange, onDelete }: { supplier: Supplier; onChange: (supplier: Supplier) => void; onDelete: (id: number) => void }) {
+  const telemetry = useTelemetry();
   const [rate, setRate] = useState(String(supplier.monthly_rate));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +121,20 @@ function SupplierRow({ supplier, onChange, onDelete }: { supplier: Supplier; onC
 
   async function changeRate() {
     setBusy(true); setError(null);
-    try { onChange(await updateSupplierRate(supplier.id, Number(rate))); }
+    const newRate = Number(rate);
+    try { 
+      const updated = await updateSupplierRate(supplier.id, newRate);
+      // Track supplier_rate_updated AFTER successful rate update
+      telemetry.track("supplier_rate_updated", {
+        supplier_id: supplier.id,
+        supplier_name: supplier.name,
+        old_rate: supplier.monthly_rate,
+        new_rate: newRate,
+        currency: supplier.currency,
+        country: supplier.country,
+      });
+      onChange(updated); 
+    }
     catch (requestError) { setError(apiErrorMessage(requestError)); }
     finally { setBusy(false); }
   }

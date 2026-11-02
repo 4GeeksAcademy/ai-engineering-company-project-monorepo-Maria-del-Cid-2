@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { Button } from "@/components/ui";
+import { useTelemetry } from "@/hooks/useTelemetry";
 
 type RenderError = Error & {
   digest?: string;
@@ -15,11 +16,19 @@ export default function Error({
   error: RenderError;
   reset: () => void;
 }) {
+  const telemetry = useTelemetry();
+
   useEffect(() => {
     if (error.digest) {
       console.error("[Nexova] Render error", { digest: error.digest });
+      // Track frontend_render_error WHEN error occurs
+      telemetry.track("frontend_render_error", {
+        component: "RootErrorBoundary",
+        error_type: error.name || "Error",
+        error_message: error.message || "Unknown error",
+      });
     }
-  }, [error]);
+  }, [error, telemetry]);
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-3xl items-center px-4 py-16 sm:px-6 lg:px-8">

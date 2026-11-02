@@ -1,5 +1,50 @@
 # Progress — Nexova
 
+### Telemetry Instrumentation — Phase 3: Backoffice Event Instrumentation
+
+**Status:** ✅ **COMPLETE (14/14 events)**
+
+Fase 3 de telemetría ha implementado la instrumentación de los 14 eventos frontales aprobados en el backoffice talent-pipeline-tracker, utilizando exclusivamente el servicio centralizado `TelemetryService.track()`.
+
+**Eventos Instrumentados:**
+1. ✅ login_succeeded — AuthForm después de signIn()
+2. ✅ login_failed — AuthForm en catch block
+3. ✅ account_created — AuthForm después de registerUser()
+4. ✅ session_expired — AuthForm cuando expired prop detectado
+5. ✅ inbound_order_created — InboundFormPanel después de createInbound()
+6. ✅ outbound_order_created — OutboundFormPanel después de createOutbound()
+7. ✅ incident_status_changed — IncidentManagerPanel después de updateIncidentStatus()
+8. ✅ supplier_rate_updated — SupplierDirectoryPanel después de updateSupplierRate()
+9. ✅ frontend_page_loaded — LayoutTelemetryProvider en AuthShell
+10. ✅ section_viewed — useSectionTracking hook con route mapping
+11. ✅ frontend_render_error — app/error.tsx Error Boundary
+12. ✅ form_validation_failed — AuthForm en handleSubmit después de validación
+13. ✅ form_opened — useFormLifecycleTracking hook en mount
+14. ✅ form_abandoned — useFormLifecycleTracking hook en inactividad/tab hidden
+
+**Infraestructura Nueva Creada:**
+- `hooks/useSectionTracking.ts` (140 líneas) — Tracking de page load y section views
+- `components/auth/LayoutTelemetryProvider.tsx` (65 líneas) — Inicialización global de telemetría
+- `hooks/useFormLifecycleTracking.ts` (140 líneas) — Tracking de ciclo de vida de formularios
+
+**Componentes Modificados:** 9 (AuthForm, InboundFormPanel, OutboundFormPanel, IncidentManagerPanel, SupplierDirectoryPanel, AuthShell, error.tsx, LayoutTelemetryProvider, useSectionTracking)
+
+**Validación:**
+- ✅ TypeScript compilation: PASS (no type errors en componentes instrumentados)
+- ✅ CloudEvents 1.0 compliant
+- ✅ Sin PII en payloads
+- ✅ Todos los eventos emiten DESPUÉS de confirmación de éxito
+- ✅ Integration con TelemetryService centralizado
+
+**Documentación:**
+- `PHASE3_COMPLETION_REPORT.md` — Reporte detallado de todos los eventos, ubicaciones, payloads y cambios
+- `docs/telemetry/telemetry-plan.md` — Plan original de eventos (aprobado por usuario)
+
+**Próximos Pasos:**
+Phase 4 requerirá autorización del usuario para implementar persistencia backend de eventos en PostgreSQL/Supabase.
+
+---
+
 ### Gestión de inventario — cierre de `feature/inventory-orm-dual-database`
 
 Estado final documentado de la funcionalidad de inventario ORM con doble base

@@ -6,6 +6,8 @@ import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
 import { createOutbound, listProducts, inventoryErrorMessage } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
 import {
   INVENTORY_EXIT_TYPES,
   INVENTORY_OFFICE_OPTIONS,
@@ -34,6 +36,14 @@ const EXIT_TYPE_OPTIONS = INVENTORY_EXIT_TYPES.map((exitType) => ({
 }));
 
 export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanelProps) {
+  const telemetry = useTelemetry();
+  // Track form_opened and form_abandoned lifecycle
+  const instanceId = useFormLifecycleTracking({
+    formId: "outbound-form",
+    trackOpen: true,
+    trackAbandon: true,
+  });
+
   const [products, setProducts] = useState<AssetWithStock[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productError, setProductError] = useState<string | null>(null);
@@ -134,6 +144,15 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
     setCreated(null);
     try {
       const createdOrder = await createOutbound(nexovaApi, payload);
+      // Track outbound_order_created AFTER successful creation
+      telemetry.track("outbound_order_created", {
+        product_id: payload.asset_id,
+        quantity: payload.quantity,
+        exit_type: payload.exit_type,
+        office: payload.office,
+      });
+      // Mark form as successfully submitted to prevent form_abandoned tracking
+      markFormAsSubmitted(instanceId);
       setCreated({
         id: createdOrder.id,
         productName: selectedProduct?.name ?? `product ${createdOrder.asset_id}`,
@@ -169,6 +188,7 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
         <form
           className="rounded-2xl border border-brand-lightgray bg-brand-white p-5 shadow-sm sm:p-6"
           onSubmit={submit}
+          data-form-id="outbound-form"
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">

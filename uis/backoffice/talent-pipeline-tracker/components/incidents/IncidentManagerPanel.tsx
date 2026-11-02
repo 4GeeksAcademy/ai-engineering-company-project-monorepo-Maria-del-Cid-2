@@ -10,6 +10,7 @@ import {
   listIncidents,
   updateIncidentStatus,
 } from "@/lib/incidents-api";
+import { useTelemetry } from "@/hooks/useTelemetry";
 import {
   INCIDENT_MANAGER_BRANCHES,
   INCIDENT_MANAGER_BRANCH_LABELS,
@@ -117,6 +118,7 @@ function IncidentForm({ onCreated }: { onCreated: (incident: Incident) => void }
 }
 
 function IncidentRow({ incident, onUpdated }: { incident: Incident; onUpdated: (incident: Incident) => void }) {
+  const telemetry = useTelemetry();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nextStatuses = INCIDENT_MANAGER_TRANSITIONS[incident.status];
@@ -125,7 +127,17 @@ function IncidentRow({ incident, onUpdated }: { incident: Incident; onUpdated: (
     setBusy(true);
     setError(null);
     try {
-      onUpdated(await updateIncidentStatus(incident.id, status));
+      const updatedIncident = await updateIncidentStatus(incident.id, status);
+      // Track incident_status_changed AFTER successful status update
+      telemetry.track("incident_status_changed", {
+        incident_id: incident.id,
+        from_status: incident.status,
+        to_status: status,
+        category: incident.category,
+        origin: incident.origin,
+        branch: incident.branch,
+      });
+      onUpdated(updatedIncident);
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
     } finally {
