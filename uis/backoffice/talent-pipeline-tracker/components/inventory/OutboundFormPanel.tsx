@@ -8,6 +8,7 @@ import { createOutbound, listProducts, inventoryErrorMessage } from "@/lib/inven
 import { nexovaApi } from "@/lib/nexova-api";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
+import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-threshold";
 import {
   INVENTORY_EXIT_TYPES,
   INVENTORY_OFFICE_OPTIONS,
@@ -145,12 +146,27 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
     try {
       const createdOrder = await createOutbound(nexovaApi, payload);
       // Track outbound_order_created AFTER successful creation
-      telemetry.track("outbound_order_created", {
-        product_id: payload.asset_id,
-        quantity: payload.quantity,
-        exit_type: payload.exit_type,
-        office: payload.office,
-      });
+      if (selectedProduct) {
+        telemetry.track("outbound_order_created", {
+          product_id: selectedProduct.id,
+          product_sku: selectedProduct.sku,
+          product_category: selectedProduct.category,
+          quantity: payload.quantity,
+          exit_type: payload.exit_type,
+          office: payload.office,
+          user_uuid: createdOrder.user_uuid,
+        });
+      }
+      void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
+        (updatedProduct) => {
+          if (!updatedProduct) return;
+          setProducts((current) =>
+            current.map((product) =>
+              product.id === updatedProduct.id ? updatedProduct : product,
+            ),
+          );
+        },
+      );
       // Mark form as successfully submitted to prevent form_abandoned tracking
       markFormAsSubmitted(instanceId);
       setCreated({
