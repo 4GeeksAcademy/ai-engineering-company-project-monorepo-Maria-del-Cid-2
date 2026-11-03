@@ -111,10 +111,8 @@ export class TelemetryService {
       return;
     }
 
-    if (this.isDestroyed) {
-      this.log("warn", "Service has been destroyed");
-      return;
-    }
+    // Allow re-initialization after destroy (e.g. React StrictMode remount)
+    this.isDestroyed = false;
 
     // Generate session ID
     this.sessionContext = {

@@ -45,6 +45,11 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // Stable instance_id for the entire form lifecycle (generated once per mount)
+  const [formInstanceId] = useState<string>(
+    () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+  );
+
   // Track session_expired event via useEffect (compliant with React hooks rules)
   const sessionExpiredTrackedRef = useRef(false);
   useEffect(() => {
@@ -89,9 +94,6 @@ export function AuthForm({ mode, expired = false, reset = false, changed = false
     setErrors(nextErrors);
     setSubmitError(null);
     
-    // Generate a stable instance_id for this form submission
-    const formInstanceId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
     // Track form_validation_failed if there are validation errors
     if (Object.keys(nextErrors).length > 0) {
       Object.entries(nextErrors).forEach(([field, error]) => {

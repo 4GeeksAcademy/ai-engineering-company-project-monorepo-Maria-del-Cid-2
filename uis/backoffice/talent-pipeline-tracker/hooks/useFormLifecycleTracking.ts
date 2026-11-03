@@ -114,7 +114,7 @@ export function useFormLifecycleTracking(
       if (document.hidden) {
         // Tab went hidden - could be abandoned
         if (!hasAbandonedRef.current) {
-          handleFormAbandoned("tab_hidden");
+          handleFormAbandoned("navigation_away");
         }
       } else {
         // Tab is visible again - reset inactivity timer
