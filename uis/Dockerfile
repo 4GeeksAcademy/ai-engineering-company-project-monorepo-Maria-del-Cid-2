@@ -14,7 +14,8 @@ COPY uis/proxy-server.js uis/start.sh /app/
 ENV BACKEND_URL=http://backend:8000 \
     NEXT_INTERNAL_PORT=3002 \
     NEXT_PUBLIC_NEXOVA_API_BASE=/api \
-    NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE=/api
+    NEXT_PUBLIC_INCIDENT_ANALYSIS_API_BASE=/api \
+    NEXT_PUBLIC_TELEMETRY_ENDPOINT=/api/telemetry/events
 
 RUN chmod +x /app/start.sh
 

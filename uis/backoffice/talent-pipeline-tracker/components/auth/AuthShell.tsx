@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button, Spinner } from "@/components/ui";
+import { LayoutTelemetryProvider } from "@/components/auth/LayoutTelemetryProvider";
 import {
   getAccountNavigationLinks,
   logoutAndRedirect,
@@ -259,6 +260,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <LayoutTelemetryProvider />
       <header className="sticky top-0 z-50 w-full border-b border-brand-lightgray bg-brand-white/95 backdrop-blur">
         <div ref={navigationRef} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center gap-3">

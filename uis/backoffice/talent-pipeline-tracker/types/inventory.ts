@@ -18,6 +18,12 @@
 export const INVENTORY_OFFICES = ["Valencia", "Miami"] as const;
 export type InventoryOffice = (typeof INVENTORY_OFFICES)[number];
 
+export function currencyForInventoryOffice(office: string): "EUR" | "USD" | null {
+  if (office === "Valencia") return "EUR";
+  if (office === "Miami") return "USD";
+  return null;
+}
+
 export const INVENTORY_EXIT_TYPES = ["allocation", "consumption"] as const;
 export type InventoryExitType = (typeof INVENTORY_EXIT_TYPES)[number];
 

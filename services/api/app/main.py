@@ -27,6 +27,7 @@ from .suppliers.router import router as suppliers_router
 from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
 from .auth.routers.profiles_router import router as profiles_router
+from .telemetry.router import router as telemetry_router
 
 _DEFAULT_CORS_ORIGINS = ("http://localhost:3000",)
 logger = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)
 app.include_router(incident_manager_router)
+app.include_router(telemetry_router)
 _latest_result: IncidentAnalysisResult | None = None
 
 

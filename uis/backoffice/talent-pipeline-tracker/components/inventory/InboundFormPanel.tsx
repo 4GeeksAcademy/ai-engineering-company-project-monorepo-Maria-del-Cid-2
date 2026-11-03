@@ -6,11 +6,15 @@ import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
 import { createInbound, listProducts, inventoryErrorMessage } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
 import {
   INVENTORY_OFFICE_OPTIONS,
+  currencyForInventoryOffice,
   type AssetEntryCreate,
   type AssetWithStock,
 } from "@/types/inventory";
+import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-threshold";
 
 interface InboundFormPanelProps {
   initialProductId?: string | null;
@@ -24,6 +28,14 @@ const EMPTY_FORM: AssetEntryCreate = {
 };
 
 export function InboundFormPanel({ initialProductId = null }: InboundFormPanelProps) {
+  const telemetry = useTelemetry();
+  // Track form_opened and form_abandoned lifecycle
+  const instanceId = useFormLifecycleTracking({
+    formId: "inbound-form",
+    trackOpen: true,
+    trackAbandon: true,
+  });
+
   const [products, setProducts] = useState<AssetWithStock[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productError, setProductError] = useState<string | null>(null);
@@ -91,6 +103,31 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
     };
     try {
       const createdOrder = await createInbound(nexovaApi, payload);
+      const currency = currencyForInventoryOffice(payload.office);
+      if (selectedProduct && currency) {
+        telemetry.track("inbound_order_created", {
+          product_id: selectedProduct.id,
+          product_sku: selectedProduct.sku,
+          product_category: selectedProduct.category,
+          quantity: payload.quantity,
+          supplier: payload.supplier,
+          office: payload.office,
+          currency,
+          user_uuid: createdOrder.user_uuid,
+        });
+      }
+      void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
+        (updatedProduct) => {
+          if (!updatedProduct) return;
+          setProducts((current) =>
+            current.map((product) =>
+              product.id === updatedProduct.id ? updatedProduct : product,
+            ),
+          );
+        },
+      );
+      // Mark form as successfully submitted to prevent form_abandoned tracking
+      markFormAsSubmitted(instanceId);
       setCreated({
         id: createdOrder.id,
         productName: selectedProduct?.name ?? `product ${createdOrder.asset_id}`,
@@ -125,6 +162,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
         <form
           className="rounded-2xl border border-brand-lightgray bg-brand-white p-5 shadow-sm sm:p-6"
           onSubmit={submit}
+          data-form-id="inbound-form"
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
