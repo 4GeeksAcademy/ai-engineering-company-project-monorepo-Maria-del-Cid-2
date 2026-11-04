@@ -288,3 +288,64 @@ La Fase 1 y la Fase 2 quedan completadas. Antes de la Fase 3 hay que configurar
 `TELEMETRY_DATABASE_URL` en el proceso FastAPI activo y verificar desde el
 backoffice que los eventos de entrada, salida y un evento técnico llegan a
 Supabase. Esa comprobación no se ha realizado todavía.
+
+## Fase 3: verificación end-to-end en curso
+
+Se ejecutó de nuevo la suite focalizada de telemetría: **29 pruebas correctas**.
+Esto cubre la validación parcial, los contadores, el filtrado de `tags` y la
+única llamada al repositorio, pero usa un repositorio falso y no prueba una
+escritura PostgreSQL real.
+
+La configuración inicial de `TELEMETRY_DATABASE_URL` tuvo varios problemas de
+formato: ausencia de valor, corchetes alrededor de un hostname DNS, parámetro
+de URI sin valor y caracteres reservados sin codificar. Tras corregir la URI y
+actualizar la contraseña, el backend conectó con Supabase usando esta variable
+privada, sin alterar `DATABASE_URL` ni el frontend.
+
+Se envió un lote mixto real al endpoint activo a través del proxy del
+backoffice (`http://localhost:3001/api/telemetry/events`). Contenía una entrada
+válida y otra con UUID inválido. El resultado fue **HTTP 200**:
+
+```json
+{"received":2,"stored":1,"rejected":1}
+```
+
+La fila del UUID válido se consultó directamente en `public.telemetry_events`.
+Se confirmó `event_type: inbound_order_created`, `source: /nexova/inventory`,
+`session_id: e2e-session`, `schema_version: 1.0.0` y las etiquetas
+`product_id`, `product_sku`, `quantity` y `office`. La propiedad no aprobada
+añadida deliberadamente al payload no se almacenó. Esto confirma el recorrido
+real proxy → API → inserción PostgreSQL/Supabase y el filtrado de `tags`.
+
+Una petición equivalente para reproducir el lote es:
+
+```bash
+curl -i -X POST http://localhost:3001/api/telemetry/events \
+  -H 'Content-Type: application/json' \
+  -d '{"events":[
+    {"specversion":"1.0","source":"/nexova/inventory","id":"<uuid-valido>","type":"inbound_order_created","time":"2026-11-04T12:00:00Z","datacontenttype":"application/json","data":{"product_id":42,"product_sku":"NXV-E2E-42","quantity":1,"office":"madrid"},"sessionId":"e2e-session","schemaVersion":"1.0.0"},
+    {"specversion":"1.0","source":"/nexova/inventory","id":"uuid-invalido","type":"inbound_order_created","time":"2026-11-04T12:00:00Z","datacontenttype":"application/json","data":{}}
+  ]}'
+```
+
+La validación manual del backoffice se completó después de esperar el intervalo
+de envío del cliente. Supabase contenía tres filas nuevas, en orden temporal:
+
+| Acción realizada | Evento comprobado | Source | Etiquetas comprobadas |
+|---|---|---|---|
+| Crear una orden de entrada | `inbound_order_created` | `/nexova/inventory` | producto, cantidad, sede, proveedor y moneda |
+| Crear una orden de salida | `outbound_order_created` | `/nexova/inventory` | producto, cantidad, sede y tipo de salida |
+| Intentar iniciar sesión con contraseña incorrecta | `login_failed` | `/nexova/auth` | `failure_reason` |
+
+Las tres filas tenían `session_id` y `schema_version: 1.0.0`. Esta comprobación
+verifica que la instrumentación real del backoffice, su envío agrupado y la
+persistencia en Supabase funcionan para los tres escenarios exigidos. La Fase 3
+queda completada.
+
+La comprobación final detectó que el catálogo histórico marcaba `user_uuid`
+como obligatorio para `login_failed`, mientras que el flujo seguro de login
+fallido solo almacena `failure_reason`: antes de autenticar no existe una sesión
+ni se debe derivar una identidad a partir de credenciales introducidas. Se
+alinearon el catálogo y el plan para que `user_uuid` sea opcional en este evento.
+El allowlist ya admitía `failure_reason`, por lo que no fue necesario cambiar
+frontend, backend ni `TelemetryEvent`.

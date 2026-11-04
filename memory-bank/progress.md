@@ -717,6 +717,25 @@ se insertaron eventos de prueba en Supabase. Pendiente Fase 3: configurar
 `TELEMETRY_DATABASE_URL` en el proceso FastAPI activo y verificar desde el
 backoffice los eventos y filas reales en Supabase.
 
+### Fase 3: verificación end-to-end completada
+
+La suite focalizada de telemetría volvió a pasar (29 pruebas). Se resolvió la
+configuración privada de `TELEMETRY_DATABASE_URL` sin modificar `DATABASE_URL`:
+la URI del pooler contenía inicialmente problemas de formato y autenticación.
+La conexión real del backend a Supabase quedó confirmada después de corregirla.
+
+Un lote mixto enviado mediante el proxy del backoffice devolvió HTTP 200 con
+`received: 2`, `stored: 1` y `rejected: 1`. La fila válida se verificó en
+`public.telemetry_events`; sus tags permitidos fueron almacenados y una clave no
+aprobada fue descartada. La validación manual del backoffice también quedó
+confirmada contra filas reales: `inbound_order_created` y
+`outbound_order_created` desde `/nexova/inventory`, y `login_failed` desde
+`/nexova/auth`. Los tres incluyeron `session_id` y `schema_version: 1.0.0`;
+los tags observados coincidieron con sus allowlists. El contrato histórico de
+`login_failed` se alineó con el flujo seguro: `user_uuid` es opcional porque no
+hay sesión autenticada y no se deriva desde credenciales; `failure_reason` es
+suficiente para el evento y la métrica A1. La Fase 3 queda terminada.
+
 ## 7. Criterio para actualizar este archivo
 
 Este archivo debe actualizarse cuando cambie de forma relevante el estado del proyecto.
