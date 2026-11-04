@@ -332,7 +332,6 @@ CREATE INDEX idx_telemetry_events_source_time
 ```json
 {
   "data": {
-    "user_uuid": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
     "failure_reason": "invalid_credentials"
   }
 }
@@ -340,8 +339,13 @@ CREATE INDEX idx_telemetry_events_source_time
 
 | Propiedad | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
-| `user_uuid` | `string` (UUID) | ✅ | Usuario que intentó el login (seudonimizado). |
+| `user_uuid` | `string` (UUID) | No | Usuario que intentó el login (seudonimizado), solo si se conoce de forma segura. |
 | `failure_reason` | `string` | No | Motivo del fallo (`invalid_credentials`, `account_locked`, `account_disabled`). |
+
+Un intento fallido no dispone de una sesión autenticada. Por privacidad, el
+cliente no debe derivar ni persistir `user_uuid` a partir del email o la
+contraseña introducidos. Por eso `failure_reason` puede ser la única dimensión
+del evento; la métrica A1 continúa calculándose por tipo de evento.
 
 #### Evento 8 — `account_created`
 

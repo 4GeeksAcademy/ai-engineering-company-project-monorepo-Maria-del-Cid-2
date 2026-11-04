@@ -205,12 +205,11 @@
       "x-category": "auth",
       "x-emisible-hoy": true,
       "x-metricas": ["A1"],
-      "description": "Intento de inicio de sesión fallido.",
+      "description": "Intento de inicio de sesión fallido. user_uuid es opcional porque no existe una sesión autenticada; no se deriva ni se persiste a partir del email o la contraseña intentados.",
       "type": "object",
-      "required": ["user_uuid"],
       "additionalProperties": false,
       "properties": {
-        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que intentó el login (seudonimizado)." },
+        "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que intentó el login (seudonimizado), solo si se conoce de forma segura." },
         "failure_reason": { "type": "string", "enum": ["invalid_credentials", "account_locked", "account_disabled"], "description": "Motivo del fallo." }
       }
     },

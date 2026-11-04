@@ -270,16 +270,18 @@ class TelemetryResponseValidationTests(unittest.TestCase):
     """Test suite for TelemetryResponse model validation."""
 
     def test_valid_response_parses_successfully(self) -> None:
-        """Test valid response with received count parses successfully."""
-        response_data = {"received": 3}
+        """Test valid response counters parse successfully."""
+        response_data = {"received": 3, "stored": 2, "rejected": 1}
 
         response = TelemetryResponse(**response_data)
 
         self.assertEqual(response.received, 3)
+        self.assertEqual(response.stored, 2)
+        self.assertEqual(response.rejected, 1)
 
     def test_response_with_zero_received_is_valid(self) -> None:
-        """Test response with received=0 is valid."""
-        response_data = {"received": 0}
+        """Test response with zero counters is valid."""
+        response_data = {"received": 0, "stored": 0, "rejected": 0}
 
         response = TelemetryResponse(**response_data)
 
@@ -294,7 +296,7 @@ class TelemetryResponseValidationTests(unittest.TestCase):
 
     def test_response_with_negative_received_raises_error(self) -> None:
         """Test response with negative received count raises ValidationError."""
-        invalid_response = {"received": -1}
+        invalid_response = {"received": -1, "stored": 0, "rejected": 0}
 
         with self.assertRaises(ValidationError):
             TelemetryResponse(**invalid_response)
