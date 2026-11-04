@@ -180,7 +180,9 @@ class TelemetryResponse(BaseModel):
     """Response from POST /api/telemetry/events.
     
     Attributes:
-        received: Number of events successfully received and queued for processing
+        received: Total number of events received in the batch
+        stored: Number of valid events inserted in telemetry_events
+        rejected: Number of events rejected by TelemetryEvent validation
     """
 
     received: int = Field(
@@ -188,11 +190,23 @@ class TelemetryResponse(BaseModel):
         description="Number of events received",
         ge=0,
     )
+    stored: int = Field(
+        ...,
+        description="Number of events stored successfully",
+        ge=0,
+    )
+    rejected: int = Field(
+        ...,
+        description="Number of events rejected by validation",
+        ge=0,
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "received": 3,
+                "stored": 2,
+                "rejected": 1,
             }
         }
     )

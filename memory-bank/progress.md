@@ -667,6 +667,56 @@ documental para evitar efectos sobre datos locales.
 
 ---
 
+## Auditoría inicial de almacenamiento de telemetría
+
+Se completó la primera etapa de análisis para almacenar telemetría en
+Supabase, sin cambios de runtime, frontend ni base de datos. El receptor vigente
+es `POST /api/telemetry/events`; sigue siendo un stub que valida el lote entero
+mediante `TelemetryBatch` y solo registra logs. La documentación inicial quedó
+en `docs/aprendiendo/aprendiendo-telemetry-storage.md`.
+
+La discrepancia del esquema se resolvió mediante aprobación del usuario: ocho
+columnas (`id`, `event_id`, `event_type`, `timestamp`, `source`, `session_id`,
+`schema_version`, `tags`) e índices por `timestamp`, `event_type` y GIN para
+`tags`. La migración no aplicada está en
+`services/api/scripts/migrations/001_create_telemetry_events.sql`. Se intentó
+aplicarla desde el contenedor `backend`, pero `DATABASE_URL` está configurada
+para SQLite y `psycopg` rechazó esa URL antes de ejecutar DDL; no se alteró
+Supabase ni otra base. La migración requiere una URL PostgreSQL/Supabase
+autorizada. Posteriormente se verificó mediante catálogo de solo lectura que la
+tabla fue creada manualmente en Supabase, con sus tres índices y trigger
+inmutable, pero inicialmente no coincidía por completo con el contrato
+aprobado. Tras comprobar que tenía cero filas, se aplicó
+`services/api/scripts/migrations/002_align_existing_telemetry_events.sql`:
+solo usa `ALTER TABLE`/`ALTER INDEX`, no recrea la tabla ni modifica filas.
+La comprobación posterior confirmó `id` con identidad `ALWAYS`, restricciones
+`NOT NULL`, límites de los `VARCHAR`, unicidad de `event_id`, el nombre previsto
+para el índice GIN y la permanencia del trigger. La Fase 1 de almacenamiento
+queda terminada.
+
+### Fase 2: endpoint real de almacenamiento de telemetría
+
+El stub de `POST /api/telemetry/events` fue sustituido sin cambiar su ruta ni el
+envelope del frontend. El endpoint recibe el body de forma laxa, valida cada
+elemento mediante `TelemetryEvent.model_validate`, conserva los válidos y
+responde con `received`, `stored` y `rejected`. Los inválidos no cancelan el
+lote; los envelopes sin un array `events` responden 400.
+
+La persistencia está aislada en `app/telemetry/repository.py`: usa únicamente
+`TELEMETRY_DATABASE_URL`, exige PostgreSQL y no recurre a `DATABASE_URL`, que
+puede seguir siendo SQLite para inventario. El adaptador ejecuta un solo
+`INSERT ... VALUES ... ON CONFLICT DO NOTHING RETURNING` por lote y no contiene
+operaciones UPDATE o DELETE. `tags` se filtra con los allowlists derivados del
+catálogo documentado. Si falta la configuración o falla PostgreSQL, el endpoint
+devuelve 503 sin revelar secretos.
+
+Pruebas focalizadas ejecutadas: 29 correctas (modelos, configuración, allowlist
+e integración HTTP con repositorio falso). Se añadió `httpx2` solo al extra de
+test porque Starlette lo requiere para `TestClient`; se actualizó `uv.lock`. No
+se insertaron eventos de prueba en Supabase. Pendiente Fase 3: configurar
+`TELEMETRY_DATABASE_URL` en el proceso FastAPI activo y verificar desde el
+backoffice los eventos y filas reales en Supabase.
+
 ## 7. Criterio para actualizar este archivo
 
 Este archivo debe actualizarse cuando cambie de forma relevante el estado del proyecto.

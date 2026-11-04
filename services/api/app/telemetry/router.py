@@ -1,106 +1,80 @@
-"""Telemetry HTTP endpoints — /api/telemetry.
-
-This router receives telemetry events from the frontend and backend clients.
-Events are validated against CloudEvents 1.0 specification and optional
-extension attributes (sessionId, schemaVersion).
-
-Currently, this is a stub that logs events and returns HTTP 200.
-In a future phase, events will be persisted to PostgreSQL or a message queue.
-"""
+"""Append-only telemetry ingestion endpoint — ``/api/telemetry/events``."""
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status
+from pydantic import ValidationError
 
-from app.telemetry.models import TelemetryBatch, TelemetryEvent, TelemetryResponse
+from app.telemetry.models import TelemetryEvent, TelemetryResponse
+from app.telemetry.repository import (
+    TelemetryRecord,
+    TelemetryRepository,
+    TelemetryStorageUnavailable,
+)
+from app.telemetry.tags import filter_tags
+
 
 router = APIRouter(prefix="/api/telemetry", tags=["telemetry"])
 logger = logging.getLogger(__name__)
 
 
+def get_telemetry_repository() -> TelemetryRepository:
+    """Build a lazy writer; it connects only when valid rows need insertion."""
+
+    return TelemetryRepository()
+
+
 @router.post("/events", response_model=TelemetryResponse, status_code=status.HTTP_200_OK)
-def receive_events(batch: TelemetryBatch) -> TelemetryResponse:
-    """Receive a batch of telemetry events.
+def receive_events(payload: Any = Body(...)) -> TelemetryResponse:
+    """Validate each raw event and persist valid rows in a single bulk insert."""
 
-    Accepts a JSON payload with the following structure:
-
-    ```json
-    {
-      "events": [
-        {
-          "specversion": "1.0",
-          "source": "/nexova/inventory",
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "type": "inbound_order_created",
-          "time": "2026-11-02T18:07:44.123Z",
-          "datacontenttype": "application/json",
-          "data": { ... },
-          "sessionId": "optional",
-          "schemaVersion": "optional"
-        },
-        ...
-      ]
-    }
-    ```
-
-    **Validation:**
-    - Each event must be a valid CloudEvents 1.0 envelope.
-    - `id` must be a UUID.
-    - `time` must be RFC 3339 formatted.
-    - `data` is validated per schema (allowlist of properties).
-
-    **Response:**
-    - HTTP 200: All events received and queued. Response includes count.
-    - HTTP 400: Payload structure is invalid (e.g., missing "events" field).
-    - HTTP 422: Event validation failed (e.g., invalid UUID, malformed time).
-
-    **Current behavior (Phase 1):**
-    - This is a stub endpoint. Events are logged but NOT persisted.
-    - Logging includes:
-      - Total count of events received.
-      - List of event types.
-    - Future phases will add persistence (PostgreSQL, message queue, etc.)
-
-    **Idempotency:**
-    - Event ID (`id` field) uniquely identifies each event.
-    - In a future phase, duplicate event IDs will be detected and skipped.
-    - Clients should generate UUIDs, not rely on the backend for deduplication.
-
-    **Privacy:**
-    - Events must not include Authorization headers, API keys, or sensitive data.
-    - PII is excluded (names, emails, IP addresses).
-    - User identification is via UUID (seudonimization).
-
-    **Extension attributes:**
-    - `sessionId`: Optional session identifier for grouping events.
-    - `schemaVersion`: Optional schema version for evolution tracking.
-    """
-    # Validate that events array is not null
-    if batch.events is None:
+    if not isinstance(payload, dict) or not isinstance(payload.get("events"), list):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Invalid payload: "events" field must not be null',
+            detail='Invalid payload: "events" must be an array',
         )
 
-    # Accept empty batch (no error)
-    event_count = len(batch.events)
+    raw_events = payload["events"]
+    valid_records: list[TelemetryRecord] = []
+    rejected = 0
 
-    # Log total count
-    logger.info("telemetry.received count=%d", event_count)
+    for raw_event in raw_events:
+        try:
+            event = TelemetryEvent.model_validate(raw_event)
+        except ValidationError:
+            rejected += 1
+            continue
 
-    # Log event types (with counts for repeated types)
-    if event_count > 0:
-        from collections import Counter
-
-        event_types = [event.type for event in batch.events]
-        type_counts = Counter(event_types)
-        type_str = " ".join(
-            [f"{type_}(x{count})" if count > 1 else type_ 
-             for type_, count in sorted(type_counts.items())]
+        valid_records.append(
+            TelemetryRecord(
+                event_id=event.id,
+                event_type=event.type,
+                timestamp=event.time,
+                source=event.source,
+                session_id=event.sessionId,
+                schema_version=event.schemaVersion,
+                tags=filter_tags(event.type, event.data),
+            )
         )
-        logger.info("telemetry.event_types %s", type_str)
 
-    # Return success response
-    return TelemetryResponse(received=event_count)
+    stored = 0
+    if valid_records:
+        try:
+            stored = get_telemetry_repository().insert_many(valid_records)
+        except TelemetryStorageUnavailable as exc:
+            logger.error("telemetry.persistence_unavailable exception_type=%s", type(exc).__name__)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Telemetry storage is temporarily unavailable",
+            ) from exc
+
+    logger.info(
+        "telemetry.received count=%d stored=%d rejected=%d",
+        len(raw_events),
+        stored,
+        rejected,
+    )
+    return TelemetryResponse(received=len(raw_events), stored=stored, rejected=rejected)

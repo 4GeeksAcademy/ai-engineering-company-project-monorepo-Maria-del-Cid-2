@@ -152,10 +152,10 @@ Las rutas TinyDB temporales son necesarias porque `AuthSemanticTests` e
 `IncidentsPublicTests` (`tests/test_auth_unit5.py`) construyen la app real sin
 aislar la base de datos y, por defecto, abrirían `services/data/auth.json`.
 
-`TestClient` necesita `httpx`, declarado en el extra `test` de
+`TestClient` necesita `httpx2`, declarado en el extra `test` de
 `pyproject.toml`. Instálalo con `pip install -e "services/api[test]"` (o
-`uv sync --extra test`). Starlette emite un aviso de deprecación a favor de
-`httpx2`; no afecta a los resultados.
+`uv sync --extra test`). La versión instalada de Starlette usa `httpx2` para
+crear el cliente de pruebas.
 
 Estado conocido: con el fixture `scripts/incidents-nexova.csv` presente, la
 suite completa pasa (verificado en una copia aislada). Sin él, fallan los tests
