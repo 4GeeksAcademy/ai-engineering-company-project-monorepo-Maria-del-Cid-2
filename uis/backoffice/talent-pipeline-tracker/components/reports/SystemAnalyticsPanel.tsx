@@ -7,14 +7,11 @@ import {
   TelemetryReportError,
 } from "@/lib/telemetry-report-client";
 import type {
-  TelemetryA1,
-  TelemetryA2,
-  TelemetryA3,
-  TelemetryA4,
-  TelemetryA5BySection,
-  TelemetryA8,
-  TelemetryA10,
-  TelemetryEndpointLatency,
+  TelemetryLoginRateRow,
+  TelemetryApiErrorRow,
+  TelemetryLatencyRow,
+  TelemetryFormValidationRow,
+  TelemetrySectionEngagementRow,
   TelemetryReport,
 } from "@/types/reports";
 
@@ -155,12 +152,8 @@ function SectionHeading({ children }: { children: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Data shaping helpers
+// Data shaping helpers (empty — all shaping done inline with the new API)
 // ---------------------------------------------------------------------------
-
-function percentage(value: number | null | undefined): string {
-  return value === null || value === undefined ? "—" : `${value.toFixed(1)}%`;
-}
 
 // ---------------------------------------------------------------------------
 // Main panel
@@ -222,7 +215,7 @@ export function SystemAnalyticsPanel() {
     );
   }
 
-  if (!report || report.empty) {
+  if (!report) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="rounded-2xl border border-brand-lightgray bg-brand-white p-8 text-center shadow-sm">
@@ -236,34 +229,55 @@ export function SystemAnalyticsPanel() {
     );
   }
 
-  const a1 = report.a1 ?? ({} as TelemetryA1);
-  const a2 = report.a2 ?? ({} as TelemetryA2);
-  const a3 = report.a3 ?? null;
-  const a4 = report.a4 ?? ({} as TelemetryA4);
-  const a8 = report.a8 ?? ({} as TelemetryA8);
-  const a10 = report.a10 ?? ({} as TelemetryA10);
+  const { period, metrics } = report;
 
-  const eventTypeBars: { label: string; value: number }[] = Object.entries(
-    report.event_type_distribution ?? {},
-  )
-    .map(([label, value]) => ({ label, value: Number(value) }))
-    .sort((x, y) => y.value - x.value);
+  // Derive summary aggregates from the grouped metric rows
+  const a1Data = metrics.a1 as TelemetryLoginRateRow[];
+  const totalLoginAttempts = a1Data.reduce((s, r) => s + r.total_attempts, 0);
+  const totalLoginSucceeded = a1Data.reduce((s, r) => s + r.login_succeeded, 0);
+  const totalLoginFailed = a1Data.reduce((s, r) => s + r.login_failed, 0);
+  const overallLoginSuccessPct =
+    totalLoginAttempts > 0
+      ? (totalLoginSucceeded / totalLoginAttempts) * 100
+      : null;
 
-  const a5Sections: { label: string; value: number }[] = Object.entries(
-    report.a5_by_section ?? ({} as TelemetryA5BySection),
-  )
-    .map(([label, entry]) => ({ label, value: entry.count }))
-    .sort((x, y) => y.value - x.value);
+  const a2Data = metrics.a2 as TelemetryApiErrorRow[];
+  const totalApiRequests = a2Data.reduce((s, r) => s + r.total_requests, 0);
+  const totalApiErrors = a2Data.reduce((s, r) => s + r.errors, 0);
+  const overallApiErrorPct =
+    totalApiRequests > 0 ? (totalApiErrors / totalApiRequests) * 100 : null;
 
-  const a4Forms: { label: string; value: number }[] = Object.entries(
-    report.a4_by_form ?? {},
-  )
-    .map(([label, value]) => ({ label, value: Number(value) }))
-    .sort((x, y) => y.value - x.value);
+  const a3Data = metrics.a3 as TelemetryLatencyRow[];
 
-  const endpointRows: (string | number)[][] = (report.a3_by_endpoint ?? []).map(
-    (e: TelemetryEndpointLatency) => [
-      e.path,
+  const a4Data = metrics.a4 as TelemetryFormValidationRow[];
+  const totalFormOpens = a4Data.reduce((s, r) => s + r.form_opens, 0);
+  const totalFormFailures = a4Data.reduce((s, r) => s + r.validation_failures, 0);
+
+  const a5Data = metrics.a5 as TelemetrySectionEngagementRow[];
+  const totalSectionViews = a5Data.reduce((s, r) => s + r.views, 0);
+
+  // Data for charts
+  const eventTypeBars: { label: string; value: number }[] = [
+    { label: "Login attempts", value: totalLoginAttempts },
+    { label: "API requests", value: totalApiRequests },
+    { label: "API errors", value: totalApiErrors },
+    { label: "Form errors", value: totalFormFailures },
+    { label: "Section views", value: totalSectionViews },
+  ].filter((d) => d.value > 0);
+
+  const a5Sections: { label: string; value: number }[] = a5Data.map((r) => ({
+    label: r.dimension_value,
+    value: r.views,
+  }));
+
+  const a4Forms: { label: string; value: number }[] = a4Data.map((r) => ({
+    label: r.dimension_value,
+    value: r.validation_failures,
+  }));
+
+  const endpointRows: (string | number)[][] = a3Data.map(
+    (e: TelemetryLatencyRow) => [
+      e.dimension_value,
       e.count,
       e.mean,
       e.p50,
@@ -271,8 +285,6 @@ export function SystemAnalyticsPanel() {
       e.p99,
     ],
   );
-
-  const a5Total = report.a5?.total_section_views ?? 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -285,8 +297,8 @@ export function SystemAnalyticsPanel() {
             System Analytics
           </h1>
           <p className="mt-1 text-sm text-brand-anthracite/60">
-            {report.total_events} events · generated{" "}
-            {new Date(report.report_generated_at).toLocaleString()}
+            {period.days} day period ending {new Date(period.end).toLocaleDateString()} ·{" "}
+            {totalLoginAttempts + totalApiRequests + totalFormFailures + totalSectionViews} events
           </p>
         </div>
         <button
@@ -300,27 +312,34 @@ export function SystemAnalyticsPanel() {
 
       {/* Summary metric cards */}
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <MetricCard label="Total events" value={report.total_events} />
-        <MetricCard label="Login success" value={percentage(a1.success_rate_pct)} tone={a1.success_rate_pct !== null && a1.success_rate_pct < 90 ? "warn" : "good"} />
-        <MetricCard label="API error rate" value={percentage(a2.error_rate_pct)} tone={a2.error_rate_pct !== null && a2.error_rate_pct > 5 ? "warn" : "good"} />
-        <MetricCard label="Accounts created" value={report.a7?.accounts_created ?? 0} />
-        <MetricCard label="Stock alerts" value={report.a9?.stock_thresholds_triggered ?? 0} />
+        <MetricCard label="Period" value={`${period.days}d`} subtitle={`${period.start.slice(0, 10)} → ${period.end.slice(0, 10)}`} />
+        <MetricCard label="Login success" value={overallLoginSuccessPct !== null ? `${overallLoginSuccessPct.toFixed(1)}%` : "—"} tone={overallLoginSuccessPct !== null && overallLoginSuccessPct < 90 ? "warn" : "good"} />
+        <MetricCard label="API error rate" value={overallApiErrorPct !== null ? `${overallApiErrorPct.toFixed(1)}%` : "—"} tone={overallApiErrorPct !== null && overallApiErrorPct > 5 ? "warn" : "good"} />
+        <MetricCard label="Form opens" value={totalFormOpens} />
+        <MetricCard label="Section views" value={totalSectionViews} />
       </div>
 
-      {/* Login + API errors */}
+      {/* Authentication & API health */}
       <SectionHeading>Authentication &amp; API health</SectionHeading>
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <MetricCard label="Successful logins" value={a1.login_succeeded ?? 0} subtitle={`${a1.total_attempts ?? 0} total attempts`} />
-        <MetricCard label="Failed logins" value={a1.login_failed ?? 0} />
+        <MetricCard label="Successful logins" value={totalLoginSucceeded} subtitle={`${totalLoginAttempts} total attempts`} />
+        <MetricCard label="Failed logins" value={totalLoginFailed} />
         <div className="rounded-2xl border border-brand-lightgray bg-brand-white p-5 shadow-sm">
           <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-brand-anthracite/70">
             API latency (ms)
           </h3>
-          {a3 ? (
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <div><p className="text-xs text-brand-anthracite/55">p50</p><p className="text-lg font-black tabular-nums">{a3.p50}</p></div>
-              <div><p className="text-xs text-brand-anthracite/55">p95</p><p className="text-lg font-black tabular-nums">{a3.p95}</p></div>
-              <div><p className="text-xs text-brand-anthracite/55">p99</p><p className="text-lg font-black tabular-nums">{a3.p99}</p></div>
+          {a3Data.length > 0 ? (
+            <div className="mt-3 space-y-3">
+              {a3Data.map((e) => (
+                <div key={e.dimension_value}>
+                  <p className="text-xs font-medium text-brand-anthracite/70">{e.dimension_value}</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div><p className="text-xs text-brand-anthracite/55">p50</p><p className="text-lg font-black tabular-nums">{e.p50}</p></div>
+                    <div><p className="text-xs text-brand-anthracite/55">p95</p><p className="text-lg font-black tabular-nums">{e.p95}</p></div>
+                    <div><p className="text-xs text-brand-anthracite/55">p99</p><p className="text-lg font-black tabular-nums">{e.p99}</p></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="mt-3 text-sm text-brand-anthracite/50">No latency data.</p>
@@ -329,41 +348,79 @@ export function SystemAnalyticsPanel() {
       </div>
 
       {/* Event distribution */}
-      <SectionHeading>Event distribution</SectionHeading>
-      <div className="mt-4 grid gap-6 lg:grid-cols-2">
-        <BarChart title="Events by type" data={eventTypeBars} />
-        <BarChart title="Section views" data={a5Sections} formatValue={(v) => `${v}`} color="bg-brand-anthracite" />
-      </div>
+      {eventTypeBars.length > 0 && (
+        <>
+          <SectionHeading>Event distribution</SectionHeading>
+          <div className="mt-4 grid gap-6 lg:grid-cols-2">
+            <BarChart title="Events by type" data={eventTypeBars} />
+            <BarChart title="Section views" data={a5Sections} formatValue={(v) => `${v}`} color="bg-brand-anthracite" />
+          </div>
+        </>
+      )}
 
       {/* Forms */}
       <SectionHeading>Forms</SectionHeading>
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <MetricCard label="Form validation failures" value={a4.form_validations_failed ?? 0} subtitle={`${a4.form_opens ?? 0} form opens`} />
-        <MetricCard label="Form abandonment rate" value={percentage(report.a6?.abandonment_rate_pct)} />
+        <MetricCard label="Form validation failures" value={totalFormFailures} subtitle={`${totalFormOpens} form opens`} />
         <BarChart title="Failures by form" data={a4Forms} />
       </div>
 
       {/* Endpoint latency table */}
-      <SectionHeading>Per-endpoint latency</SectionHeading>
-      <div className="mt-4">
-        <DataTable
-          title="Latency by endpoint (ms)"
-          headers={["Endpoint", "Count", "Mean", "p50", "p95", "p99"]}
-          rows={endpointRows}
-        />
-      </div>
+      {endpointRows.length > 0 && (
+        <>
+          <SectionHeading>Per-endpoint latency</SectionHeading>
+          <div className="mt-4">
+            <DataTable
+              title="Latency by endpoint (ms)"
+              headers={["Endpoint", "Count", "Mean", "p50", "p95", "p99"]}
+              rows={endpointRows}
+            />
+          </div>
+        </>
+      )}
 
-      {/* Operational */}
-      <SectionHeading>Operations</SectionHeading>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Inbound orders" value={a8.total_inbound_orders ?? 0} />
-        <MetricCard label="Avg cost / unit" value={a8.avg_cost_per_unit !== undefined ? `$${a8.avg_cost_per_unit.toFixed(2)}` : "—"} />
-        <MetricCard label="Supplier rate updates" value={a10.supplier_rate_updates ?? 0} />
-        <MetricCard label="Incident status changes" value={report.a11?.incident_status_changes ?? 0} />
-      </div>
+      {/* Login success by day table */}
+      {a1Data.length > 0 && (
+        <>
+          <SectionHeading>Login success by day</SectionHeading>
+          <div className="mt-4">
+            <DataTable
+              title="Daily login rate"
+              headers={["Date", "Succeeded", "Failed", "Total", "Success rate"]}
+              rows={a1Data.map((r) => [
+                r.dimension_value,
+                r.login_succeeded,
+                r.login_failed,
+                r.total_attempts,
+                `${r.success_rate_pct}%`,
+              ])}
+            />
+          </div>
+        </>
+      )}
+
+      {/* API error rate by endpoint table */}
+      {a2Data.length > 0 && (
+        <>
+          <SectionHeading>API error rate by endpoint</SectionHeading>
+          <div className="mt-4">
+            <DataTable
+              title="Errors by endpoint"
+              headers={["Endpoint", "Requests", "Errors", "Error rate"]}
+              rows={a2Data.map((r) => [
+                r.dimension_value,
+                r.total_requests,
+                r.errors,
+                `${r.error_rate_pct}%`,
+              ])}
+            />
+          </div>
+        </>
+      )}
 
       <p className="mt-8 text-xs text-brand-anthracite/50">
-        Metrics A1–A11 computed from instrumented frontend telemetry events.
+        Metrics A1–A5 computed from instrumented frontend telemetry events.
+        Each metric is grouped by dimension and fully serializable to JSON.
       </p>
     </div>
   );

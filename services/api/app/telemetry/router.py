@@ -15,7 +15,7 @@ from app.telemetry.repository import (
     TelemetryStorageUnavailable,
 )
 from app.telemetry.tags import filter_tags
-from app.telemetry.report import ReportData, build_report
+from app.telemetry.report import ReportData, build_report, build_report_json
 
 router = APIRouter(prefix="/api/telemetry", tags=["telemetry"])
 logger = logging.getLogger(__name__)
@@ -80,15 +80,22 @@ def receive_events(payload: Any = Body(...)) -> TelemetryResponse:
     return TelemetryResponse(received=len(raw_events), stored=stored, rejected=rejected)
 
 
-@router.get("/report", response_model=ReportData)
+@router.get("/report", response_model=dict[str, Any])
 def get_report(
-    start: str | None = None,
-    end: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     limit: int | None = None,
-) -> ReportData:
-    """Return the A1–A11 telemetry analytics report as JSON."""
+) -> dict[str, Any]:
+    """Return the A1–A11 telemetry analytics report as JSON.
+
+    Defaults to the last 7 days when neither ``start_date`` nor
+    ``end_date`` is provided.
+
+    Returns ``{"period": {"start": ..., "end": ..., "days": ...},
+    "metrics": {...}}``.
+    """
     try:
-        return build_report(start=start, end=end, limit=limit)
+        return build_report_json(start=start_date, end=end_date, limit=limit)
     except Exception as exc:  # pragma: no cover - defensive
         logger.error("telemetry.report_failed exception_type=%s", type(exc).__name__)
         raise HTTPException(

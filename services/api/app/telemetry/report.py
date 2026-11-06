@@ -17,14 +17,43 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import psycopg
 from psycopg.types.json import Jsonb
+
+from app.telemetry.analysis import METRIC_FUNCTIONS
+
+
+# ---------------------------------------------------------------------------
+# In-memory cache — TTL 60 seconds
+# ---------------------------------------------------------------------------
+
+_CACHE: dict[str, Any] = {}  # key: cache_key_hash, value: {"data": ..., "expires_at": float}
+
+
+def _cache_key(*, start: str | None, end: str | None) -> str:
+    return f"report|{start or ''}|{end or ''}"
+
+
+def _cache_get(key: str) -> Any | None:
+    entry = _CACHE.get(key)
+    if entry is None:
+        return None
+    if time.monotonic() > entry["expires_at"]:
+        del _CACHE[key]
+        return None
+    return entry["data"]
+
+
+def _cache_set(key: str, data: Any, ttl: float = 60.0) -> None:
+    _CACHE[key] = {"data": data, "expires_at": time.monotonic() + ttl}
+
 
 # ---------------------------------------------------------------------------
 # Environment
@@ -94,7 +123,7 @@ def load_events(
     query = (
         "SELECT event_id, event_type, timestamp, source, "
         "session_id, schema_version, tags "
-        f"FROM public.telemetry_events{where_sql}"
+        f"FROM public.telemetry_events{where_sql} "
         f"ORDER BY timestamp ASC{limit_sql}"
     )
 
@@ -566,9 +595,78 @@ def build_report(
     end: str | None = None,
     limit: int | None = None,
 ) -> ReportData:
-    """Load events, compute metrics, return report data."""
+    """Load events, compute metrics, return report data (legacy format).
+
+    Used by the CLI / HTML dashboard generator.
+    """
     df = load_events(database_url=database_url, start=start, end=end, limit=limit)
     return compute_metrics(df)
+
+
+def build_report_json(
+    *,
+    start: str | None = None,
+    end: str | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Return a structured JSON report with cache (TTL 60 s).
+
+    Defaults to the last 7 days when neither ``start`` nor ``end`` is set.
+
+    Returns
+    -------
+    ``{"period": {"start": ..., "end": ..., "days": ...}, "metrics": {...}}``
+    where each metric key maps to a ``list[dict]`` (each dict has at least
+    ``dimension`` and ``dimension_value`` keys).
+    """
+    # -- Default period: last 7 days --------------------------------------
+    if not start and not end:
+        now = datetime.now(timezone.utc)
+        end_date = now.strftime("%Y-%m-%dT23:59:59Z")
+        start_date = (now - timedelta(days=7)).strftime("%Y-%m-%dT00:00:00Z")
+    else:
+        start_date = start
+        end_date = end if end else datetime.now(timezone.utc).strftime("%Y-%m-%dT23:59:59Z")
+
+    # -- Compute number of days in the period ------------------------------
+    try:
+        s_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+        e_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+        days = max((e_dt - s_dt).days, 1)
+    except (ValueError, AttributeError):
+        days = 7
+
+    # -- Check cache -------------------------------------------------------
+    cache_key_str = _cache_key(start=start_date, end=end_date)
+    cached = _cache_get(cache_key_str)
+    if cached is not None:
+        return cached
+
+    # -- Load events -------------------------------------------------------
+    df = load_events(start=start_date, end=end_date, limit=limit)
+
+    # -- Compute each metric via the independent functions -----------------
+    metrics: dict[str, list[dict[str, Any]]] = {}
+    for metric_name, metric_fn in METRIC_FUNCTIONS:
+        try:
+            result = metric_fn(df)
+            metrics[metric_name] = result if result else []
+        except Exception:
+            metrics[metric_name] = []
+
+    result = {
+        "period": {
+            "start": start_date,
+            "end": end_date,
+            "days": days,
+        },
+        "metrics": metrics,
+    }
+
+    # -- Store in cache (TTL 60 seconds) -----------------------------------
+    _cache_set(cache_key_str, result)
+
+    return result
 
 
 def main(argv: Sequence[str] | None = None) -> int:

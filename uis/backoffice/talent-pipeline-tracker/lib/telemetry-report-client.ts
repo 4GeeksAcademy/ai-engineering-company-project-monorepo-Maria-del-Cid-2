@@ -7,8 +7,8 @@ import { TELEMETRY_REPORT_ENDPOINT } from "./telemetry/telemetry-constants.ts";
 import type { TelemetryReport } from "../types/reports.ts";
 
 export interface TelemetryReportQuery {
-  start?: string;
-  end?: string;
+  start_date?: string;
+  end_date?: string;
   limit?: number;
 }
 
@@ -32,8 +32,8 @@ async function fetchTelemetryReport(
 
   try {
     const params = new URLSearchParams();
-    if (query.start) params.set("start", query.start);
-    if (query.end) params.set("end", query.end);
+    if (query.start_date) params.set("start_date", query.start_date);
+    if (query.end_date) params.set("end_date", query.end_date);
     if (query.limit !== undefined) params.set("limit", String(query.limit));
 
     const qs = params.toString();
