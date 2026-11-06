@@ -61,6 +61,32 @@ no estén aprobados. El modelo Pydantic actual valida el envelope, pero todavía
 no aplica esos allowlists por tipo: es una diferencia conocida que el plan de
 implementación debe resolver sin cambiar el contrato del cliente.
 
+### Eventos con seguimiento activo en Supabase
+
+La instrumentación activa del backoffice envía los siguientes 13 eventos al
+endpoint, que los persiste en Supabase cuando se producen. La clasificación
+procede de `telemetry-plan.md`:
+
+| Evento | Clasificación |
+|---|---|
+| `inbound_order_created` | Obligatorio |
+| `outbound_order_created` | Obligatorio |
+| `login_succeeded` | Adicional |
+| `login_failed` | Adicional |
+| `account_created` | Adicional |
+| `session_expired` | Adicional |
+| `frontend_page_loaded` | Adicional |
+| `frontend_render_error` | Adicional |
+| `form_validation_failed` | Adicional |
+| `form_opened` | Adicional |
+| `form_abandoned` | Adicional |
+| `incident_status_changed` | Adicional |
+| `supplier_rate_updated` | Adicional |
+
+`section_viewed` está permitido por el catálogo, pero no está conectado en el
+provider activo y, por tanto, no se incluye en este listado. Los demás tipos del
+catálogo son propuestas o eventos no instrumentados actualmente.
+
 ## Modelo de datos aprobado
 
 El enunciado de la práctica exige una tabla `telemetry_events` de ocho columnas

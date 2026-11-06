@@ -13,7 +13,7 @@ import {
   requiresAuthentication,
 } from "@/lib/auth-navigation";
 
-type DropdownName = "incidents" | "inventory" | "account";
+type DropdownName = "incidents" | "inventory" | "reports" | "account";
 
 const baseLinkClass =
   "text-sm font-semibold uppercase tracking-[0.12em] text-brand-anthracite/75 transition-colors hover:text-brand-anthracite focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-orange";
@@ -175,6 +175,16 @@ export function AuthShell({ children }: { children: ReactNode }) {
     );
   }
 
+  function renderReportLinks(menuItems = false) {
+    return (
+      <>
+        <NavigationLink href="/reports/system-analytics" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          System Analytics
+        </NavigationLink>
+      </>
+    );
+  }
+
   function renderAccountLinks(menuItems = false) {
     return (
       <>
@@ -231,6 +241,22 @@ export function AuthShell({ children }: { children: ReactNode }) {
             onSelect={closeNavigation}
           >
             {renderInventoryLinks(true)}
+          </NavigationDropdown>
+        )}
+        {mobile ? (
+          <div className="border-t border-brand-lightgray/70 pt-2">
+            <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-anthracite/65">Reports</p>
+            {renderReportLinks()}
+          </div>
+        ) : (
+          <NavigationDropdown
+            id="desktop-reports-menu"
+            label="Reports"
+            open={openDropdown === "reports"}
+            onToggle={() => toggleDropdown("reports")}
+            onSelect={closeNavigation}
+          >
+            {renderReportLinks(true)}
           </NavigationDropdown>
         )}
         <NavigationLink href="/suppliers" onSelect={closeNavigation} className={mobile ? menuLinkClass : baseLinkClass}>

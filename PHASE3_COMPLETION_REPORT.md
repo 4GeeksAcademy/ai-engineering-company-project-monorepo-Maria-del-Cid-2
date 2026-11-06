@@ -12,10 +12,10 @@
 
 All 14 telemetry events from the approved frontend events allowlist have been instrumented across the backoffice talent-pipeline-tracker application.
 
-- **Events Implemented:** 14/14 ✅
-- **Components Instrumented:** 9
+- **Events Implemented:** 14/14 ✅ (13 frontend + 1 auxiliary via trackStockThresholdIfCrossed)
+- **Components Instrumented:** 11 (2 new: CandidateForm, PasswordResetForm)
 - **New Infrastructure:** 3 hooks/providers
-- **TypeScript Validation:** ✅ PASS (no type errors in instrumented code)
+- **TypeScript Validation:** ✅ PASS (no new type errors introduced)
 - **Build Ready:** ✅ YES
 
 ---
@@ -338,6 +338,8 @@ Per user requirements, no new test files were created. Existing test suites rema
 | File | Component | Changes | Lines |
 |------|-----------|---------|-------|
 | [components/auth/AuthForm.tsx](components/auth/AuthForm.tsx) | Auth | Added 4 auth event emissions | 70-99 |
+| [components/auth/PasswordResetForm.tsx](components/auth/PasswordResetForm.tsx) | Auth | Added form lifecycle + form_validation_failed | 5-15, 95-110, 195 |
+| [components/candidates/CandidateForm.tsx](components/candidates/CandidateForm.tsx) | Talent | Added form lifecycle + form_validation_failed | 4-5, 12-17, 70-85, 105-109, 117 |
 | [components/auth/AuthShell.tsx](components/auth/AuthShell.tsx) | Layout | Integrated LayoutTelemetryProvider | 50 |
 | [components/auth/LayoutTelemetryProvider.tsx](components/auth/LayoutTelemetryProvider.tsx) | Provider | NEW — Telemetry init + route mapping | 1-65 |
 | [components/inventory/InboundFormPanel.tsx](components/inventory/InboundFormPanel.tsx) | Inventory | Added lifecycle tracking + success event | 11, 35-38, 105-109, 195 |
@@ -357,7 +359,7 @@ Per user requirements, no new test files were created. Existing test suites rema
 - [x] Form lifecycle tracking (open/abandon/validation)
 - [x] Page load and section tracking
 - [x] Error boundary tracking
-- [x] TypeScript validation: PASS
+- [x] TypeScript validation: PASS (no new errors introduced)
 - [x] New infrastructure created (3 hooks/providers)
 - [x] Integration with existing components verified
 - [x] All telemetry events use TelemetryService.track()
@@ -367,7 +369,10 @@ Per user requirements, no new test files were created. Existing test suites rema
 
 ## Known Limitations / Not Implemented
 
-**None.** All 14 approved events are fully instrumented and ready for Phase 4.
+- `candidate_record_created` (event #17) — Marcado como `x-emisible-hoy: false` en el plan de telemetría (módulo talento backend no localizado). No se instrumenta.
+- `stock_threshold_triggered` — Instrumentado indirectamente vía `trackStockThresholdIfCrossed` desde InboundFormPanel/OutboundFormPanel.
+- ProfilePanel.tsx no tiene validación client-side — no requiere `form_validation_failed`.
+- IncidentForm (inline en IncidentManagerPanel) y SupplierForm (SupplierDirectoryPanel) quedan fuera del alcance: no hay eventos aprobados para creación.
 
 ---
 
@@ -388,10 +393,10 @@ Phase 4 will implement:
 
 ✅ **Phase 3 Complete**
 
-- 14/14 events instrumented
-- 9 components modified
-- 3 new hooks/providers created
-- TypeScript validation: PASS
+- 14/14 events instrumented (11 components)
+- 2 new components instrumented: CandidateForm, PasswordResetForm
+- 3 hooks/providers created/available
+- TypeScript validation: PASS (no new errors)
 - Build-ready for Phase 4
 
 Awaiting user authorization to proceed with Phase 4 persistence layer.

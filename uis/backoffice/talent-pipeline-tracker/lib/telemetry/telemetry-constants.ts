@@ -2,6 +2,13 @@
  * Telemetry constants and configuration.
  */
 
+/**
+ * Base URL for telemetry API calls, derived from the ingestion endpoint.
+ */
+const TELEMETRY_API_BASE = (process.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT || "http://localhost:8000/api/telemetry/events").replace(/\/events$/, "");
+
+export const TELEMETRY_REPORT_ENDPOINT = `${TELEMETRY_API_BASE}/report`;
+
 export const TELEMETRY_DEFAULTS = {
   // Endpoint where events are sent
   ENDPOINT: process.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT || "http://localhost:8000/api/telemetry/events",

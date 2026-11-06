@@ -27,6 +27,7 @@ from .suppliers.router import router as suppliers_router
 from .auth.routers.auth_router import router as auth_router
 from .auth.routers.users_router import router as users_router
 from .auth.routers.profiles_router import router as profiles_router
+from .telemetry.emitter import emit_event
 from .telemetry.router import router as telemetry_router
 
 _DEFAULT_CORS_ORIGINS = ("http://localhost:3000",)
@@ -46,6 +47,29 @@ def _sanitize_validation_errors(exc: RequestValidationError) -> list[dict[str, o
         {key: value for key, value in error.items() if key not in sensitive_keys}
         for error in exc.errors()
     ]
+
+
+def _emit_backend_error(request: Request, exc: Exception) -> None:
+    """Emit an ``unhandled_api_error`` telemetry event for unexpected failures.
+
+    This is called from the global ``Exception`` handler. Logs a warning
+    if the emission itself fails, but never propagates the exception.
+    """
+    try:
+        path = str(request.url.path)
+        method = request.method if request.method else "?"
+        emit_event(
+            "unhandled_api_error",
+            {
+                "method": method,
+                "path": path,
+                "status_code": 500,
+                "error_type": type(exc).__name__,
+                "error_message": str(exc)[:200] if str(exc) else None,
+            },
+        )
+    except Exception:
+        logger.warning("Failed to emit unhandled_api_error event", exc_info=True)
 
 
 def get_default_cors_origins() -> list[str]:
@@ -137,6 +161,8 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
         type(exc).__name__,
         request.headers.get("X-Request-ID") or "-",
     )
+
+    _emit_backend_error(request, exc)
 
     return JSONResponse(
         status_code=500,

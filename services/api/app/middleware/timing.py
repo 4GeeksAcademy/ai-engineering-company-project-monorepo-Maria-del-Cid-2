@@ -1,4 +1,5 @@
-"""ASGI middleware that logs the duration of each HTTP request.
+"""ASGI middleware that logs the duration of each HTTP request
+and emits an ``api_request_completed`` telemetry event.
 
 The middleware records the start time before delegating to the inner app,
 captures the response status code, and logs method, path, status and wall-clock
@@ -25,7 +26,13 @@ import time
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.telemetry.emitter import emit_event
+
 logger = logging.getLogger(__name__)
+
+# Path prefix for the telemetry endpoint — requests to this path will not
+# emit ``api_request_completed`` events to avoid infinite emission loops.
+_TELEMETRY_EVENTS_PATH = "/api/telemetry/events"
 
 
 class TimingMiddleware:
@@ -72,8 +79,8 @@ class TimingMiddleware:
             raise
         finally:
             duration_ms = (time.monotonic() - start) * 1000
-            method = scope.get("method", "?")
-            path = scope.get("path", "?")
+            method: str = scope.get("method", "?")
+            path: str = scope.get("path", "?")
             logger.info(
                 "method=%s path=%s status=%d duration_ms=%.2f",
                 method,
@@ -81,3 +88,13 @@ class TimingMiddleware:
                 status_code,
                 duration_ms,
             )
+            if path != _TELEMETRY_EVENTS_PATH:
+                emit_event(
+                    "api_request_completed",
+                    {
+                        "method": method,
+                        "path": path,
+                        "status_code": status_code,
+                        "duration_ms": round(duration_ms, 2),
+                    },
+                )
