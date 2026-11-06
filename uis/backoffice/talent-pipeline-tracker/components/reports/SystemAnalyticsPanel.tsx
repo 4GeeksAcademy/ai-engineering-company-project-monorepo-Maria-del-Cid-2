@@ -321,30 +321,32 @@ export function SystemAnalyticsPanel() {
 
       {/* Authentication & API health */}
       <SectionHeading>Authentication &amp; API health</SectionHeading>
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <MetricCard label="Successful logins" value={totalLoginSucceeded} subtitle={`${totalLoginAttempts} total attempts`} />
-        <MetricCard label="Failed logins" value={totalLoginFailed} />
-        <div className="rounded-2xl border border-brand-lightgray bg-brand-white p-5 shadow-sm">
-          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-brand-anthracite/70">
-            API latency (ms)
-          </h3>
-          {a3Data.length > 0 ? (
-            <div className="mt-3 space-y-3">
-              {a3Data.map((e) => (
-                <div key={e.dimension_value}>
-                  <p className="text-xs font-medium text-brand-anthracite/70">{e.dimension_value}</p>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div><p className="text-xs text-brand-anthracite/55">p50</p><p className="text-lg font-black tabular-nums">{e.p50}</p></div>
-                    <div><p className="text-xs text-brand-anthracite/55">p95</p><p className="text-lg font-black tabular-nums">{e.p95}</p></div>
-                    <div><p className="text-xs text-brand-anthracite/55">p99</p><p className="text-lg font-black tabular-nums">{e.p99}</p></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-brand-anthracite/50">No latency data.</p>
-          )}
-        </div>
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <MetricCard
+          label="Successful logins"
+          value={totalLoginSucceeded}
+          subtitle="succeeded"
+          tone="good"
+        />
+        <MetricCard label="Failed logins" value={totalLoginFailed} tone="warn" />
+        <MetricCard
+          label="Login success rate"
+          value={overallLoginSuccessPct !== null ? `${overallLoginSuccessPct.toFixed(1)}%` : "—"}
+          subtitle={`${totalLoginAttempts} total attempts`}
+        />
+        <MetricCard
+          label="API error rate"
+          value={overallApiErrorPct !== null ? `${overallApiErrorPct.toFixed(1)}%` : "—"}
+          subtitle={`${totalApiErrors} of ${totalApiRequests} requests`}
+          tone={overallApiErrorPct !== null && overallApiErrorPct > 5 ? "warn" : "good"}
+        />
+      </div>
+      <div className="mt-4 max-h-[26rem] overflow-y-auto rounded-2xl border border-brand-lightgray bg-brand-white shadow-sm">
+        <DataTable
+          title="API latency by endpoint (ms)"
+          headers={["Endpoint", "Count", "Mean", "p50", "p95", "p99"]}
+          rows={endpointRows}
+        />
       </div>
 
       {/* Event distribution */}
@@ -364,20 +366,6 @@ export function SystemAnalyticsPanel() {
         <MetricCard label="Form validation failures" value={totalFormFailures} subtitle={`${totalFormOpens} form opens`} />
         <BarChart title="Failures by form" data={a4Forms} />
       </div>
-
-      {/* Endpoint latency table */}
-      {endpointRows.length > 0 && (
-        <>
-          <SectionHeading>Per-endpoint latency</SectionHeading>
-          <div className="mt-4">
-            <DataTable
-              title="Latency by endpoint (ms)"
-              headers={["Endpoint", "Count", "Mean", "p50", "p95", "p99"]}
-              rows={endpointRows}
-            />
-          </div>
-        </>
-      )}
 
       {/* Login success by day table */}
       {a1Data.length > 0 && (
