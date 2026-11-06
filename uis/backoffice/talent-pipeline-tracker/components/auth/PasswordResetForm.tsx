@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button, Input } from "@/components/ui";
 import { AuthSubmissionGate } from "@/lib/auth-forms";
 import { nexovaApi } from "@/lib/nexova-api";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import { useFormLifecycleTracking } from "@/hooks/useFormLifecycleTracking";
 import {
   getPasswordResetErrorMessage,
   PASSWORD_RESET_SUCCESS_REDIRECT,
@@ -45,7 +47,16 @@ const copy = {
 
 export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) {
   const router = useRouter();
+  const telemetry = useTelemetry();
   const gate = useRef(new AuthSubmissionGate());
+
+  // Track form_opened and form_abandoned lifecycle
+  const formId = `password-reset-${mode}`;
+  useFormLifecycleTracking({
+    formId,
+    trackOpen: true,
+    trackAbandon: true,
+  });
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -77,6 +88,20 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
           : validateChangePasswordFields(currentPassword, newPassword, confirmPassword);
     setErrors(nextErrors);
     setSubmitError(null);
+
+    // Track form_validation_failed if there are validation errors
+    if (Object.keys(nextErrors).length > 0) {
+      Object.entries(nextErrors).forEach(([field, error]) => {
+        if (error) {
+          telemetry.track("form_validation_failed", {
+            form_id: formId,
+            field,
+            validation_error: error,
+          });
+        }
+      });
+    }
+
     if (Object.keys(nextErrors).length > 0 || !gate.current.tryStart()) return;
 
     setSubmitting(true);
@@ -153,7 +178,7 @@ export function PasswordResetForm({ mode, token = "" }: PasswordResetFormProps) 
         <p className="mt-3 text-sm leading-6 text-brand-anthracite/70">{content.description}</p>
       </div>
 
-      <form noValidate onSubmit={submit} aria-busy={submitting} className="mt-8 rounded-lg border border-brand-lightgray bg-white p-5 shadow-sm sm:p-7">
+      <form noValidate onSubmit={submit} aria-busy={submitting} className="mt-8 rounded-lg border border-brand-lightgray bg-white p-5 shadow-sm sm:p-7" data-form-id={formId}>
         {submitError && (
           <p className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-800" role="alert">
             {submitError}

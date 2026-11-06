@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createRecord } from "@/lib/records";
 import { Button, Input } from "@/components/ui";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
 import type { RecordCreate } from "@/types";
 
 interface FormErrors {
@@ -16,6 +18,14 @@ interface FormErrors {
 
 export function CandidateForm() {
   const router = useRouter();
+  const telemetry = useTelemetry();
+
+  // Track form_opened and form_abandoned lifecycle
+  const instanceId = useFormLifecycleTracking({
+    formId: "candidate-form",
+    trackOpen: true,
+    trackAbandon: true,
+  });
 
   const [formData, setFormData] = useState<RecordCreate>({
     full_name: "",
@@ -57,6 +67,21 @@ export function CandidateForm() {
     }
 
     setErrors(newErrors);
+
+    // Track form_validation_failed for each field with error
+    if (Object.keys(newErrors).length > 0) {
+      Object.entries(newErrors).forEach(([field, error]) => {
+        if (error) {
+          telemetry.track("form_validation_failed", {
+            form_id: "candidate-form",
+            field,
+            validation_error: error,
+            instance_id: instanceId,
+          });
+        }
+      });
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -84,6 +109,10 @@ export function CandidateForm() {
       }
 
       const created = await createRecord(payload);
+
+      // Mark form as successfully submitted to prevent form_abandoned
+      markFormAsSubmitted(instanceId);
+
       router.push(`/candidates/${created.id}`);
     } catch (err) {
       setSubmitError(
@@ -102,7 +131,7 @@ export function CandidateForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" data-form-id="candidate-form">
       {submitError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-700">{submitError}</p>
