@@ -30,6 +30,8 @@ services:
       dockerfile: services/Dockerfile
     env_file:
       - .env
+    environment:
+      TELEMETRY_DATABASE_URL: "${TELEMETRY_DATABASE_URL}"
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:

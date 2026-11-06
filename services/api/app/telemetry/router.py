@@ -15,7 +15,7 @@ from app.telemetry.repository import (
     TelemetryStorageUnavailable,
 )
 from app.telemetry.tags import filter_tags
-
+from app.telemetry.report import ReportData, build_report
 
 router = APIRouter(prefix="/api/telemetry", tags=["telemetry"])
 logger = logging.getLogger(__name__)
@@ -78,3 +78,20 @@ def receive_events(payload: Any = Body(...)) -> TelemetryResponse:
         rejected,
     )
     return TelemetryResponse(received=len(raw_events), stored=stored, rejected=rejected)
+
+
+@router.get("/report", response_model=ReportData)
+def get_report(
+    start: str | None = None,
+    end: str | None = None,
+    limit: int | None = None,
+) -> ReportData:
+    """Return the A1–A11 telemetry analytics report as JSON."""
+    try:
+        return build_report(start=start, end=end, limit=limit)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("telemetry.report_failed exception_type=%s", type(exc).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not build telemetry report",
+        ) from exc
