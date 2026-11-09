@@ -817,3 +817,44 @@ de programa, coste, moneda, kit y umbral; emitir datos de negocio completos y
 versionables; aprobar la hora de ejecución semanal; e instalar/configurar
 Prefect, el módulo `services/reporting/`, las migraciones y los permisos de
 PostgreSQL.
+
+## Business reporting: Fase previa a la Fase 2 — Programmes en Inventory
+
+Se creó `feature/business-reporting-pipeline-implementation` desde el último
+`origin/main` (`2448038`), preservando la rama de diseño. El diagnóstico y plan
+por fases están en `docs/aprendiendo/aprendiendo-pipeline-negocio.md`. La lectura
+real de PostgreSQL confirmó 10 inbound, 1 outbound, 1 alerta y ninguna variación
+de kits; ninguno de los 12 eventos tiene `programme_id` y ningún inbound tiene
+`unit_cost`. El esquema `reporting` todavía no existe y Prefect no está instalado
+en el intérprete comprobado. No se ha implementado el ETL, modificado el informe
+técnico ni ejecutado migraciones. La Fase 2 requiere definir los datos reales
+de programas, kits, costes, umbrales y garantía de entrega de eventos antes de
+desarrollar los emisores y modelos necesarios.
+
+El usuario aprobó implementar la fase previa: Programmes en Inventory y
+asociación de cada movimiento nuevo a un programa, sin ligarlo al producto.
+Quedaron confirmados el conteo de un outbound válido por entrega, la moneda
+exclusiva por oficina (Valencia/EUR y Miami/USD), la integración HTTP futura en
+`services/api/app/reporting/`, Prefect 3 self-hosted, la CLI original y el
+horario semanal del lunes a las 00:15 UTC. El trabajo implementado y su
+validación local están documentados en
+`docs/aprendiendo/aprendiendo-pipeline-negocio.md`.
+
+Se aprobaron los IDs de prueba `prog-digital-skills-001`,
+`prog-technical-onboarding-001` y `prog-professional-development-001`.
+Los movimientos anteriores conservarán `programme_id = NULL` y se mostrarán
+como "Sin programa asignado (histórico)"; los nuevos requerirán un programa
+existente. El reporting por programa no atribuirá esos históricos a ninguno.
+La fase previa está lista para revisión del usuario. No se ha implementado el
+outbox ni se han definido reglas de alertas o variaciones de costes; la Fase 2
+original permanece detenida y fuera de este alcance.
+
+Verificación final local: `test_inventory*.py` **48 OK, 1 skip** (concurrencia
+PostgreSQL opcional); frontend **87 tests OK** en la última ejecución,
+`npx tsc --noEmit`, ESLint focalizado y `npm run build` OK. La suite frontend
+registra warnings de telemetría por su URL relativa en Node; el lint global
+reporta errores preexistentes fuera de los archivos modificados. Se corrigió
+la comparación de URL SQLite del test de infraestructura para que sea
+independiente de la serialización de Windows. `git diff --check` OK. Migración
+comprobada solo sobre SQLite efímero con esquema legado; no se tocó ninguna
+base real. Sin commits ni push.

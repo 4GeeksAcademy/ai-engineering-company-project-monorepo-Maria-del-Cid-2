@@ -13,15 +13,29 @@ class InventorySchema(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
 
+InventoryOffice = Literal["Valencia", "Miami"]
+InventoryCurrency = Literal["EUR", "USD"]
+
+
+class ProgrammeCreate(InventorySchema):
+    programme_id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+
+
+class ProgrammeResponse(ProgrammeCreate):
+    pass
+
+
 class AssetCreate(InventorySchema):
     name: str
     sku: str
     category: str
-    office: str
+    office: InventoryOffice
 
 
 class AssetResponse(AssetCreate):
     id: int
+    currency: InventoryCurrency
 
 
 class AssetWithStockResponse(AssetResponse):
@@ -30,28 +44,34 @@ class AssetWithStockResponse(AssetResponse):
     current_stock: float
 
 
-class AssetEntryCreate(InventorySchema):
+class AssetEntryFields(InventorySchema):
     asset_id: int
     quantity: float = Field(gt=0, allow_inf_nan=False)
     supplier: str
-    office: str
+    office: InventoryOffice
 
 
-class AssetEntryResponse(AssetEntryCreate):
+class AssetEntryCreate(AssetEntryFields):
+    programme_id: str = Field(min_length=1)
+
+
+class AssetEntryResponse(AssetEntryFields):
     id: int
     created_at: datetime
     user_uuid: UUID
+    programme_id: str | None
+    currency: InventoryCurrency
 
 
-class AssetExitCreate(InventorySchema):
+class AssetExitFields(InventorySchema):
     asset_id: int
     quantity: float = Field(gt=0, allow_inf_nan=False)
     exit_type: Literal["allocation", "consumption"]
     assigned_to: str | None = None
-    office: str
+    office: InventoryOffice
 
     @model_validator(mode="after")
-    def validate_assignee_for_exit_type(self) -> AssetExitCreate:
+    def validate_assignee_for_exit_type(self) -> AssetExitFields:
         if self.exit_type == "allocation" and self.assigned_to is None:
             raise ValueError("assigned_to is required for allocation")
         if self.exit_type == "consumption" and self.assigned_to is not None:
@@ -59,10 +79,16 @@ class AssetExitCreate(InventorySchema):
         return self
 
 
-class AssetExitResponse(AssetExitCreate):
+class AssetExitCreate(AssetExitFields):
+    programme_id: str = Field(min_length=1)
+
+
+class AssetExitResponse(AssetExitFields):
     id: int
     created_at: datetime
     user_uuid: UUID
+    programme_id: str | None
+    currency: InventoryCurrency
 
 
 class AssetEntryOrderResponse(AssetEntryResponse):

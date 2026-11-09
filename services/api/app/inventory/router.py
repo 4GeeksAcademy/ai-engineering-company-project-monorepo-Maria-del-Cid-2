@@ -17,6 +17,7 @@ from app.inventory.operations import (
     create_asset,
     create_inbound,
     create_outbound,
+    create_programme,
 )
 from app.inventory.queries import (
     get_asset_with_stock,
@@ -33,7 +34,11 @@ from app.inventory.schemas import (
     AssetExitResponse,
     AssetWithStockResponse,
     InventoryOrderResponse,
+    ProgrammeCreate,
+    ProgrammeResponse,
 )
+from app.inventory.models import Programme
+from sqlalchemy import select
 from app.cache import TTLCache
 
 CACHE_TTL_PRODUCTS: float = 30.0
@@ -55,6 +60,19 @@ def _asset_response(asset: BaseModel, current_stock: float) -> AssetWithStockRes
     return AssetWithStockResponse.model_validate(
         {**asset.model_dump(), "current_stock": current_stock}
     )
+
+
+@router.get("/programmes", response_model=list[ProgrammeResponse])
+def get_inventory_programmes(session: SessionDependency) -> list[ProgrammeResponse]:
+    return [ProgrammeResponse.model_validate(programme) for programme in session.exec(select(Programme).order_by(Programme.name)).scalars().all()]
+
+
+@router.post("/programmes", response_model=ProgrammeResponse, status_code=status.HTTP_201_CREATED)
+def post_inventory_programme(payload: ProgrammeCreate, session: SessionDependency) -> ProgrammeResponse:
+    try:
+        return create_programme(session, payload)
+    except InventoryConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get("/products", response_model=list[AssetWithStockResponse])

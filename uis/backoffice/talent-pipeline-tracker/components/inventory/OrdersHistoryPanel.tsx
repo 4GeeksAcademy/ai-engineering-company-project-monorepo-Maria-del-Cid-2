@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Spinner } from "@/components/ui";
-import { inventoryErrorMessage, listOrders, listProducts } from "@/lib/inventory";
+import { inventoryErrorMessage, listOrders, listProducts, listProgrammes } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
 import {
   INVENTORY_EXIT_TYPE_LABELS,
@@ -10,6 +10,7 @@ import {
   type InventoryEntryOrder,
   type InventoryExitOrder,
   type InventoryOrder,
+  type Programme,
 } from "@/types/inventory";
 
 const ORDER_TYPE_CLASSES: Record<
@@ -76,9 +77,11 @@ function ExitDetail({ order }: { order: InventoryExitOrder }) {
 function OrderRow({
   order,
   productName,
+  programmeName,
 }: {
   order: InventoryOrder;
   productName: string | null;
+  programmeName: string;
 }) {
   const typeInfo = ORDER_TYPE_CLASSES[order.type];
 
@@ -95,6 +98,7 @@ function OrderRow({
             <span className="mx-1.5">·</span>
             {order.quantity} unit{order.quantity === 1 ? "" : "s"}
           </p>
+          <p className="mt-1 text-sm text-brand-anthracite/65">Programme: {programmeName}</p>
           {order.type === "entry" ? (
             <EntryDetail order={order} />
           ) : (
@@ -122,6 +126,7 @@ function OrderRow({
 export function OrdersHistoryPanel() {
   const [orders, setOrders] = useState<InventoryOrder[]>([]);
   const [products, setProducts] = useState<AssetWithStock[]>([]);
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,12 +134,14 @@ export function OrdersHistoryPanel() {
     setLoading(true);
     setError(null);
     try {
-      const [orderList, productList] = await Promise.all([
+      const [orderList, productList, programmeList] = await Promise.all([
         listOrders(nexovaApi),
         listProducts(nexovaApi),
+        listProgrammes(nexovaApi),
       ]);
       setOrders(orderList);
       setProducts(productList);
+      setProgrammes(programmeList);
     } catch (requestError) {
       setError(inventoryErrorMessage(requestError, "No se pudo cargar el historial de órdenes.") ?? "");
     } finally {
@@ -151,6 +158,7 @@ export function OrdersHistoryPanel() {
     for (const product of products) map.set(product.id, product.name);
     return map;
   }, [products]);
+  const programmeNames = useMemo(() => new Map(programmes.map((programme) => [programme.programme_id, programme.name])), [programmes]);
 
   const emptyLabel =
     "No inbound or outbound movements have been recorded yet.";
@@ -206,6 +214,7 @@ export function OrdersHistoryPanel() {
                 key={`${order.type}-${order.id}`}
                 order={order}
                 productName={productNames.get(order.asset_id) ?? null}
+                programmeName={order.programme_id ? programmeNames.get(order.programme_id) ?? order.programme_id : "Sin programa asignado (histórico)"}
               />
             ))}
           </div>

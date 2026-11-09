@@ -127,6 +127,7 @@
         "quantity": { "type": "number", "description": "Cantidad de salida (AssetExit.quantity)." },
         "exit_type": { "type": "string", "enum": ["allocation", "consumption"], "description": "Tipo de salida." },
         "office": { "type": "string", "description": "Oficina de origen (AssetExit.office)." },
+        "currency": { "type": "string", "enum": ["EUR", "USD"], "description": "Moneda derivada exclusivamente de la oficina." },
         "user_uuid": { "type": "string", "format": "uuid", "description": "Usuario que autorizó la salida (seudonimizado)." }
       }
     },

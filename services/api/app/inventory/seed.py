@@ -21,7 +21,8 @@ from tinydb.storages import JSONStorage
 
 from app.auth.database import get_database_path
 from .database import get_engine
-from .models import Asset, AssetEntry, AssetExit
+from .models import Asset, AssetEntry, AssetExit, Programme
+from .operations import currency_for_office
 
 SEED_USER_EMAIL_VARIABLE = "NEXOVA_INVENTORY_SEED_USER_EMAIL"
 SEED_ENVIRONMENT_ARGUMENT = "--environment"
@@ -232,7 +233,7 @@ def _existing_or_insert_asset(
             )
         return asset, False
 
-    asset = Asset(**payload)
+    asset = Asset(**payload, currency=currency_for_office(payload["office"]))
     session.add(asset)
     session.flush()
     return asset, True
@@ -244,6 +245,7 @@ def _entry_exists(session: Session, values: dict[str, Any]) -> bool:
         AssetEntry.quantity == values["quantity"],
         AssetEntry.supplier == values["supplier"],
         AssetEntry.office == values["office"],
+        AssetEntry.programme_id == values["programme_id"],
         AssetEntry.user_uuid == values["user_uuid"],
     )
     return session.exec(statement).first() is not None
@@ -256,6 +258,7 @@ def _exit_exists(session: Session, values: dict[str, Any]) -> bool:
         AssetExit.exit_type == values["exit_type"],
         AssetExit.assigned_to == values["assigned_to"],
         AssetExit.office == values["office"],
+        AssetExit.programme_id == values["programme_id"],
         AssetExit.user_uuid == values["user_uuid"],
     )
     return session.exec(statement).first() is not None
@@ -275,7 +278,7 @@ def _current_stock(session: Session, asset_id: int) -> float:
     return float(entries[0]) - float(exits[0])
 
 
-def seed_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
+def seed_inventory(session: Session, user_uuid: UUID, programme_id: str) -> dict[str, int]:
     """Insert missing demo rows in one transaction without updating/deleting rows.
 
     Movement identity is the exact tuple of domain fields plus the supplied
@@ -292,6 +295,8 @@ def seed_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
     try:
         with session.begin():
             _acquire_seed_lock(session)
+            if session.get(Programme, programme_id) is None:
+                raise SeedSafetyError("The selected programme does not exist; no data was changed.")
             assets_by_sku: dict[str, Asset] = {}
             for payload in ASSET_SEED:
                 asset, was_inserted = _existing_or_insert_asset(session, payload)
@@ -318,6 +323,8 @@ def seed_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
                     "quantity": seed_entry["quantity"],
                     "supplier": seed_entry["supplier"],
                     "office": seed_entry["office"],
+                    "currency": currency_for_office(seed_entry["office"]),
+                    "programme_id": programme_id,
                     "user_uuid": user_uuid,
                 }
                 if _entry_exists(session, values):
@@ -343,6 +350,8 @@ def seed_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
                     "exit_type": seed_exit["exit_type"],
                     "assigned_to": seed_exit["assigned_to"],
                     "office": seed_exit["office"],
+                    "currency": currency_for_office(seed_exit["office"]),
+                    "programme_id": programme_id,
                     "user_uuid": user_uuid,
                 }
                 if _exit_exists(session, values):
@@ -363,19 +372,21 @@ def seed_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
         raise
 
 
-def main(environment: str) -> int:
+def main(environment: str, programme_id: str | None = None) -> int:
     """Run only when the CLI caller explicitly selects a safe environment."""
 
     database_url = os.environ.get(DATABASE_URL_VARIABLE, "")
     raw_user_email = os.environ.get(SEED_USER_EMAIL_VARIABLE, "")
     try:
         validate_seed_target(environment, database_url)
+        if not programme_id:
+            raise SeedSafetyError("--programme-id is required to seed new movements.")
         user_uuid = resolve_seed_user_uuid(raw_user_email)
 
         # Target checks happen before asking the lazy inventory boundary for an engine.
         engine = get_engine()
         with Session(engine) as session:
-            counts = seed_inventory(session, user_uuid)
+            counts = seed_inventory(session, user_uuid, programme_id)
         print(
             "Inventory seed completed: "
             f"{counts['assets']} assets, {counts['entries']} entries, "
@@ -399,4 +410,6 @@ if __name__ == "__main__":
         choices=sorted(_ALLOWED_ENVIRONMENTS),
         help="Explicit target environment; this opt-in is not read from dotenv.",
     )
-    raise SystemExit(main(parser.parse_args().environment))
+    parser.add_argument("--programme-id", required=True, help="Existing programme for new demo movements.")
+    args = parser.parse_args()
+    raise SystemExit(main(args.environment, args.programme_id))

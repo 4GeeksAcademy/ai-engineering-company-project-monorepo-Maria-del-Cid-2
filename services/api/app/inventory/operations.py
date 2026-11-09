@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from .models import Asset, AssetEntry, AssetExit
+from .models import Asset, AssetEntry, AssetExit, Programme
 from .schemas import (
     AssetCreate,
     AssetEntryCreate,
@@ -17,13 +17,31 @@ from .schemas import (
     AssetExitCreate,
     AssetExitResponse,
     AssetWithStockResponse,
+    ProgrammeCreate,
+    ProgrammeResponse,
 )
+
+
+def currency_for_office(office: str) -> str:
+    return {"Valencia": "EUR", "Miami": "USD"}[office]
+
+
+def create_programme(session: Session, payload: ProgrammeCreate) -> ProgrammeResponse:
+    programme = Programme(**payload.model_dump())
+    try:
+        with session.begin():
+            session.add(programme)
+            session.flush()
+    except IntegrityError as exc:
+        session.rollback()
+        raise InventoryConflict("A programme with this ID already exists.") from exc
+    return ProgrammeResponse.model_validate(programme)
 
 
 def create_asset(session: Session, payload: AssetCreate) -> AssetWithStockResponse:
     """Create a product; a new product has derived stock zero."""
 
-    asset = Asset(**payload.model_dump())
+    asset = Asset(**payload.model_dump(), currency=currency_for_office(payload.office))
     try:
         with session.begin():
             session.add(asset)
@@ -46,10 +64,11 @@ def create_inbound(
 ) -> AssetEntryResponse:
     """Record one inbound movement atomically."""
 
-    movement = AssetEntry(**payload.model_dump(), user_uuid=user_uuid)
+    movement = AssetEntry(**payload.model_dump(), currency=currency_for_office(payload.office), user_uuid=user_uuid)
     try:
         with session.begin():
-            _require_asset(session, payload.asset_id)
+            asset = _require_asset(session, payload.asset_id)
+            _validate_movement(session, asset, payload.office, payload.programme_id)
             session.add(movement)
             session.flush()
     except IntegrityError as exc:
@@ -75,11 +94,12 @@ def create_outbound(
     affordable. SQLite ignores this row lock and is not a concurrency proof.
     """
 
-    movement = AssetExit(**payload.model_dump(), user_uuid=user_uuid)
+    movement = AssetExit(**payload.model_dump(), currency=currency_for_office(payload.office), user_uuid=user_uuid)
     try:
         with session.begin():
             _set_postgres_read_committed(session)
-            _require_asset(session, payload.asset_id, lock_for_update=True)
+            asset = _require_asset(session, payload.asset_id, lock_for_update=True)
+            _validate_movement(session, asset, payload.office, payload.programme_id)
             available_stock = _stock_for_asset(session, payload.asset_id)
             if payload.quantity > available_stock:
                 raise InsufficientStock("Insufficient stock for this outbound movement.")
@@ -102,6 +122,13 @@ class InsufficientStock(Exception):
     """An outbound movement exceeds the derived stock available."""
 
 
+def _validate_movement(session: Session, asset: Asset, office: str, programme_id: str) -> None:
+    if asset.office != office:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Movement office must match product office.")
+    if session.get(Programme, programme_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Programme not found.")
+
+
 def _require_asset(
     session: Session,
     asset_id: int,
@@ -121,7 +148,7 @@ def _require_asset(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found.",
         )
-    return asset
+    return asset[0]
 
 
 def _asset_lookup_statement(asset_id: int, *, lock_for_update: bool):

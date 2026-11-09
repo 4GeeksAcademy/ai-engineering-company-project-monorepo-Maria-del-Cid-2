@@ -11,6 +11,13 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class Programme(SQLModel, table=True):
+    __tablename__ = "programmes"
+
+    programme_id: str = Field(primary_key=True, sa_type=String)
+    name: str = Field(sa_type=String, nullable=False)
+
+
 class Asset(SQLModel, table=True):
     """An inventory asset; stock is derived from its movement records."""
 
@@ -22,6 +29,7 @@ class Asset(SQLModel, table=True):
     sku: str = Field(sa_type=String, nullable=False)
     category: str = Field(sa_type=String, nullable=False)
     office: str = Field(sa_type=String, nullable=False)
+    currency: str = Field(sa_type=String, nullable=False)
 
     entries: list["AssetEntry"] = Relationship(back_populates="asset")
     exits: list["AssetExit"] = Relationship(back_populates="asset")
@@ -37,9 +45,11 @@ class AssetEntry(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     asset_id: int = Field(foreign_key="assets.id", index=True)
+    programme_id: str | None = Field(default=None, foreign_key="programmes.programme_id", index=True)
     quantity: float = Field(sa_column=Column(Float, nullable=False))
     supplier: str = Field(sa_type=String, nullable=False)
     office: str = Field(sa_type=String, nullable=False)
+    currency: str = Field(sa_type=String, nullable=False)
     created_at: datetime = Field(default_factory=_utc_now, nullable=False)
     user_uuid: UUID = Field(nullable=False)
 
@@ -65,10 +75,12 @@ class AssetExit(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     asset_id: int = Field(foreign_key="assets.id", index=True)
+    programme_id: str | None = Field(default=None, foreign_key="programmes.programme_id", index=True)
     quantity: float = Field(sa_column=Column(Float, nullable=False))
     exit_type: str = Field(sa_type=String, nullable=False)
     assigned_to: str | None = Field(default=None, sa_type=String, nullable=True)
     office: str = Field(sa_type=String, nullable=False)
+    currency: str = Field(sa_type=String, nullable=False)
     created_at: datetime = Field(default_factory=_utc_now, nullable=False)
     user_uuid: UUID = Field(nullable=False)
 

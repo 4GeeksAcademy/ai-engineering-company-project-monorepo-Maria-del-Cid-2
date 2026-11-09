@@ -162,6 +162,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <NavigationLink href="/inventory/products" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
           Current Stock
         </NavigationLink>
+        <NavigationLink href="/inventory/programmes" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          Programmes
+        </NavigationLink>
         <NavigationLink href="/inventory/orders/inbound" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
           Inbounds
         </NavigationLink>

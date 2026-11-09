@@ -24,7 +24,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserRole
 from app.inventory.database import get_session
-from app.inventory.models import Asset, AssetEntry
+from app.inventory.models import Asset, AssetEntry, Programme
 from app.inventory.router import _products_cache, CACHE_TTL_PRODUCTS
 from app.main import app
 
@@ -42,13 +42,13 @@ _FAKE_USER = User(
 
 def _seed_asset(session: Session, name: str, sku: str, stock: float) -> Asset:
     """Create an asset and add entry movements so derived stock equals *stock*."""
-    asset = Asset(name=name, sku=sku, category="IT", office="Valencia")
+    asset = Asset(name=name, sku=sku, category="IT", office="Valencia", currency="EUR")
     session.add(asset)
     session.commit()
     if stock > 0:
         session.add(AssetEntry(
             asset_id=asset.id, quantity=stock, supplier="Seed",
-            office="Valencia", user_uuid=_FAKE_USER.user_uuid,
+            office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid,
         ))
         session.commit()
     return asset
@@ -76,12 +76,14 @@ class InventoryCacheTests(unittest.TestCase):
         _products_cache.clear()
 
         with Session(self.engine) as session:
+            session.add(Programme(programme_id="prog-cache-test", name="Cache test programme"))
+            session.commit()
             asset = _seed_asset(session, "Monitor", "MON-1", 25.0)
             self.asset_id = asset.id
             # Extra stock so outbound tests don't need per-test setup
             session.add(AssetEntry(
                 asset_id=self.asset_id, quantity=50, supplier="ExtraStock",
-                office="Valencia", user_uuid=_FAKE_USER.user_uuid,
+                office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid,
             ))
             session.commit()
 
@@ -200,7 +202,7 @@ class InventoryCacheTests(unittest.TestCase):
             "/api/inventory/orders/inbound",
             json={
                 "asset_id": self.asset_id, "quantity": 10,
-                "supplier": "Acme", "office": "Valencia",
+                "supplier": "Acme", "office": "Valencia", "programme_id": "prog-cache-test",
             },
         )
         self.assertEqual(response.status_code, 201)
@@ -220,7 +222,7 @@ class InventoryCacheTests(unittest.TestCase):
             json={
                 "asset_id": self.asset_id, "quantity": 5,
                 "exit_type": "allocation", "assigned_to": "Alice",
-                "office": "Valencia",            },
+                "office": "Valencia", "programme_id": "prog-cache-test"},
         )
         self.assertEqual(response.status_code, 201)
         self.assertIsNone(_products_cache.get("list"))

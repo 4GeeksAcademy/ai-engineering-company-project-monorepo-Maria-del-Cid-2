@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
-import { createOutbound, listProducts, inventoryErrorMessage } from "@/lib/inventory";
+import { createOutbound, listProducts, listProgrammes, inventoryErrorMessage } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
@@ -12,8 +12,10 @@ import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-thresh
 import {
   INVENTORY_EXIT_TYPES,
   INVENTORY_OFFICE_OPTIONS,
+  currencyForInventoryOffice,
   type AssetExitCreate,
   type AssetWithStock,
+  type Programme,
 } from "@/types/inventory";
 
 interface OutboundFormPanelProps {
@@ -22,6 +24,7 @@ interface OutboundFormPanelProps {
 
 const EMPTY_FORM: AssetExitCreate = {
   asset_id: 0,
+  programme_id: "",
   quantity: 0,
   exit_type: "allocation",
   assigned_to: "",
@@ -46,6 +49,7 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
   });
 
   const [products, setProducts] = useState<AssetWithStock[]>([]);
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productError, setProductError] = useState<string | null>(null);
 
@@ -63,14 +67,17 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
     setLoadingProducts(true);
     setProductError(null);
     try {
-      const items = await listProducts(nexovaApi);
+      const [items, availableProgrammes] = await Promise.all([
+        listProducts(nexovaApi), listProgrammes(nexovaApi),
+      ]);
       setProducts(items);
+      setProgrammes(availableProgrammes);
       setForm((current) => {
         if (!initialProductId) return current;
         const preselected = items.find((p) => String(p.id) === initialProductId);
         if (!preselected) return current;
         if (current.asset_id !== 0) return current;
-        return { ...current, asset_id: preselected.id };
+        return { ...current, asset_id: preselected.id, office: preselected.office as AssetExitCreate["office"] };
       });
     } catch (requestError) {
       setProductError(
@@ -151,9 +158,11 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
           product_id: selectedProduct.id,
           product_sku: selectedProduct.sku,
           product_category: selectedProduct.category,
+          programme_id: createdOrder.programme_id,
           quantity: payload.quantity,
           exit_type: payload.exit_type,
-          office: payload.office,
+          office: createdOrder.office,
+          currency: currencyForInventoryOffice(createdOrder.office),
           user_uuid: createdOrder.user_uuid,
         });
       }
@@ -223,7 +232,10 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
                 }))}
                 value={form.asset_id ? String(form.asset_id) : ""}
                 onChange={(event) =>
-                  updateField("asset_id", Number(event.target.value))
+                  setForm((current) => {
+                    const product = products.find((item) => item.id === Number(event.target.value));
+                    return { ...current, asset_id: product?.id ?? 0, office: (product?.office ?? current.office) as AssetExitCreate["office"] };
+                  })
                 }
                 disabled={loadingProducts || products.length === 0}
               />
@@ -232,6 +244,17 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
                   {productError}
                 </p>
               )}
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Select
+                label="Programme"
+                required
+                placeholder="Select a programme"
+                options={programmes.map((programme) => ({ value: programme.programme_id, label: programme.name }))}
+                value={form.programme_id}
+                onChange={(event) => updateField("programme_id", event.target.value)}
+                disabled={loadingProducts || programmes.length === 0}
+              />
             </div>
             <Input
               label="Quantity"
@@ -256,9 +279,7 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
               label="Office"
               options={INVENTORY_OFFICE_OPTIONS}
               value={form.office}
-              onChange={(event) =>
-                updateField("office", event.target.value as AssetExitCreate["office"])
-              }
+              disabled
             />
             {form.exit_type === "allocation" && (
               <div className="sm:col-span-2 lg:col-span-3">

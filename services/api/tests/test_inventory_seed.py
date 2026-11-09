@@ -15,7 +15,8 @@ from sqlmodel import SQLModel, Session, create_engine
 from tinydb import TinyDB
 from tinydb.storages import JSONStorage
 
-from app.inventory.models import Asset, AssetEntry, AssetExit
+from app.inventory.models import Asset, AssetEntry, AssetExit, Programme
+from app.inventory.seed_programmes import PROGRAMMES, seed_programmes
 from app.inventory.seed import (
     ASSET_SEED,
     ENTRY_SEED,
@@ -30,6 +31,7 @@ from app.inventory.seed import (
 
 
 TEST_UUID = UUID("95ecdeab-722e-4b7d-a590-8fb0f387d93f")
+TEST_PROGRAMME_ID = PROGRAMMES[0][0]
 
 
 class InventorySeedSafetyTests(unittest.TestCase):
@@ -95,7 +97,7 @@ class InventorySeedSafetyTests(unittest.TestCase):
             with self.subTest(user_email=user_email), patch.dict(os.environ, environment, clear=True), patch(
                 "app.inventory.seed.get_engine", side_effect=AssertionError("engine must not be requested")
             ):
-                self.assertEqual(main("test"), 1)
+                self.assertEqual(main("test", TEST_PROGRAMME_ID), 1)
 
     def test_main_resolves_user_uuid_from_local_account_before_engine_creation(self) -> None:
         environment = {
@@ -107,7 +109,7 @@ class InventorySeedSafetyTests(unittest.TestCase):
         ) as resolve_user, patch(
             "app.inventory.seed.get_engine", side_effect=AssertionError("engine must not be requested")
         ):
-            self.assertEqual(main("test"), 1)
+            self.assertEqual(main("test", TEST_PROGRAMME_ID), 1)
         resolve_user.assert_called_once_with("authorized@example.test")
 
 
@@ -178,6 +180,9 @@ class InventorySeedDataTests(unittest.TestCase):
         db_path = Path(self.temporary_directory.name) / "inventory_seed_test.sqlite3"
         self.engine = create_engine(f"sqlite:///{db_path}")
         SQLModel.metadata.create_all(self.engine)
+        with Session(self.engine) as session:
+            self.assertEqual(seed_programmes(session), 3)
+            self.assertEqual(seed_programmes(session), 0)
 
     def tearDown(self) -> None:
         self.engine.dispose()
@@ -185,7 +190,7 @@ class InventorySeedDataTests(unittest.TestCase):
 
     def test_seed_has_requested_assets_movements_and_derived_stock(self) -> None:
         with Session(self.engine) as session:
-            counts = seed_inventory(session, TEST_UUID)
+            counts = seed_inventory(session, TEST_UUID, TEST_PROGRAMME_ID)
             self.assertEqual(counts, {"assets": 6, "entries": 4, "exits": 3})
 
             assets = {
@@ -270,7 +275,7 @@ class InventorySeedDataTests(unittest.TestCase):
 
     def test_repeated_seed_is_idempotent_and_leaves_existing_rows_unchanged(self) -> None:
         with Session(self.engine) as session:
-            first = seed_inventory(session, TEST_UUID)
+            first = seed_inventory(session, TEST_UUID, TEST_PROGRAMME_ID)
             initial_assets = [
                 (row.id, row.name, row.sku, row.category, row.office)
                 for row in session.scalars(select(Asset).order_by(Asset.id)).all()
@@ -284,7 +289,7 @@ class InventorySeedDataTests(unittest.TestCase):
                 for row in session.scalars(select(AssetExit).order_by(AssetExit.id)).all()
             ]
             session.commit()
-            second = seed_inventory(session, TEST_UUID)
+            second = seed_inventory(session, TEST_UUID, TEST_PROGRAMME_ID)
             self.assertEqual(first, {"assets": 6, "entries": 4, "exits": 3})
             self.assertEqual(second, {"assets": 0, "entries": 0, "exits": 0})
             self.assertEqual(
@@ -307,13 +312,14 @@ class InventorySeedDataTests(unittest.TestCase):
                 sku="NXV-IT-001",
                 category="hardware",
                 office="Valencia",
+                currency="EUR",
             )
             session.add(existing)
             session.commit()
             existing_id = existing.id
 
             with self.assertRaises(SeedSafetyError):
-                seed_inventory(session, TEST_UUID)
+                seed_inventory(session, TEST_UUID, TEST_PROGRAMME_ID)
 
             self.assertEqual(session.exec(select(func.count()).select_from(Asset)).one()[0], 1)
             self.assertEqual(session.exec(select(func.count()).select_from(AssetEntry)).one()[0], 0)
@@ -323,7 +329,13 @@ class InventorySeedDataTests(unittest.TestCase):
 
     def test_negative_existing_stock_aborts_without_adding_seed_movements(self) -> None:
         with Session(self.engine) as session:
-            asset = Asset(name='Portátil 14" Business', sku="NXV-IT-001", category="hardware", office="Valencia")
+            asset = Asset(
+                name='Portátil 14" Business',
+                sku="NXV-IT-001",
+                category="hardware",
+                office="Valencia",
+                currency="EUR",
+            )
             session.add(asset)
             session.flush()
             session.add(
@@ -333,13 +345,14 @@ class InventorySeedDataTests(unittest.TestCase):
                     exit_type="consumption",
                     assigned_to=None,
                     office="Valencia",
+                    currency="EUR",
                     user_uuid=TEST_UUID,
                 )
             )
             session.commit()
 
             with self.assertRaises(SeedSafetyError):
-                seed_inventory(session, TEST_UUID)
+                seed_inventory(session, TEST_UUID, TEST_PROGRAMME_ID)
 
             self.assertEqual(session.exec(select(func.count()).select_from(Asset)).one()[0], 1)
             self.assertEqual(session.exec(select(func.count()).select_from(AssetEntry)).one()[0], 0)
@@ -347,9 +360,9 @@ class InventorySeedDataTests(unittest.TestCase):
 
     def test_existing_exact_movements_are_reused_but_different_uuid_is_not(self) -> None:
         with Session(self.engine) as session:
-            original = seed_inventory(session, TEST_UUID)
+            original = seed_inventory(session, TEST_UUID, TEST_PROGRAMME_ID)
             different_user_uuid = UUID("73990c82-4e37-4708-b45f-ef7f0ae4d267")
-            second_user = seed_inventory(session, different_user_uuid)
+            second_user = seed_inventory(session, different_user_uuid, TEST_PROGRAMME_ID)
             self.assertEqual(original, {"assets": 6, "entries": 4, "exits": 3})
             self.assertEqual(second_user, {"assets": 0, "entries": 4, "exits": 3})
             self.assertEqual(session.exec(select(func.count()).select_from(AssetEntry)).one()[0], 8)
