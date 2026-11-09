@@ -802,3 +802,18 @@ esa revisión ni se ejecutó un despliegue remoto.
 
 El aprendizaje técnico y las instrucciones para futuros desarrollos están
 recogidos en `docs/aprendiendo-containerization-docker.md`.
+
+## Diseño del pipeline de business reporting completado
+
+Se completó el diseño documental en `data/pipelines/PIPELINE_DESIGN.md`, sin
+implementar orquestación, migraciones, servicios HTTP ni cambios en telemetría.
+El diseño define una consolidación ISO semanal UTC por oficina/programa en
+`reporting.weekly_office_program_performance`, el registro reutilizable
+`reporting.pipeline_runs`, idempotencia por evento y resultado, recuperación,
+el mapeo futuro a Prefect y los endpoints previstos bajo `/api/reporting`.
+
+Antes de implementar el hito siguen pendientes: crear los modelos/dimensiones
+de programa, coste, moneda, kit y umbral; emitir datos de negocio completos y
+versionables; aprobar la hora de ejecución semanal; e instalar/configurar
+Prefect, el módulo `services/reporting/`, las migraciones y los permisos de
+PostgreSQL.
