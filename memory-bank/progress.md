@@ -38,6 +38,18 @@
   secreto local antes de cualquier nuevo acceso. Después, volver a validar
   dimensiones con consultas agregadas; solo solicitar el run si hay eventos
   válidos, y comprobar el run y resultados persistidos.
+- Fase 6 iniciada (2026-11-10): suite focalizada ampliada a API reporting,
+  transformación/flow, router/repositorio/analítica técnica de telemetría →
+  **53 passed, 1 warning, 4 subtests passed**. Se añadió prueba HTTP mockeada
+  para `GET /api/telemetry/report`; `services/api/app/telemetry/analysis.py`
+  conserva hash idéntico a `HEAD`. `git diff --check` pasó.
+- La Fase 6 sigue **parcial y no cerrada**: no se ejecutó CLI ni flow real,
+  migración o upsert en PostgreSQL desechable, prueba E2E de moneda/reintentos,
+  ni run natural. Los tests usan mocks/unit tests para DB y Prefect; la
+  separación `SELECT public.telemetry_events` / escrituras `reporting.*` se
+  confirmó por inspección estática. No hay evidencia de que nuevos eventos
+  hayan llegado a telemetría. Ver matriz y brechas en
+  `docs/aprendiendo/aprendiendo-pipeline-negocio.md`, sección 7.
 - Sigue pendiente evaluar UI de seguimiento en el backoffice. El POST manual
   ya está protegido para administradores; no se modificó UI.
 - No hubo commit ni push. La ejecución integral y documentación de esta fase

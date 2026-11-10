@@ -130,6 +130,22 @@ class TelemetryEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Telemetry storage is temporarily unavailable")
 
+    def test_telemetry_report_endpoint_remains_available(self) -> None:
+        expected = {
+            "period": {"start": "2026-11-02", "end": "2026-11-09", "days": 7},
+            "metrics": {"total_events": 3},
+        }
+        with patch("app.telemetry.router.build_report_json", return_value=expected) as build:
+            response = self.client.get(
+                "/api/telemetry/report?start_date=2026-11-02&end_date=2026-11-09&limit=20"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected)
+        build.assert_called_once_with(
+            start="2026-11-02", end="2026-11-09", limit=20,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

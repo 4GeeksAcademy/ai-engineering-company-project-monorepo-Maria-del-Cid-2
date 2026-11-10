@@ -1,10 +1,11 @@
 # Aprendiendo: pipeline de reporting de negocio en Nexova
 
 Esta guía registra el diagnóstico del pipeline y el estado de implementación.
-La fase previa de **Programmes dentro de Inventory está implementada y
-validada localmente** (ver sección 6). La Fase 2 implementó outbox y worker; la
-Fase 3 actual agrega fixtures de demo y eventos de negocio al mismo flujo. No
-se implementan aquí el pipeline de reporting ni las fases posteriores.
+Las fases previas de Inventory, outbox y fixtures de demo están descritas en
+`memory-bank/progress.md`. El pipeline de reporting y sus endpoints están
+implementados; la Fase 6 de validación queda **parcialmente verificada** según
+la matriz de evidencias de la sección 7. Las pruebas locales no equivalen a
+una corrida Prefect real ni a validación E2E con eventos completos.
 
 ## 1. Objetivo y contrato aprobado
 
@@ -62,6 +63,10 @@ upsert; la política de correcciones de negocio con otro UUID no está definida.
 
 ## 3. Dependencias imprescindibles y plan propuesto
 
+El plan siguiente refleja el diagnóstico inicial y no el estado actual de
+implementación. Las fases 4–6 se implementaron posteriormente; la validación
+Fase 6 se resume con evidencias y brechas en la sección 7.
+
 1. **Fase previa propuesta, programas:** crear programas formativos y asociar
   cada movimiento de inventario a uno de ellos. El producto no pertenece a un
   programa; conserva su oficina y su moneda. Ver sección 6.
@@ -109,13 +114,68 @@ dependencias de reporting ni se modificó el pipeline técnico.
   automáticamente en observaciones válidas del informe; no se ha acordado una
   política de backfill ni de corrección semántica.
 
-## 5. Validaciones realizadas
+## 5. Validaciones realizadas durante el diagnóstico inicial (histórico)
 
 Se comprobó Git (`status`, comparación de ramas y `fetch`), presencia de
 Prefect mediante importación y acceso PostgreSQL en transacciones `READ ONLY`
 (esquema, tablas, privilegio de lectura y conteos por tipo). No se ejecutaron
 tests de código ni el pipeline, que todavía no existe. Las consultas de base
 de datos no son una prueba integral del flujo de usuario.
+
+## 7. Fase 6 — validación integral: evidencias y límites
+
+Validación local ejecutada el 2026-11-10 desde la raíz del monorepo:
+
+```text
+uv run --project services/api python -m pytest \
+  services/api/tests/test_reporting_api.py \
+  services/api/tests/test_weekly_reporting_pipeline.py \
+  services/api/tests/test_telemetry_router.py \
+  services/api/tests/test_telemetry_repository.py \
+  services/api/tests/test_telemetry_report.py -q
+53 passed, 1 warning, 4 subtests passed
+```
+
+La warning es deprecación de Starlette/httpx en `TestClient`; no hizo fallar
+las pruebas. `git diff --check` pasó. Se añadió una prueba HTTP de
+`GET /api/telemetry/report` que sustituye el generador de reporte y verifica
+status, filtros y respuesta; no consulta una base de telemetría real. El
+SHA-1 del archivo `services/api/app/telemetry/analysis.py` coincide con
+`HEAD` (`d56c0984552ba1168757996193c136dddf5a9ef0`), por lo que dicho módulo
+no tiene cambios frente a la revisión base.
+
+| Criterio | Evidencia ejecutada | Estado |
+|---|---|---|
+| Extracción y límites ISO semana UTC `[lunes, lunes siguiente)` | Test de límites y revisión del query parametrizado; no se ejecutó extracción SQL contra fixtures. | Parcial: unit test/inspección, sin prueba DB. |
+| KPI de coste, salidas, shortage y variancia; agregación por oficina/programa/semana | Test sintético de transformación comprueba coste decimal, conteos, deduplicación exacta y una fila agregada; código y contrato contrastados. | PASS en transformación unitaria. No certifica datos reales. |
+| Eventos inválidos, duplicados y números no finitos | Tests cubren rechazo, duplicate exacto y conflicto de `event_id`; valores no finitos y entradas incompletas. | PASS en transformación unitaria. |
+| Moneda Valencia/EUR y Miami/USD | Código valida moneda canónica; test de carga usa EUR/USD para filas de ejemplo. No hay test explícito de transformación para ambas monedas ni persistencia real. | Parcial. |
+| Idempotencia/upsert y transacción | Test mock verifica dos upserts, resultado insert/update y un commit; no ejecuta PostgreSQL ni una segunda corrida real. | Parcial. |
+| Retry solo ante transitorios | Test parametrizado verifica conectividad/transitorios y no retry para validación/lógica SQL; no inyecta fallos en un DB real. | PASS policy unitaria. |
+| Fallo de task opcional no invalida ETL | Test de flow con task snapshot simulada fallida verifica run `completed` y error saneado. | PASS en flow unitario. |
+| Runs exitoso y fallido | Tests verifican flow fallido crítico y flow exitoso con snapshot opcional fallido mediante mocks; no crean/actualizan filas en PostgreSQL. | PASS en flow unitario, no E2E. |
+| Caché | Test verifica clave determinista por entradas, cambio de contenido y TTL de una hora; no espera expiración en runtime ni ejercita backend de resultados Prefect. | Parcial/unitario. |
+| CLI | Se inspeccionó parser/llamada al flow; no se ejecutó el CLI porque conectaría con URLs de entorno operativas y no hay configuración temporal E2E preparada. | No ejecutado. |
+| Endpoints `/api/reporting` | Tests HTTP existentes cubren auth, roles, validación lunes, respuesta, filtros y errores saneados para las tres rutas. La última suite focalizada pasó. | PASS con dependencias/repositorios mock; sin DB ni Prefect reales. |
+| Compatibilidad `GET /api/telemetry/report` | Nueva prueba HTTP mockeada pasa; las pruebas de métricas Pandas pasan. `analysis.py` idéntico a HEAD. | PASS de contrato local; no consulta base real. |
+| Separación de destinos | Revisión estática: extracción hace SELECT a `public.telemetry_events`; todos los INSERT/UPDATE de pipeline apuntan a `reporting.*`. Ninguna prueba de escritura contra DB temporal ejecutada. | Confirmado por código, no por E2E. |
+| Migración/contrato físico | Migración, schemas Pydantic, repositorio y diseño coinciden en tabla/columnas/claves/campos revisados. No se aplicó la migración en una DB desechable en esta fase. | Revisión estática; DB no validada. |
+
+No se ejecutó `python data/pipelines/pipeline.py`, no se solicitó un run a
+Prefect, no se esperó al cron natural y no se escribió en ninguna base durante
+esta fase. `docker compose ps` no mostró servicios activos en esta sesión; no
+se inició Compose. La consulta previa de telemetría de la semana
+2026-11-02 —documentada en `memory-bank/progress.md`— fue read-only y confirmó
+que no hay programa en los eventos; por eso no es una muestra apropiada para
+una corrida útil. El código y los tests no prueban que los nuevos eventos ya
+hayan llegado a telemetría.
+
+**Conclusión:** la Fase 6 tiene validación unitaria y de contrato sustancial,
+pero no está cerrada integralmente. Para declararla completa faltan una prueba
+CLI/flow con bases PostgreSQL desechables separadas, aplicación/re-ejecución de
+migración y upsert, verificación explícita de moneda/errores de persistencia,
+y observación de una corrida Prefect cuando exista una semana con eventos
+válidos. No se debe usar un destino operativo para estas pruebas.
 
 ## 6. Fase previa: Programmes dentro de Inventory
 
