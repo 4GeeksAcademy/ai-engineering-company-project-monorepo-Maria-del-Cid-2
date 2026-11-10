@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from fastapi import HTTPException
+from sqlalchemy.engine import make_url
 from sqlmodel import Session
 from sqlalchemy import event
 
@@ -39,7 +40,9 @@ class InventoryDatabaseTests(unittest.TestCase):
                 connection_events: list[str] = []
                 event.listen(engine, "connect", lambda *_: connection_events.append("connect"))
 
-                self.assertEqual(str(engine.url), url)
+                # SQLAlchemy percent-encodes Windows paths when rendering URLs;
+                # compare parsed URL objects rather than platform-specific text.
+                self.assertEqual(engine.url, make_url(url))
                 self.assertIs(database.get_engine(), engine)
                 self.assertEqual(connection_events, [])
                 self.assertFalse(database_file.exists())

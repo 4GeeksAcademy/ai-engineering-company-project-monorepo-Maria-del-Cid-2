@@ -22,7 +22,8 @@ from sqlalchemy.engine import make_url
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserRole
 from app.inventory.database import get_session
-from app.inventory.models import Asset, AssetEntry, AssetExit
+from app.inventory.models import Asset, AssetEntry, AssetExit, Programme, TelemetryOutboxEvent
+from app.inventory.router import _products_cache
 from app.inventory.operations import (
     InsufficientStock,
     _asset_lookup_statement,
@@ -44,10 +45,14 @@ _FAKE_USER = User(
 
 class InventoryApiTests(unittest.TestCase):
     def setUp(self) -> None:
+        _products_cache.invalidate("list")
         self.temporary_directory = TemporaryDirectory()
         db_path = Path(self.temporary_directory.name) / "inventory.sqlite3"
         self.engine = create_engine(f"sqlite:///{db_path}")
         SQLModel.metadata.create_all(self.engine)
+        with Session(self.engine) as session:
+            session.add(Programme(programme_id="prog-test", name="Test programme"))
+            session.commit()
 
         def override_session():
             with Session(self.engine) as session:
@@ -69,6 +74,7 @@ class InventoryApiTests(unittest.TestCase):
             sku=str(kwargs.pop("sku", "LAP-1")),
             category="IT",
             office="Valencia",
+            currency="EUR",
         )
         with Session(self.engine) as session:
             session.add(asset)
@@ -81,13 +87,13 @@ class InventoryApiTests(unittest.TestCase):
         with Session(self.engine) as session:
             session.add_all(
                 [
-                    AssetEntry(asset_id=asset.id, quantity=10, supplier="Acme", office="Valencia", user_uuid=_FAKE_USER.user_uuid),
-                    AssetEntry(asset_id=asset.id, quantity=5, supplier="Acme", office="Valencia", user_uuid=_FAKE_USER.user_uuid),
-                    AssetExit(asset_id=asset.id, quantity=2, exit_type="allocation", assigned_to="Alex", office="Valencia", user_uuid=_FAKE_USER.user_uuid),
-                    AssetExit(asset_id=asset.id, quantity=1, exit_type="consumption", assigned_to=None, office="Valencia", user_uuid=_FAKE_USER.user_uuid),
+                    AssetEntry(asset_id=asset.id, quantity=10, unit_cost=4.0, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetEntry(asset_id=asset.id, quantity=5, unit_cost=4.0, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetExit(asset_id=asset.id, quantity=2, exit_type="allocation", assigned_to="Alex", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetExit(asset_id=asset.id, quantity=1, exit_type="consumption", assigned_to=None, office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                 ]
             )
-            session.add(Asset(name="Mouse", sku="MOU-1", category="IT", office="Valencia"))
+            session.add(Asset(name="Mouse", sku="MOU-1", category="IT", office="Valencia", currency="EUR"))
             session.commit()
 
         response = self.client.get("/api/inventory/products")
@@ -106,8 +112,8 @@ class InventoryApiTests(unittest.TestCase):
         with Session(self.engine) as session:
             session.add_all(
                 [
-                    AssetEntry(asset_id=asset.id, quantity=3, supplier="Acme", office="Valencia", user_uuid=_FAKE_USER.user_uuid),
-                    AssetExit(asset_id=asset.id, quantity=1, exit_type="allocation", assigned_to="Alex", office="Valencia", user_uuid=_FAKE_USER.user_uuid),
+                    AssetEntry(asset_id=asset.id, quantity=3, unit_cost=4.0, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetExit(asset_id=asset.id, quantity=1, exit_type="allocation", assigned_to="Alex", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                 ]
             )
             session.commit()
@@ -125,6 +131,33 @@ class InventoryApiTests(unittest.TestCase):
         self.assertEqual(entry["asset_id"], asset.id)
         self.assertEqual(exit_order["assigned_to"], "Alex")
 
+    def test_phase2_configuration_and_regularization_require_admin(self) -> None:
+        asset = self.add_asset()
+        non_admin = User(
+            id=9877,
+            email="inventory-user@nexova.com",
+            hashed_password="fake",
+            is_active=True,
+            role=UserRole.USER,
+            created_at=datetime.now(timezone.utc),
+            user_uuid=UUID("9a1aec0f-3165-4faf-a1d6-d1157a3e4bc2"),
+        )
+        app.dependency_overrides[get_current_user] = lambda: non_admin
+        threshold = self.client.put("/api/inventory/thresholds", json={
+            "asset_id": asset.id, "office": "Valencia", "threshold": 2,
+        })
+        kit = self.client.put("/api/inventory/kits", json={
+            "kit_asset_id": asset.id, "office": "Valencia", "expected_cost": 10,
+            "components": [{"component_asset_id": asset.id + 1, "quantity_per_kit": 1}],
+        })
+        regularization = self.client.post("/api/inventory/valuation/regularizations", json={
+            "asset_id": asset.id, "office": "Valencia", "quantity": 1,
+            "approved_unit_cost": 4, "reason": "test",
+        })
+        self.assertEqual(threshold.status_code, 403)
+        self.assertEqual(kit.status_code, 403)
+        self.assertEqual(regularization.status_code, 403)
+
     def test_all_inventory_endpoints_require_authentication(self) -> None:
         app.dependency_overrides.pop(get_current_user)
         for path in (
@@ -137,7 +170,7 @@ class InventoryApiTests(unittest.TestCase):
 
         for path, payload in (
             ("/api/inventory/products", {"name": "Laptop", "sku": "LAP-1", "category": "IT", "office": "Valencia"}),
-            ("/api/inventory/orders/inbound", {"asset_id": 1, "quantity": 1, "supplier": "Acme", "office": "Valencia"}),
+            ("/api/inventory/orders/inbound", {"asset_id": 1, "quantity": 1, "unit_cost": 12.5, "supplier": "Acme", "office": "Valencia"}),
             ("/api/inventory/orders/outbound", {"asset_id": 1, "quantity": 1, "exit_type": "consumption", "office": "Valencia"}),
         ):
             with self.subTest(method="POST", path=path):
@@ -170,12 +203,15 @@ class InventoryApiTests(unittest.TestCase):
             json={
                 "asset_id": asset.id,
                 "quantity": 8,
+                "unit_cost": 12.5,
                 "supplier": "Acme",
                 "office": "Valencia",
+                "programme_id": "prog-test",
             },
         )
         self.assertEqual(inbound.status_code, 201, inbound.text)
         self.assertEqual(inbound.json()["user_uuid"], str(_FAKE_USER.user_uuid))
+        self.assertEqual(inbound.json()["unit_cost"], 12.5)
         self.assertNotIn("user_uuid", {"asset_id", "quantity", "supplier", "office"})
         self.assertEqual(
             self.client.get(f"/api/inventory/products/{asset.id}").json()["current_stock"],
@@ -190,6 +226,7 @@ class InventoryApiTests(unittest.TestCase):
                 "exit_type": "allocation",
                 "assigned_to": "Alex",
                 "office": "Valencia",
+                "programme_id": "prog-test",
             },
         )
         self.assertEqual(outbound.status_code, 201, outbound.text)
@@ -201,6 +238,14 @@ class InventoryApiTests(unittest.TestCase):
         self.assertEqual(
             self.client.get("/api/inventory/orders").json()[0]["type"], "exit"
         )
+        with Session(self.engine) as session:
+            events = session.exec(select(TelemetryOutboxEvent).order_by(TelemetryOutboxEvent.event_type)).scalars().all()
+            self.assertEqual([event.event_type for event in events], ["inbound_order_created", "outbound_order_created"])
+            inbound_event = next(event for event in events if event.event_type == "inbound_order_created")
+            self.assertEqual(inbound_event.tags["unit_cost"], 12.5)
+            self.assertEqual(inbound_event.tags["programme_id"], "prog-test")
+            self.assertEqual(inbound_event.movement_id, inbound.json()["id"])
+            self.assertTrue(all(event.status == "pending" and event.attempt_count == 0 for event in events))
 
     def test_insufficient_stock_and_invalid_references_leave_no_movement(self) -> None:
         asset = self.add_asset()
@@ -211,6 +256,7 @@ class InventoryApiTests(unittest.TestCase):
                 "quantity": 1,
                 "exit_type": "consumption",
                 "office": "Valencia",
+                "programme_id": "prog-test",
             },
         )
         self.assertEqual(response.status_code, 400)
@@ -221,8 +267,10 @@ class InventoryApiTests(unittest.TestCase):
             json={
                 "asset_id": 987654,
                 "quantity": 1,
+                "unit_cost": 3,
                 "supplier": "Acme",
                 "office": "Valencia",
+                "programme_id": "prog-test",
             },
         )
         self.assertEqual(inbound.status_code, 404)
@@ -248,7 +296,7 @@ class InventoryApiTests(unittest.TestCase):
 
         response = self.client.post(
             "/api/inventory/orders/inbound",
-            json={"asset_id": asset.id, "quantity": 2, "supplier": "Acme", "office": "Valencia"},
+            json={"asset_id": asset.id, "quantity": 2, "unit_cost": 3, "supplier": "Acme", "office": "Valencia", "programme_id": "prog-test"},
         )
         self.assertEqual(response.status_code, 428)
         self.assertEqual(self.client.get("/api/inventory/orders").json(), [])
@@ -260,6 +308,7 @@ class InventoryApiTests(unittest.TestCase):
             json={
                 "asset_id": asset.id,
                 "quantity": 1,
+                "unit_cost": 3,
                 "supplier": "Acme",
                 "office": "Valencia",
                 "user_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -286,6 +335,7 @@ class InventoryApiTests(unittest.TestCase):
                     exit_type="allocation",
                     assigned_to=None,
                     office="Valencia",
+                    currency="EUR",
                     user_uuid=_FAKE_USER.user_uuid,
                 )
             )
@@ -305,7 +355,7 @@ class InventoryApiTests(unittest.TestCase):
 
         response = self.client.post(
             "/api/inventory/orders/inbound",
-            json={"asset_id": asset.id, "quantity": 2, "supplier": "Acme", "office": "Valencia"},
+            json={"asset_id": asset.id, "quantity": 2, "unit_cost": 3, "supplier": "Acme", "office": "Valencia", "programme_id": "prog-test"},
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(self.client.get("/api/inventory/orders").json(), [])
@@ -348,7 +398,7 @@ class InventoryPostgresConcurrencyTests(unittest.TestCase):
         try:
             SQLModel.metadata.create_all(engine)
             with Session(engine) as session:
-                asset = Asset(name="Test", sku="CONC-1", category="IT", office="Test")
+                asset = Asset(name="Test", sku="CONC-1", category="IT", office="Test", currency="USD")
                 session.add(asset)
                 session.flush()
                 session.add(
@@ -357,6 +407,7 @@ class InventoryPostgresConcurrencyTests(unittest.TestCase):
                         quantity=10,
                         supplier="Test supplier",
                         office="Test",
+                        currency="USD",
                         user_uuid=_FAKE_USER.user_uuid,
                     )
                 )

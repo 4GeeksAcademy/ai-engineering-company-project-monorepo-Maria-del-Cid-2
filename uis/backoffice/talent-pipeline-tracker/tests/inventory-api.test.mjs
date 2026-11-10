@@ -51,6 +51,7 @@ const inboundOrder = {
   id: 10,
   asset_id: 1,
   quantity: 5,
+  unit_cost: 14.25,
   supplier: "TechDistrib Valencia S.L.",
   office: "Valencia",
   created_at: "2026-10-19T10:00:00Z",
@@ -112,6 +113,7 @@ describe("inventory API", () => {
     const payload = {
       asset_id: 1,
       quantity: 5,
+      unit_cost: 14.25,
       supplier: "TechDistrib Valencia S.L.",
       office: "Valencia",
     };
@@ -189,6 +191,7 @@ describe("inventory API", () => {
       createInbound(client, {
         asset_id: 1,
         quantity: 1,
+        unit_cost: 4,
         supplier: "TechDistrib Valencia S.L.",
         office: "Valencia",
       }),
@@ -209,6 +212,7 @@ describe("inventory API", () => {
       createInbound(client, {
         asset_id: 1,
         quantity: 1,
+        unit_cost: 4,
         supplier: "TechDistrib Valencia S.L.",
         office: "Valencia",
       }),

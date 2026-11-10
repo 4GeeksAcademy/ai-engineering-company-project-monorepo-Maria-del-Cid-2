@@ -4,17 +4,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
-import { createInbound, listProducts, inventoryErrorMessage } from "@/lib/inventory";
+import { createInbound, listProducts, listProgrammes, inventoryErrorMessage } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
-import { useTelemetry } from "@/hooks/useTelemetry";
 import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
 import {
   INVENTORY_OFFICE_OPTIONS,
-  currencyForInventoryOffice,
   type AssetEntryCreate,
   type AssetWithStock,
+  type Programme,
 } from "@/types/inventory";
-import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-threshold";
 
 interface InboundFormPanelProps {
   initialProductId?: string | null;
@@ -22,13 +20,14 @@ interface InboundFormPanelProps {
 
 const EMPTY_FORM: AssetEntryCreate = {
   asset_id: 0,
+  programme_id: "",
   quantity: 0,
+  unit_cost: 0,
   supplier: "",
   office: "Valencia",
 };
 
 export function InboundFormPanel({ initialProductId = null }: InboundFormPanelProps) {
-  const telemetry = useTelemetry();
   // Track form_opened and form_abandoned lifecycle
   const instanceId = useFormLifecycleTracking({
     formId: "inbound-form",
@@ -37,6 +36,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
   });
 
   const [products, setProducts] = useState<AssetWithStock[]>([]);
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productError, setProductError] = useState<string | null>(null);
 
@@ -53,14 +53,17 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
     setLoadingProducts(true);
     setProductError(null);
     try {
-      const items = await listProducts(nexovaApi);
+      const [items, availableProgrammes] = await Promise.all([
+        listProducts(nexovaApi), listProgrammes(nexovaApi),
+      ]);
       setProducts(items);
+      setProgrammes(availableProgrammes);
       setForm((current) => {
         if (!initialProductId) return current;
         const preselected = items.find((p) => String(p.id) === initialProductId);
         if (!preselected) return current;
         if (current.asset_id !== 0) return current;
-        return { ...current, asset_id: preselected.id };
+        return { ...current, asset_id: preselected.id, office: preselected.office as AssetEntryCreate["office"] };
       });
     } catch (requestError) {
       setProductError(
@@ -100,32 +103,11 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
     const payload: AssetEntryCreate = {
       ...form,
       quantity: Number(form.quantity),
+      unit_cost: Number(form.unit_cost),
     };
     try {
       const createdOrder = await createInbound(nexovaApi, payload);
-      const currency = currencyForInventoryOffice(payload.office);
-      if (selectedProduct && currency) {
-        telemetry.track("inbound_order_created", {
-          product_id: selectedProduct.id,
-          product_sku: selectedProduct.sku,
-          product_category: selectedProduct.category,
-          quantity: payload.quantity,
-          supplier: payload.supplier,
-          office: payload.office,
-          currency,
-          user_uuid: createdOrder.user_uuid,
-        });
-      }
-      void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
-        (updatedProduct) => {
-          if (!updatedProduct) return;
-          setProducts((current) =>
-            current.map((product) =>
-              product.id === updatedProduct.id ? updatedProduct : product,
-            ),
-          );
-        },
-      );
+      // Inventory business events are durably queued by the API transaction.
       // Mark form as successfully submitted to prevent form_abandoned tracking
       markFormAsSubmitted(instanceId);
       setCreated({
@@ -181,7 +163,10 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
                 }))}
                 value={form.asset_id ? String(form.asset_id) : ""}
                 onChange={(event) =>
-                  updateField("asset_id", Number(event.target.value))
+                  setForm((current) => {
+                    const product = products.find((item) => item.id === Number(event.target.value));
+                    return { ...current, asset_id: product?.id ?? 0, office: (product?.office ?? current.office) as AssetEntryCreate["office"] };
+                  })
                 }
                 disabled={loadingProducts || products.length === 0}
               />
@@ -190,6 +175,17 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
                   {productError}
                 </p>
               )}
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Select
+                label="Programme"
+                required
+                placeholder="Select a programme"
+                options={programmes.map((programme) => ({ value: programme.programme_id, label: programme.name }))}
+                value={form.programme_id}
+                onChange={(event) => updateField("programme_id", event.target.value)}
+                disabled={loadingProducts || programmes.length === 0}
+              />
             </div>
             <Input
               label="Quantity"
@@ -203,6 +199,15 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
               }
             />
             <Input
+              label="Unit cost"
+              required
+              min={0}
+              step="0.01"
+              type="number"
+              value={form.unit_cost || ""}
+              onChange={(event) => updateField("unit_cost", Number(event.target.value))}
+            />
+            <Input
               label="Supplier"
               required
               placeholder="e.g. Nexova Procurement"
@@ -213,9 +218,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
               label="Office"
               options={INVENTORY_OFFICE_OPTIONS}
               value={form.office}
-              onChange={(event) =>
-                updateField("office", event.target.value as AssetEntryCreate["office"])
-              }
+              disabled
             />
           </div>
 

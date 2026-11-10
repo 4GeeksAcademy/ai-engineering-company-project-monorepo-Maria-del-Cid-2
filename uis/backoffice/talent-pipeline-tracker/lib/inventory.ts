@@ -17,10 +17,13 @@ import { safeHttpFallback } from "./api-errors.ts";
 import { NexovaApiError } from "./nexova-api.ts";
 import type { NexovaApiClient } from "./nexova-api.ts";
 import type {
+  AssetEntry,
   AssetEntryCreate,
+  AssetExit,
   AssetExitCreate,
   AssetWithStock,
   InventoryOrder,
+  Programme,
 } from "../types/inventory.ts";
 
 export { NexovaApiError };
@@ -37,6 +40,7 @@ export type {
   InventoryOffice,
   InventoryOrder,
   StockLevel,
+  Programme,
 } from "../types/inventory";
 
 export {
@@ -63,6 +67,14 @@ export function listProducts(client: InventoryApiClient): Promise<AssetWithStock
   return request<AssetWithStock[]>(client, "/inventory/products");
 }
 
+export function listProgrammes(client: InventoryApiClient): Promise<Programme[]> {
+  return request<Programme[]>(client, "/inventory/programmes");
+}
+
+export function createProgramme(client: InventoryApiClient, payload: Programme): Promise<Programme> {
+  return request<Programme>(client, "/inventory/programmes", { method: "POST", json: payload });
+}
+
 /** Load a single inventory product with its derived current stock. */
 export function getProduct(
   client: InventoryApiClient,
@@ -77,18 +89,10 @@ export function listOrders(client: InventoryApiClient): Promise<InventoryOrder[]
 }
 
 /** Created inbound movement as returned by the API. */
-export type InboundCreated = AssetEntryCreate & {
-  id: number;
-  created_at: string;
-  user_uuid: string;
-};
+export type InboundCreated = AssetEntry;
 
 /** Created outbound movement as returned by the API. */
-export type OutboundCreated = AssetExitCreate & {
-  id: number;
-  created_at: string;
-  user_uuid: string;
-};
+export type OutboundCreated = AssetExit;
 
 /** Record one inbound movement (a received delivery). */
 export function createInbound(

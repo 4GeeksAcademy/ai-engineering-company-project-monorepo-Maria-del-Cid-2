@@ -36,12 +36,12 @@ class InventorySchemaTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             AssetCreate(name="Laptop", sku="LAP-1", office="Valencia")
 
-        response = AssetResponse(id=1, **payload.model_dump())
+        response = AssetResponse(id=1, currency="EUR", **payload.model_dump())
         self.assertEqual(response.id, 1)
 
     def test_current_stock_exists_only_on_calculated_response_schema(self) -> None:
         fields = {"id": 1, "name": "Laptop", "sku": "LAP-1", "category": "IT", "office": "Valencia"}
-        response = AssetWithStockResponse(**fields, current_stock=3)
+        response = AssetWithStockResponse(**fields, currency="EUR", current_stock=3)
         self.assertEqual(response.current_stock, 3)
         self.assertNotIn("current_stock", Asset.model_fields)
         self.assertNotIn("current_stock", AssetResponse.model_fields)
@@ -49,30 +49,46 @@ class InventorySchemaTests(unittest.TestCase):
             AssetCreate(**fields, current_stock=3)
 
     def test_entry_schema_requires_fields_uuid_is_response_only(self) -> None:
-        payload = AssetEntryCreate(asset_id=1, quantity=2, supplier="Acme", office="Valencia")
+        payload = AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=2, unit_cost=4.25, supplier="Acme", office="Valencia")
         with self.assertRaises(ValidationError):
-            AssetEntryCreate(asset_id=1, quantity=0, supplier="Acme", office="Valencia")
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=0, unit_cost=4.25, supplier="Acme", office="Valencia")
         with self.assertRaises(ValidationError):
-            AssetEntryCreate(asset_id=1, quantity=1, supplier="Acme", office="Valencia", user_uuid=str(TEST_UUID))
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, supplier="Acme", office="Valencia")
+        with self.assertRaises(ValidationError):
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, unit_cost=-0.01, supplier="Acme", office="Valencia")
+        with self.assertRaises(ValidationError):
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, unit_cost=4.25, supplier="Acme", office="Valencia", user_uuid=str(TEST_UUID))
 
         response = AssetEntryResponse(
             id=1,
             created_at=datetime.now(timezone.utc),
             user_uuid=TEST_UUID,
-            **payload.model_dump(),
+            currency="EUR",
+            **{**payload.model_dump(), "unit_cost": None},
         )
         self.assertEqual(response.user_uuid, TEST_UUID)
+        self.assertIsNone(response.unit_cost)
+        known_cost_response = AssetEntryResponse(
+            id=1,
+            created_at=datetime.now(timezone.utc),
+            user_uuid=TEST_UUID,
+            currency="EUR",
+            **payload.model_dump(),
+        )
+        self.assertEqual(known_cost_response.unit_cost, 4.25)
         with self.assertRaises(ValidationError):
             AssetEntryResponse(
                 id=1,
                 created_at=datetime.now(timezone.utc),
                 user_uuid="not-a-uuid",
+                currency="EUR",
                 **payload.model_dump(),
             )
 
     def test_exit_type_and_assigned_to_rules(self) -> None:
         allocation = AssetExitCreate(
             asset_id=1,
+            programme_id="prog-test",
             quantity=1,
             exit_type="allocation",
             assigned_to="Alex",
@@ -80,6 +96,7 @@ class InventorySchemaTests(unittest.TestCase):
         )
         consumption = AssetExitCreate(
             asset_id=1,
+            programme_id="prog-test",
             quantity=1,
             exit_type="consumption",
             assigned_to=None,
@@ -97,6 +114,7 @@ class InventorySchemaTests(unittest.TestCase):
             with self.subTest(variant=variant), self.assertRaises(ValidationError):
                 AssetExitCreate(
                     asset_id=1,
+                    programme_id="prog-test",
                     quantity=1,
                     office="Valencia",
                     **variant,
@@ -105,6 +123,7 @@ class InventorySchemaTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             AssetExitCreate(
                 asset_id=1,
+                programme_id="prog-test",
                 quantity=-1,
                 exit_type="consumption",
                 office="Valencia",
@@ -114,6 +133,7 @@ class InventorySchemaTests(unittest.TestCase):
             id=1,
             created_at=datetime.now(timezone.utc),
             user_uuid=TEST_UUID,
+            currency="EUR",
             **consumption.model_dump(),
         )
         self.assertEqual(response.user_uuid, TEST_UUID)
@@ -144,11 +164,13 @@ class InventoryOrmTests(unittest.TestCase):
         self.assertEqual(len(AssetEntry.__table__.c.asset_id.foreign_keys), 1)
         self.assertEqual(len(AssetExit.__table__.c.asset_id.foreign_keys), 1)
 
-        asset = Asset(name="Laptop", sku="LAP-1", category="IT", office="Valencia")
+        asset = Asset(name="Laptop", sku="LAP-1", category="IT", office="Valencia", currency="EUR")
         entry = AssetEntry(
             quantity=3,
+            unit_cost=4.25,
             supplier="Acme",
             office="Valencia",
+            currency="EUR",
             user_uuid=TEST_UUID,
         )
         exit_movement = AssetExit(
@@ -156,6 +178,7 @@ class InventoryOrmTests(unittest.TestCase):
             exit_type="allocation",
             assigned_to="Alex",
             office="Valencia",
+            currency="EUR",
             user_uuid=TEST_UUID,
         )
         asset.entries.append(entry)
@@ -186,8 +209,10 @@ class InventoryOrmTests(unittest.TestCase):
         valid_payload = {
             "asset_id": 1,
             "quantity": 1,
+            "unit_cost": 4,
             "supplier": "Acme",
             "office": "Valencia",
+            "currency": "EUR",
             "user_uuid": str(TEST_UUID),
         }
         entry = AssetEntry.model_validate(valid_payload)
@@ -198,13 +223,13 @@ class InventoryOrmTests(unittest.TestCase):
 
     def test_database_constraints_enforce_unique_sku_positive_amount_and_exit_rules(self) -> None:
         with Session(self.engine) as session:
-            session.add(Asset(name="One", sku="DUP", category="IT", office="Valencia"))
-            session.add(Asset(name="Two", sku="DUP", category="IT", office="Valencia"))
+            session.add(Asset(name="One", sku="DUP", category="IT", office="Valencia", currency="EUR"))
+            session.add(Asset(name="Two", sku="DUP", category="IT", office="Valencia", currency="EUR"))
             with self.assertRaises(IntegrityError):
                 session.commit()
             session.rollback()
 
-            asset = Asset(name="One", sku="ONE", category="IT", office="Valencia")
+            asset = Asset(name="One", sku="ONE", category="IT", office="Valencia", currency="EUR")
             session.add(asset)
             session.commit()
             session.refresh(asset)
@@ -213,8 +238,10 @@ class InventoryOrmTests(unittest.TestCase):
                 AssetEntry(
                     asset_id=asset.id,
                     quantity=-1,
+                    unit_cost=4,
                     supplier="Acme",
                     office="Valencia",
+                    currency="EUR",
                     user_uuid=TEST_UUID,
                 )
             )
@@ -229,6 +256,7 @@ class InventoryOrmTests(unittest.TestCase):
                     exit_type="consumption",
                     assigned_to="Alex",
                     office="Valencia",
+                    currency="EUR",
                     user_uuid=TEST_UUID,
                 )
             )
@@ -240,8 +268,10 @@ class InventoryOrmTests(unittest.TestCase):
                 AssetEntry(
                     asset_id=999,
                     quantity=1,
+                    unit_cost=4,
                     supplier="Acme",
                     office="Valencia",
+                    currency="EUR",
                     user_uuid=TEST_UUID,
                 )
             )

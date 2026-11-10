@@ -1,6 +1,6 @@
 # Plan integral de telemetría para Nexova
 
-> **Estado:** Fase 4 — Documentación definitiva (pendiente de aprobación de decisiones de negocio para implementación).
+> **Estado:** Documento de diseño histórico. Desde la implementación de la Fase 2 existe un pipeline durable de inventario para `inbound_order_created` y `outbound_order_created`; las propuestas del resto del catálogo y las reglas de negocio siguen sujetas a aprobación.
 > **Archivo relacionado:** `event-schemas.json` — contratos JSON de los 20 eventos + auxiliares.
 
 ---
@@ -27,8 +27,8 @@ Diseñar un sistema de telemetría para Nexova que permita medir resultados de n
 
 ### 1.2 Restricciones de diseño
 
-- **No existe infraestructura de telemetría hoy** en el repositorio.
-- **No existen workers, colas, schedulers ni cron jobs**.
+- El pipeline actual implementa un transactional outbox de inventario y un worker independiente que persiste esos dos tipos en el destino de telemetría. No generalizar su alcance a todos los eventos de este documento.
+- El pipeline de inventario entrega at-least-once con deduplicación por `event_id`; el envelope CloudEvents y la arquitectura descrita aquí siguen siendo propuestas de diseño y no son el formato de ese worker.
 - La base de datos operativa es **PostgreSQL (Supabase)** para inventario y **TinyDB** (JSON flat file) para auth, incidents y suppliers.
 - El backend es **FastAPI (Python)** con **SQLModel/SQLAlchemy**.
 - El frontend es **Next.js/TypeScript**.

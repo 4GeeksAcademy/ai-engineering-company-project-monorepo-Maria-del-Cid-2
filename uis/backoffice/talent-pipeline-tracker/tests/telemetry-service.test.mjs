@@ -8,8 +8,18 @@ import { TelemetryService } from "../lib/telemetry/telemetry-service.ts";
 
 describe("TelemetryService", () => {
   let service;
+  let originalFetch;
 
   beforeEach(() => {
+    // Node's fetch requires absolute URLs, while the browser app intentionally
+    // uses a same-origin relative telemetry endpoint. Keep these unit tests
+    // isolated from both URL parsing and network availability.
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ received: 1 }),
+    });
+
     // Reset singleton for test isolation
     TelemetryService.resetInstance();
     service = TelemetryService.getInstance();
@@ -20,6 +30,7 @@ describe("TelemetryService", () => {
     if (service) {
       TelemetryService.resetInstance();
     }
+    globalThis.fetch = originalFetch;
   });
 
   describe("Initialization", () => {

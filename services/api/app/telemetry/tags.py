@@ -9,10 +9,10 @@ from typing import Any
 # backend avoids loading repository documentation as a runtime dependency.
 EVENT_TAG_ALLOWLIST: dict[str, frozenset[str]] = {
     "inbound_order_created": frozenset({"product_id", "product_sku", "product_category", "programme_id", "quantity", "supplier", "office", "currency", "unit_cost", "user_uuid"}),
-    "outbound_order_created": frozenset({"product_id", "product_sku", "product_category", "programme_id", "quantity", "exit_type", "office", "user_uuid"}),
-    "stock_threshold_triggered": frozenset({"product_id", "product_sku", "product_category", "office", "current_stock", "threshold", "stock_level"}),
+    "outbound_order_created": frozenset({"product_id", "product_sku", "product_category", "programme_id", "quantity", "exit_type", "office", "currency", "user_uuid"}),
+    "stock_threshold_triggered": frozenset({"product_id", "product_sku", "product_category", "programme_id", "office", "currency", "current_stock", "threshold", "stock_level", "movement_id"}),
     "direct_stock_edit_rejected": frozenset({"product_id", "product_sku", "attempted_action", "reason", "user_uuid"}),
-    "kit_cost_variance_detected": frozenset({"product_id", "product_sku", "product_category", "kit_composition", "expected_cost", "actual_cost", "variance_percent", "currency", "office"}),
+    "kit_cost_variance_detected": frozenset({"product_id", "product_sku", "product_category", "programme_id", "kit_composition", "expected_cost", "actual_cost", "variance_percent", "currency", "office", "preparation_id"}),
     "login_succeeded": frozenset({"user_uuid"}),
     "login_failed": frozenset({"user_uuid", "failure_reason"}),
     "account_created": frozenset({"user_uuid"}),

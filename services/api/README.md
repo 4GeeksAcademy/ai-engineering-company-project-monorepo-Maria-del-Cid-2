@@ -13,6 +13,34 @@ python -m pip install -e .
 uvicorn app.main:app --reload
 ```
 
+## Pipeline de reporting de inventario
+
+Las escrituras inbound y outbound guardan el movimiento y su evento en la tabla
+`telemetry_outbox` dentro de la misma transacción de inventario. Un proceso
+separado (`inventory-outbox-worker`) consume esa outbox y escribe de forma
+idempotente en `public.telemetry_events`, usando `event_id` como clave única.
+API y worker comparten `DATABASE_URL`; el worker también requiere
+`TELEMETRY_DATABASE_URL`. Ejecuta la migración aditiva de inventario antes de
+arrancar el worker; no migra al iniciar. Consulta
+`services/inventory-outbox-worker/README.md` para ejecución, Compose, reintentos,
+leases y retención.
+
+El pipeline emite `inbound_order_created`, `outbound_order_created`,
+`stock_threshold_triggered` y `kit_cost_variance_detected`. La alerta de stock
+se emite cuando una salida cruza de `stock >= threshold` a `stock < threshold`;
+no se repite mientras siga por debajo, y se rearma al reponer hasta el umbral o
+más. La variancia del kit usa el coste medio ponderado y los snapshots de
+preparación. La entrega es at-least-once con deduplicación por `event_id`; no
+existe transacción distribuida entre las dos bases.
+
+El seed de inventario de demostración es explícito y separado del seed
+histórico. Ejecuta primero el seed de programas y luego, desde `services/api`,
+usa `uv run python -m app.inventory.seed --environment test --programme-id
+prog-digital-skills-001 --demo`. Solo se permite con identidad de base
+`development` o `test`; no se ejecuta al iniciar la API. Los activos de demo
+usan SKU con prefijo `NXV-DEMO-` y los movimientos se crean por operaciones de
+dominio para mantener ledger, valoración y outbox coherentes.
+
 Configura `CORS_ORIGINS` como una lista separada por comas de orígenes exactos
 (esquema, host y puerto), sin `*`. Si no se define, se incluye `localhost:3000`
 y, cuando existe `CODESPACE_NAME`, el origen exacto

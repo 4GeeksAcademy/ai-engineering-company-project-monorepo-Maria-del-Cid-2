@@ -1,5 +1,108 @@
 # Progress — Nexova
 
+### Reporting semanal de negocio — validación operacional pendiente
+
+- Prefect local en Compose, pool process y deployment
+  `weekly_office_program_performance/weekly-office-program-performance`
+  están activos; cron `15 0 * * 1` en `UTC`. PostgreSQL 16 de reporting es
+  dedicado, healthy y tiene `reporting.pipeline_runs` y
+  `reporting.weekly_office_program_performance`.
+- Backend reconstruido con Prefect en `requirements.txt`. Se corrigió en
+  `services/api/app/reporting/trigger.py` el slug del flow del default, que
+  discrepaba con el deployment registrado.
+- Conectividad de solo lectura desde el worker a `public.telemetry_events`
+  verificada para la semana UTC 2026-11-02. La fuente contiene 14 eventos de
+  los tipos procesados: 12 inbound, 1 outbound y 1 stock threshold; los 14
+  carecen de `programme_id` y solo 6 contienen `office`. La transformación
+  real en memoria confirmó 14 procesados, 14 rechazados y cero filas KPI.
+- No se disparó una corrida Prefect manual: la transformación conocida no
+  produciría métricas y registraría datos rechazados; no se usó seed, no se
+  cambió la fuente y no se escribió a reporting. Hace falta corregir/emitir
+  eventos de telemetría con dimensiones válidas mediante el flujo autorizado
+  de inventario antes de validar persistencia end-to-end.
+- No se observó aún una ejecución natural del cron. La próxima ocurrencia es
+  lunes 2026-11-16 00:15 UTC; cron activo no equivale a ejecución verificada.
+- Revisión repetida el 2026-11-10: `reporting-db` healthy y Prefect Server,
+  reporting-worker y backend en ejecución. La API de Prefect confirma que el
+  deployment no está pausado y que su schedule está activo con cron
+  `15 0 * * 1`, timezone `UTC`. Esto confirma configuración, no que el worker
+  haya procesado una ocurrencia natural.
+- Pruebas focalizadas de reporting: `uv run --project services/api python -m
+  pytest services/api/tests/test_weekly_reporting_pipeline.py
+  services/api/tests/test_reporting_api.py -q` → **22 passed** (una warning de
+  deprecación de Starlette/httpx). Estas pruebas no ejecutan el flow desplegado
+  ni verifican escritura en las bases operativas.
+- La corrida manual permanece sin ejecutar. La conectividad a la fuente no se
+  reintentó en esta comprobación porque la credencial de telemetría quedó
+  expuesta accidentalmente en una salida anterior: rotarla y actualizar el
+  secreto local antes de cualquier nuevo acceso. Después, volver a validar
+  dimensiones con consultas agregadas; solo solicitar el run si hay eventos
+  válidos, y comprobar el run y resultados persistidos.
+- Fase 6 iniciada (2026-11-10): suite focalizada ampliada a API reporting,
+  transformación/flow, router/repositorio/analítica técnica de telemetría →
+  **53 passed, 1 warning, 4 subtests passed**. Se añadió prueba HTTP mockeada
+  para `GET /api/telemetry/report`; `services/api/app/telemetry/analysis.py`
+  conserva hash idéntico a `HEAD`. `git diff --check` pasó.
+- La Fase 6 sigue **parcial y no cerrada**: no se ejecutó CLI ni flow real,
+  migración o upsert en PostgreSQL desechable, prueba E2E de moneda/reintentos,
+  ni run natural. Los tests usan mocks/unit tests para DB y Prefect; la
+  separación `SELECT public.telemetry_events` / escrituras `reporting.*` se
+  confirmó por inspección estática. No hay evidencia de que nuevos eventos
+  hayan llegado a telemetría. Ver matriz y brechas en
+  `docs/aprendiendo/aprendiendo-pipeline-negocio.md`, sección 7.
+- Sigue pendiente evaluar UI de seguimiento en el backoffice. El POST manual
+  ya está protegido para administradores; no se modificó UI.
+- No hubo commit ni push. La ejecución integral y documentación de esta fase
+  deben cerrarse cuando exista una semana con eventos de negocio completos.
+
+### Inventory reporting pipeline — Phase 3 demo/events (in progress)
+
+- Additional validation: disposable PostgreSQL 16 containers successfully ran schema creation and two reruns of both inventory migrations. A synthetic inbound event was delivered by `deliver_batch` to a separate disposable PostgreSQL telemetry database; a subsequent worker iteration claimed no duplicate, destination row count remained one, and source outbox status was `delivered`. Both containers were stopped/removed; no volumes were mounted.
+- Added SQLite legacy-schema migration regression test for nullable idempotency keys, unique indexes, historical-row preservation, and reruns. Added a successful demo-mode test proving no `programme_id` is required when the `--demo` branch is selected.
+- Focused validation now passes: `uv run pytest tests/test_inventory_seed.py tests/test_inventory_seed_migration.py tests/test_inventory_phase2_events.py -q` → 25 passed, 13 subtests passed. Editor diagnostics and `git diff --check` were clean at the previous checkpoint; rerun final review after this update.
+- Full API suite remains non-conclusive: prior run had 257 passed and one unrelated-looking concurrent TinyDB password-reset JSONDecodeError before KeyboardInterrupt. Do not claim a clean full-suite run.
+
+La Fase 3 amplía exclusivamente Inventory y el flujo outbox/worker existente;
+no incluye reporting/Prefect ni instrumentación frontend. Los datos históricos
+quedan intactos y los seeds demo son explícitos, aditivos y protegidos para
+destinos `development`/`test`. No se realizaron commits, push ni PR.
+
+- Implementados campos `seed_key` en entradas/salidas y `idempotency_key` en
+  preparaciones de kit, con migración aditiva y protección de repetición.
+- El seed demo crea 16 variantes de activos, 12 entradas, 10 salidas regulares
+  y una preparación de kit que registra 3 consumos; dos escenarios usan el
+  threshold aprobado. Movimientos pasan por operaciones de dominio para crear
+  ledger, valoración y outbox; el seed histórico conserva sus 6 activos y no
+  incorpora el catálogo demo.
+- Regla de cruce: `before_stock >= threshold` y `after_stock < threshold`; sin
+  repetición mientras stock siga bajo, y rearme al reponer hasta el límite.
+- Reparados imports de migración, separación del seed histórico y test de
+  threshold. Focalizados: `uv run pytest tests/test_inventory_phase2_events.py
+  tests/test_inventory_seed.py -q` → **21 passed, 13 subtests passed**.
+- El CLI permite omitir `--programme-id` con `--demo`; modo histórico continúa
+  exigiéndolo en `main`. Aún pendiente test de CLI dedicado.
+- Documentación actualizada en API, worker y contrato de esquema, además de
+  esta guía y Memory Bank.
+- Pendiente: pruebas demo de conteos/idempotencia y payload distinto para
+  `seed_key`; validar migración PostgreSQL y flujo outbox→worker→PostgreSQL con
+  bases desechables; revisar el stock del manual tras preparación del kit; el
+  checklist final/diff también sigue pendiente.
+
+Detenerse para revisión del usuario al completar pruebas seguras y sin commit.
+
+### Inventory reporting pipeline — Phase 2 implementation
+
+**Status:** Implementación de persistencia transaccional y worker terminada; validación integral y decisiones de reglas de negocio documentadas abajo. No iniciar Phase 3 de este pipeline sin aprobación explícita.
+
+- Entradas y salidas guardan su evento `inbound_order_created` / `outbound_order_created` en `telemetry_outbox` dentro de la misma transacción que el movimiento. Los eventos llevan ID estable y dimensiones actuales, incluido programa, coste de entrada y moneda.
+- Worker independiente con claims/leases recuperables, fencing token, entrega at-least-once, idempotencia de destino, reintentos acotados, dead-letter, cierre SIGTERM/SIGINT y retención de eventos terminales. Compose expone `inventory-outbox-worker` sin puertos.
+- Se agregaron pruebas SQLite aisladas de ciclo de vida del worker; **7 pasan** en `uv run pytest tests/test_inventory_outbox_worker.py -q`. Estas no verifican concurrencia PostgreSQL/`SKIP LOCKED`.
+- Validación backend focalizada: **56 passed, 1 skipped y 28 subtests passed** en la suite de inventario/worker. Frontend: tests de contrato de inventario **12 passed**; `npx tsc --noEmit` finalizó sin errores. `git diff --check` pasó. La suite frontend completa no se pudo validar porque los intentos no entregaron un resumen/estado concluyente y mostraron ruido `ERR_INVALID_URL` del endpoint de telemetría.
+- Validación adicional de las tareas pendientes: suite frontend completa **87/87 passed** (`npm test`); se ajustó el test de TelemetryService para simular `fetch`, ya que Node no resuelve el endpoint same-origin relativo `/api/telemetry/events` fuera del navegador. `docker compose config --quiet` y `docker compose build` pasaron para los tres servicios. Worker en contenedor: arranque correcto (`Inventory outbox worker started`) contra PostgreSQL desechable. Migración aplicada dos veces en PostgreSQL 16 desechable: tablas/columnas/índice de claim correctos, idempotente y preserva la fila legacy con `unit_cost=NULL`. Concurrencia: dos threads/workers reclamaron 20 eventos sin intersección; se probó expiración/recuperación del lease, token nuevo y rechazo de ack obsoleto. Los contenedores desechables se eliminaron al terminar.
+- El esquema de eventos fue corregido para reflejar la implementación real, sin afirmar que el catálogo entero esté instrumentado. `stock_threshold_triggered` y `kit_cost_variance_detected` no se emiten: falta aprobar umbrales, composición/coste esperado y reglas de variancia; no inferirlos desde las visuales existentes.
+- Integración E2E adicional completada en dos PostgreSQL 16 desechables: se migró Inventory/outbox, se preparó un movimiento/evento inbound de prueba, y el worker Compose lo entregó al PostgreSQL de telemetría (`claimed=1, delivered=1, retried=0, dead=0`). El outbox quedó `delivered`, el destino tuvo exactamente una fila con tags filtrados correctos, y repetir el mismo `event_id` no duplicó el evento. Se eliminaron worker y ambas bases temporales. Supabase y bases persistentes de usuario no se usaron.
+- Pendiente: despliegue operacional con configuración/datos reales y pruebas de entrega bajo fallos de red/destino. La prueba E2E fue controlada y desechable; no se usó Supabase ni una base persistente de usuario.
+
 ### Telemetry Instrumentation — Phase 3: Backoffice Event Instrumentation
 
 **Status:** ✅ **COMPLETE (14/14 events)**
@@ -817,3 +920,44 @@ de programa, coste, moneda, kit y umbral; emitir datos de negocio completos y
 versionables; aprobar la hora de ejecución semanal; e instalar/configurar
 Prefect, el módulo `services/reporting/`, las migraciones y los permisos de
 PostgreSQL.
+
+## Business reporting: Fase previa a la Fase 2 — Programmes en Inventory
+
+Se creó `feature/business-reporting-pipeline-implementation` desde el último
+`origin/main` (`2448038`), preservando la rama de diseño. El diagnóstico y plan
+por fases están en `docs/aprendiendo/aprendiendo-pipeline-negocio.md`. La lectura
+real de PostgreSQL confirmó 10 inbound, 1 outbound, 1 alerta y ninguna variación
+de kits; ninguno de los 12 eventos tiene `programme_id` y ningún inbound tiene
+`unit_cost`. El esquema `reporting` todavía no existe y Prefect no está instalado
+en el intérprete comprobado. No se ha implementado el ETL, modificado el informe
+técnico ni ejecutado migraciones. La Fase 2 requiere definir los datos reales
+de programas, kits, costes, umbrales y garantía de entrega de eventos antes de
+desarrollar los emisores y modelos necesarios.
+
+El usuario aprobó implementar la fase previa: Programmes en Inventory y
+asociación de cada movimiento nuevo a un programa, sin ligarlo al producto.
+Quedaron confirmados el conteo de un outbound válido por entrega, la moneda
+exclusiva por oficina (Valencia/EUR y Miami/USD), la integración HTTP futura en
+`services/api/app/reporting/`, Prefect 3 self-hosted, la CLI original y el
+horario semanal del lunes a las 00:15 UTC. El trabajo implementado y su
+validación local están documentados en
+`docs/aprendiendo/aprendiendo-pipeline-negocio.md`.
+
+Se aprobaron los IDs de prueba `prog-digital-skills-001`,
+`prog-technical-onboarding-001` y `prog-professional-development-001`.
+Los movimientos anteriores conservarán `programme_id = NULL` y se mostrarán
+como "Sin programa asignado (histórico)"; los nuevos requerirán un programa
+existente. El reporting por programa no atribuirá esos históricos a ninguno.
+La fase previa está lista para revisión del usuario. No se ha implementado el
+outbox ni se han definido reglas de alertas o variaciones de costes; la Fase 2
+original permanece detenida y fuera de este alcance.
+
+Verificación final local: `test_inventory*.py` **48 OK, 1 skip** (concurrencia
+PostgreSQL opcional); frontend **87 tests OK** en la última ejecución,
+`npx tsc --noEmit`, ESLint focalizado y `npm run build` OK. La suite frontend
+registra warnings de telemetría por su URL relativa en Node; el lint global
+reporta errores preexistentes fuera de los archivos modificados. Se corrigió
+la comparación de URL SQLite del test de infraestructura para que sea
+independiente de la serialización de Windows. `git diff --check` OK. Migración
+comprobada solo sobre SQLite efímero con esquema legado; no se tocó ninguna
+base real. Sin commits ni push.

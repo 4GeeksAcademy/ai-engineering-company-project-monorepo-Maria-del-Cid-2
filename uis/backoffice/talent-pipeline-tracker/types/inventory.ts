@@ -17,6 +17,12 @@
 
 export const INVENTORY_OFFICES = ["Valencia", "Miami"] as const;
 export type InventoryOffice = (typeof INVENTORY_OFFICES)[number];
+export type InventoryCurrency = "EUR" | "USD";
+
+export interface Programme {
+  programme_id: string;
+  name: string;
+}
 
 export function currencyForInventoryOffice(office: string): "EUR" | "USD" | null {
   if (office === "Valencia") return "EUR";
@@ -56,27 +62,34 @@ export interface AssetWithStock {
   sku: string;
   category: string;
   office: string;
+  currency: InventoryCurrency;
   current_stock: number;
 }
 
 /** Payload to create an inbound movement (a received delivery). */
 export interface AssetEntryCreate {
   asset_id: number;
+  programme_id: string;
   quantity: number;
+  unit_cost: number;
   supplier: string;
   office: string;
 }
 
 /** A created inbound movement as returned by the API. */
-export interface AssetEntry extends AssetEntryCreate {
+export interface AssetEntry extends Omit<AssetEntryCreate, "programme_id" | "unit_cost"> {
   id: number;
   created_at: string;
   user_uuid: string;
+  programme_id: string | null;
+  currency: InventoryCurrency;
+  unit_cost: number | null;
 }
 
 /** Payload to create an outbound movement (consumption or allocation). */
 export interface AssetExitCreate {
   asset_id: number;
+  programme_id: string;
   quantity: number;
   exit_type: InventoryExitType;
   assigned_to: string | null;
@@ -84,10 +97,12 @@ export interface AssetExitCreate {
 }
 
 /** A created outbound movement as returned by the API. */
-export interface AssetExit extends AssetExitCreate {
+export interface AssetExit extends Omit<AssetExitCreate, "programme_id"> {
   id: number;
   created_at: string;
   user_uuid: string;
+  programme_id: string | null;
+  currency: InventoryCurrency;
 }
 
 /** Entry variant of the unified movement list. */
