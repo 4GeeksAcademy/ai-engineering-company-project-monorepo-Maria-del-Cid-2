@@ -638,3 +638,25 @@ separación de capas: HTTP solicita; Prefect orquesta; las tareas del pipeline
 calculan; PostgreSQL materializa y registra. No se ha creado el módulo, el
 router, las tablas, las importaciones ni el deployment en este hito de diseño.
 
+
+## Phase 5 implementation status � CLI and HTTP reporting
+
+The CLI is exposed as `main(argv=None)` and remains runnable from the repository
+root with `uv run --project services/api python data/pipelines/pipeline.py`.
+Use `--week-start YYYY-MM-DD` for an explicit ISO-week Monday and
+`--trigger-type manual|scheduled` to label the run. With no week, the flow
+selects the most recently closed ISO week. The command does not configure a
+scheduler by itself.
+
+The approved cadence is Mondays at 00:15 UTC. This is a scheduling decision,
+not an active Prefect schedule: an operator must configure the self-hosted
+Prefect deployment/work pool and its schedule. The API's manual trigger asks
+the configured Prefect deployment to run; it does not execute the ETL inside
+the FastAPI worker. `REPORTING_PREFECT_DEPLOYMENT` can override the default
+`weekly-office-program-performance/weekly-office-program-performance` name.
+
+The authenticated `/api/reporting` router provides the latest persisted run,
+manual run requests (administrator only), and read-only weekly KPI filters.
+Storage uses `REPORTING_DATABASE_URL`; it returns 503 when configuration,
+PostgreSQL, or the Prefect deployment is unavailable. No live DB migration or
+Prefect deployment was performed as part of this implementation.

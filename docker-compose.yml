@@ -32,12 +32,87 @@ services:
       - .env
     environment:
       TELEMETRY_DATABASE_URL: "${TELEMETRY_DATABASE_URL}"
+      REPORTING_DATABASE_URL: "${REPORTING_DATABASE_URL}"
+      PREFECT_API_URL: "http://prefect-server:4200/api"
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:
       - ./services/api:/app/services/api
       - ./packages/shared/python:/app/packages/shared/python
       - ./services/data:/app/services/data
+    depends_on:
+      reporting-db:
+        condition: service_healthy
+    networks:
+      - nexova
+
+  reporting-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: "${REPORTING_DB_NAME:-nexova_reporting}"
+      POSTGRES_USER: "${REPORTING_DB_USER:?Set REPORTING_DB_USER in .env}"
+      POSTGRES_PASSWORD: "${REPORTING_DB_PASSWORD:?Set REPORTING_DB_PASSWORD in .env}"
+    volumes:
+      - reporting_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - nexova
+
+  prefect-server:
+    build:
+      context: .
+      dockerfile: services/reporting-worker/Dockerfile
+    command: ["uv", "run", "--project", "/app/services/api", "prefect", "server", "start", "--host", "0.0.0.0", "--port", "4200"]
+    environment:
+      PREFECT_HOME: /var/lib/prefect
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+    ports:
+      - "${PREFECT_PORT:-4200}:4200"
+    volumes:
+      - prefect_server_data:/var/lib/prefect
+    restart: unless-stopped
+    networks:
+      - nexova
+
+  reporting-worker:
+    build:
+      context: .
+      dockerfile: services/reporting-worker/Dockerfile
+    command: ["uv", "run", "--project", "/app/services/api", "prefect", "worker", "start", "--pool", "reporting-process-pool"]
+    environment:
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      TELEMETRY_DATABASE_URL: "${TELEMETRY_DATABASE_URL}"
+      REPORTING_DATABASE_URL: "${REPORTING_DATABASE_URL}"
+      PREFECT_HOME: /var/lib/prefect
+    volumes:
+      - prefect_worker_data:/var/lib/prefect
+    depends_on:
+      reporting-db:
+        condition: service_healthy
+      prefect-server:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - nexova
+
+  reporting-deployer:
+    build:
+      context: .
+      dockerfile: services/reporting-worker/Dockerfile
+    command: ["sh", "/app/services/reporting-worker/deploy.sh"]
+    environment:
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      PREFECT_HOME: /var/lib/prefect
+    volumes:
+      - prefect_worker_data:/var/lib/prefect
+    depends_on:
+      - prefect-server
+    profiles: ["reporting-setup"]
     networks:
       - nexova
 
@@ -69,6 +144,9 @@ services:
 volumes:
   interfaces_node_modules:
   interfaces_next_cache:
+  reporting_postgres_data:
+  prefect_server_data:
+  prefect_worker_data:
 
 networks:
   nexova:

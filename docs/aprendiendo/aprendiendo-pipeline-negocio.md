@@ -329,3 +329,42 @@ worker → `telemetry_events` para `stock_threshold_triggered` y
 `kit_cost_variance_detected`, así como la repetición idempotente por `event_id`.
 Esto no elimina la limitación de ausencia de transacción distribuida: la
 garantía se apoya en outbox at-least-once y unicidad en destino.
+## Fase 5 � estado de CLI y API reporting
+
+Implementado en el c�digo: `data/pipelines/pipeline.py` expone `main(argv=None)`
+y puede ejecutarse desde la ra�z con `uv run --project services/api python
+data/pipelines/pipeline.py [--week-start YYYY-MM-DD]
+[--trigger-type manual|scheduled]`. La semana debe comenzar en lunes ISO; sin
+fecha se calcula la �ltima semana cerrada. La cadencia aprobada sigue siendo
+lunes a las 00:15 UTC. Se despleg� un Prefect Server local en Compose con pool
+`reporting-process-pool` y deployment
+`weekly_office_program_performance/weekly-office-program-performance`; la API
+de Prefect confirma el cron activo `15 0 * * 1` en `UTC`. PostgreSQL de
+reporting es una instancia local dedicada y contiene las tablas del esquema
+`reporting`.
+
+La API protegida expone `GET /api/reporting/pipeline-runs/latest`,
+`POST /api/reporting/pipeline-runs` (solo admin, respuesta 202; delega a un
+Prefect deployment) y `GET /api/reporting/weekly-office-program-performance`.
+La configuraci�n del deployment se puede sobrescribir con
+`REPORTING_PREFECT_DEPLOYMENT`; la persistencia utiliza
+`REPORTING_DATABASE_URL`. El backend se reconstruy� con Prefect y se corrigi�
+el slug por defecto del flow en el adaptador de disparo.
+
+La conectividad de solo lectura desde el worker a `public.telemetry_events` se
+comprob� para la semana UTC 2026-11-02. Hab�a 14 eventos elegibles: 12
+`inbound_order_created`, 1 `outbound_order_created` y 1
+`stock_threshold_triggered`. Los 14 carec�an de `programme_id`, y solo 6
+conten�an `office`; la transformaci�n real en memoria confirm� 14 eventos
+rechazados y cero filas agregadas. Por ello no se solicit� un flow run manual
+ni se escribi� en reporting: correrlo con esa fuente no generar�a KPI �tiles.
+No se modific� ni seed� la telemetr�a. Para completar la prueba end-to-end
+hay que producir eventos de negocio con las dimensiones requeridas y repetir
+la validaci�n sobre una semana adecuada.
+
+La configuraci�n del schedule est� verificada, pero todav�a no se observ� una
+ejecuci�n natural. La siguiente ocurrencia cron esperada es lunes 2026-11-16 a
+las 00:15 UTC; una corrida manual no cuenta como verificaci�n del cron. El
+backoffice ya tiene Reports/System Analytics; se recomienda considerar una
+vista admin de seguimiento del pipeline en esa secci�n, usando los endpoints
+protegidos existentes, pero no se modific� la interfaz.

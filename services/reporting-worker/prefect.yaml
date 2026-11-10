@@ -1,0 +1,25 @@
+name: weekly-office-program-performance
+prefect-version: null
+build: null
+push: null
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /app
+
+deployments:
+  - name: weekly-office-program-performance
+    version: null
+    tags: [reporting, weekly]
+    description: Weekly office and programme performance aggregation.
+    entrypoint: /app/data/pipelines/pipeline.py:weekly_office_program_performance_flow
+    parameters:
+      trigger_type: scheduled
+    work_pool:
+      name: reporting-process-pool
+      work_queue_name: default
+      job_variables: {}
+    schedules:
+      - cron: "15 0 * * 1"
+        timezone: UTC
+        day_or: true
+        active: true

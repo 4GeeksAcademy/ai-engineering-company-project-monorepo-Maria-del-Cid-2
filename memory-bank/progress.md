@@ -1,5 +1,48 @@
 # Progress — Nexova
 
+### Reporting semanal de negocio — validación operacional pendiente
+
+- Prefect local en Compose, pool process y deployment
+  `weekly_office_program_performance/weekly-office-program-performance`
+  están activos; cron `15 0 * * 1` en `UTC`. PostgreSQL 16 de reporting es
+  dedicado, healthy y tiene `reporting.pipeline_runs` y
+  `reporting.weekly_office_program_performance`.
+- Backend reconstruido con Prefect en `requirements.txt`. Se corrigió en
+  `services/api/app/reporting/trigger.py` el slug del flow del default, que
+  discrepaba con el deployment registrado.
+- Conectividad de solo lectura desde el worker a `public.telemetry_events`
+  verificada para la semana UTC 2026-11-02. La fuente contiene 14 eventos de
+  los tipos procesados: 12 inbound, 1 outbound y 1 stock threshold; los 14
+  carecen de `programme_id` y solo 6 contienen `office`. La transformación
+  real en memoria confirmó 14 procesados, 14 rechazados y cero filas KPI.
+- No se disparó una corrida Prefect manual: la transformación conocida no
+  produciría métricas y registraría datos rechazados; no se usó seed, no se
+  cambió la fuente y no se escribió a reporting. Hace falta corregir/emitir
+  eventos de telemetría con dimensiones válidas mediante el flujo autorizado
+  de inventario antes de validar persistencia end-to-end.
+- No se observó aún una ejecución natural del cron. La próxima ocurrencia es
+  lunes 2026-11-16 00:15 UTC; cron activo no equivale a ejecución verificada.
+- Revisión repetida el 2026-11-10: `reporting-db` healthy y Prefect Server,
+  reporting-worker y backend en ejecución. La API de Prefect confirma que el
+  deployment no está pausado y que su schedule está activo con cron
+  `15 0 * * 1`, timezone `UTC`. Esto confirma configuración, no que el worker
+  haya procesado una ocurrencia natural.
+- Pruebas focalizadas de reporting: `uv run --project services/api python -m
+  pytest services/api/tests/test_weekly_reporting_pipeline.py
+  services/api/tests/test_reporting_api.py -q` → **22 passed** (una warning de
+  deprecación de Starlette/httpx). Estas pruebas no ejecutan el flow desplegado
+  ni verifican escritura en las bases operativas.
+- La corrida manual permanece sin ejecutar. La conectividad a la fuente no se
+  reintentó en esta comprobación porque la credencial de telemetría quedó
+  expuesta accidentalmente en una salida anterior: rotarla y actualizar el
+  secreto local antes de cualquier nuevo acceso. Después, volver a validar
+  dimensiones con consultas agregadas; solo solicitar el run si hay eventos
+  válidos, y comprobar el run y resultados persistidos.
+- Sigue pendiente evaluar UI de seguimiento en el backoffice. El POST manual
+  ya está protegido para administradores; no se modificó UI.
+- No hubo commit ni push. La ejecución integral y documentación de esta fase
+  deben cerrarse cuando exista una semana con eventos de negocio completos.
+
 ### Inventory reporting pipeline — Phase 3 demo/events (in progress)
 
 - Additional validation: disposable PostgreSQL 16 containers successfully ran schema creation and two reruns of both inventory migrations. A synthetic inbound event was delivered by `deliver_batch` to a separate disposable PostgreSQL telemetry database; a subsequent worker iteration claimed no duplicate, destination row count remained one, and source outbox status was `delivered`. Both containers were stopped/removed; no volumes were mounted.
