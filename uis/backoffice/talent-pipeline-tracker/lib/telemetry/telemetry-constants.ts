@@ -102,7 +102,6 @@ export const APPROVED_FRONTEND_EVENTS = {
   // Inventory (from client context)
   inbound_order_created: true,
   outbound_order_created: true,
-  stock_threshold_triggered: true,
 
   // Incidents (from client context)
   incident_status_changed: true,

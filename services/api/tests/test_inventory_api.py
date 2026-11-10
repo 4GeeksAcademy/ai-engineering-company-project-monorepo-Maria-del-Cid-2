@@ -131,6 +131,33 @@ class InventoryApiTests(unittest.TestCase):
         self.assertEqual(entry["asset_id"], asset.id)
         self.assertEqual(exit_order["assigned_to"], "Alex")
 
+    def test_phase2_configuration_and_regularization_require_admin(self) -> None:
+        asset = self.add_asset()
+        non_admin = User(
+            id=9877,
+            email="inventory-user@nexova.com",
+            hashed_password="fake",
+            is_active=True,
+            role=UserRole.USER,
+            created_at=datetime.now(timezone.utc),
+            user_uuid=UUID("9a1aec0f-3165-4faf-a1d6-d1157a3e4bc2"),
+        )
+        app.dependency_overrides[get_current_user] = lambda: non_admin
+        threshold = self.client.put("/api/inventory/thresholds", json={
+            "asset_id": asset.id, "office": "Valencia", "threshold": 2,
+        })
+        kit = self.client.put("/api/inventory/kits", json={
+            "kit_asset_id": asset.id, "office": "Valencia", "expected_cost": 10,
+            "components": [{"component_asset_id": asset.id + 1, "quantity_per_kit": 1}],
+        })
+        regularization = self.client.post("/api/inventory/valuation/regularizations", json={
+            "asset_id": asset.id, "office": "Valencia", "quantity": 1,
+            "approved_unit_cost": 4, "reason": "test",
+        })
+        self.assertEqual(threshold.status_code, 403)
+        self.assertEqual(kit.status_code, 403)
+        self.assertEqual(regularization.status_code, 403)
+
     def test_all_inventory_endpoints_require_authentication(self) -> None:
         app.dependency_overrides.pop(get_current_user)
         for path in (

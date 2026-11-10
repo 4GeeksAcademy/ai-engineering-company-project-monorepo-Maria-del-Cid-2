@@ -6,9 +6,7 @@ import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
 import { createOutbound, listProducts, listProgrammes, inventoryErrorMessage } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
-import { useTelemetry } from "@/hooks/useTelemetry";
 import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
-import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-threshold";
 import {
   INVENTORY_EXIT_TYPES,
   INVENTORY_OFFICE_OPTIONS,
@@ -39,7 +37,6 @@ const EXIT_TYPE_OPTIONS = INVENTORY_EXIT_TYPES.map((exitType) => ({
 }));
 
 export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanelProps) {
-  const telemetry = useTelemetry();
   // Track form_opened and form_abandoned lifecycle
   const instanceId = useFormLifecycleTracking({
     formId: "outbound-form",
@@ -152,16 +149,6 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
     try {
       const createdOrder = await createOutbound(nexovaApi, payload);
       // Inventory business events are durably queued by the API transaction.
-      void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
-        (updatedProduct) => {
-          if (!updatedProduct) return;
-          setProducts((current) =>
-            current.map((product) =>
-              product.id === updatedProduct.id ? updatedProduct : product,
-            ),
-          );
-        },
-      );
       // Mark form as successfully submitted to prevent form_abandoned tracking
       markFormAsSubmitted(instanceId);
       setCreated({

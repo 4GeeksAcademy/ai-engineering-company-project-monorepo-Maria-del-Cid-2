@@ -9,7 +9,17 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine, make_url
 
 from .database import get_database_url, get_engine
-from .models import Programme, TelemetryOutboxEvent
+from .models import (
+    InventoryRegularization,
+    InventoryValuation,
+    InventoryValuationLedger,
+    KitComponent,
+    KitConfiguration,
+    KitPreparation,
+    Programme,
+    StockThreshold,
+    TelemetryOutboxEvent,
+)
 from .seed import validate_seed_target
 
 
@@ -63,6 +73,52 @@ def migrate_programmes(engine: Engine) -> None:
             if index.name == "ix_telemetry_outbox_claim"
         )
         claim_index.create(connection, checkfirst=True)
+
+
+def migrate_phase2_events(engine: Engine) -> None:
+    """Create additive valuation/configuration tables without inventing costs.
+
+    Existing net stock is initialized as unvalued, because legacy exits have no
+    cost allocation and historical receipts may have no unit cost. Re-running
+    the migration never overwrites valuation state established after migration.
+    """
+
+    with engine.begin() as connection:
+        inspector = inspect(connection)
+        required = {"assets", "asset_entries", "asset_exits", "programmes", "telemetry_outbox"}
+        if not required.issubset(inspector.get_table_names()):
+            raise RuntimeError("Run the programmes/outbox migration before the Phase 2 events migration.")
+
+        bad_office = connection.execute(text(
+            "SELECT COUNT(*) FROM assets WHERE office NOT IN ('Valencia', 'Miami')"
+        )).scalar_one()
+        if bad_office:
+            raise RuntimeError("Assets contain noncanonical offices; valuation initialization cancelled.")
+        negative_stock = connection.execute(text(
+            "SELECT COUNT(*) FROM assets a "
+            "LEFT JOIN (SELECT asset_id, SUM(quantity) q FROM asset_entries GROUP BY asset_id) e ON e.asset_id=a.id "
+            "LEFT JOIN (SELECT asset_id, SUM(quantity) q FROM asset_exits GROUP BY asset_id) x ON x.asset_id=a.id "
+            "WHERE COALESCE(e.q, 0) < COALESCE(x.q, 0)"
+        )).scalar_one()
+        if negative_stock:
+            raise RuntimeError("Negative historical stock exists; resolve it before initializing valuation.")
+        for model in (
+            StockThreshold,
+            InventoryValuation,
+            InventoryValuationLedger,
+            KitConfiguration,
+            KitComponent,
+            KitPreparation,
+            InventoryRegularization,
+        ):
+            model.__table__.create(connection, checkfirst=True)
+        connection.execute(text(
+            "INSERT INTO inventory_valuations (asset_id, valued_quantity, unvalued_quantity, average_cost) "
+            "SELECT a.id, 0, COALESCE(e.q, 0) - COALESCE(x.q, 0), 0 FROM assets a "
+            "LEFT JOIN (SELECT asset_id, SUM(quantity) q FROM asset_entries GROUP BY asset_id) e ON e.asset_id=a.id "
+            "LEFT JOIN (SELECT asset_id, SUM(quantity) q FROM asset_exits GROUP BY asset_id) x ON x.asset_id=a.id "
+            "WHERE NOT EXISTS (SELECT 1 FROM inventory_valuations v WHERE v.asset_id=a.id)"
+        ))
 
 
 def main() -> None:

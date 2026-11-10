@@ -132,18 +132,44 @@ def _claim_batch(engine: Any, settings: WorkerSettings, now: datetime) -> list[T
 
 
 def _to_record(event: TelemetryOutboxEvent) -> TelemetryRecord:
-    if event.event_type not in {"inbound_order_created", "outbound_order_created"}:
+    if event.event_type not in {
+        "inbound_order_created", "outbound_order_created",
+        "stock_threshold_triggered", "kit_cost_variance_detected",
+    }:
         raise ValueError("unsupported business event type")
     tags = filter_tags(event.event_type, event.tags)
-    if not tags or tags.get("product_id") is None or tags.get("quantity") is None:
-        raise ValueError("business event is missing required product or quantity tags")
+    if not tags or tags.get("product_id") is None:
+        raise ValueError("business event is missing required product tag")
+    if event.event_type in {"inbound_order_created", "outbound_order_created"} and tags.get("quantity") is None:
+        raise ValueError("movement event is missing quantity")
     if tags.get("programme_id") is None:
         raise ValueError("business event is missing programme_id")
     if event.event_type == "inbound_order_created":
         if tags.get("unit_cost") is None or tags.get("office") is None or tags.get("currency") is None:
             raise ValueError("inbound event is missing cost or office dimensions")
     elif tags.get("exit_type") is None or tags.get("office") is None or tags.get("currency") is None:
-        raise ValueError("outbound event is missing exit or office dimensions")
+        if event.event_type == "outbound_order_created":
+            raise ValueError("outbound event is missing exit or office dimensions")
+    if event.event_type == "stock_threshold_triggered":
+        if any(tags.get(key) is None for key in ("office", "currency", "current_stock", "threshold", "stock_level")):
+            raise ValueError("stock threshold event is missing required dimensions")
+        expected_currency = {"Valencia": "EUR", "Miami": "USD"}.get(tags["office"])
+        if expected_currency != tags["currency"]:
+            raise ValueError("stock threshold office and currency do not match")
+        if tags.get("programme_id") is None:
+            raise ValueError("stock threshold event requires programme attribution")
+    if event.event_type == "kit_cost_variance_detected":
+        if any(tags.get(key) is None for key in (
+            "office", "currency", "expected_cost", "actual_cost", "variance_percent", "kit_composition",
+        )):
+            raise ValueError("kit variance event is missing required cost dimensions")
+        if tags.get("programme_id") is None:
+            raise ValueError("kit variance event requires programme attribution")
+        expected_currency = {"Valencia": "EUR", "Miami": "USD"}.get(tags["office"])
+        if expected_currency != tags["currency"]:
+            raise ValueError("kit variance office and currency do not match")
+        if tags.get("preparation_id") is None or tags.get("variance_percent", 0) <= 0:
+            raise ValueError("kit variance event is missing preparation trace or positive variance")
     return TelemetryRecord(
         event_id=event.event_id,
         event_type=event.event_type,

@@ -2,9 +2,9 @@
 
 Esta guía registra el diagnóstico del pipeline y el estado de implementación.
 La fase previa de **Programmes dentro de Inventory está implementada y
-validada localmente** (ver sección 6). La Fase 2 se está implementando por
-etapas con pausa para aprobación entre ellas; esta primera etapa añade coste
-unitario en nuevas entradas y captura transaccional de eventos de movimientos.
+validada localmente** (ver sección 6). La Fase 2 se limita a las reglas
+aprobadas de umbral y coste de kits, además de su captura y entrega durable.
+No se implementan aquí el pipeline de reporting ni las fases posteriores.
 
 ## 1. Objetivo y contrato aprobado
 
@@ -55,23 +55,21 @@ upsert; la política de correcciones de negocio con otro UUID no está definida.
 - Prefect no está instalado en el intérprete Python consultado. La API declara
   `psycopg[binary]` y usa `TELEMETRY_DATABASE_URL`; el entorno de ejecución,
   el deployment y los Blocks de Prefect aún no están configurados.
-- `docs/telemetry/event-schemas.json` permite `programme_id` opcional en
-  inbound/outbound y `unit_cost` nulo en inbound; no declara `programme_id`
-  para alerta ni variación. El diseño del pipeline exige dimensiones completas
-  en los cuatro casos. Se necesitará una extensión aditiva de contratos y
-  emisores en Fase 2, sin reinterpretar el histórico.
+- `docs/telemetry/event-schemas.json` mantiene `programme_id` opcional para
+  movimientos históricos y permite `unit_cost` nulo en inbound. Los contratos
+  de umbral y variación incluyen dimensiones requeridas; el worker valida su
+  presencia y consistencia sin reinterpretar el histórico.
 
 ## 3. Dependencias imprescindibles y plan propuesto
 
 1. **Fase previa propuesta, programas:** crear programas formativos y asociar
   cada movimiento de inventario a uno de ellos. El producto no pertenece a un
   programa; conserva su oficina y su moneda. Ver sección 6.
-2. **Fase 2, fuente y entrega:** captura transaccional de eventos de
-  movimientos y coste de entrada en la etapa 1; luego worker independiente
-  para reclamar y entregar eventos con reintentos, dead-letter, backoff y
-  limpieza. Con las definiciones de negocio facilitadas, completar después
-  alertas de stock y variación de coste, y ampliar contratos para sus
-  dimensiones. No usar valores supuestos.
+2. **Fase 2, fuente y entrega:** implementada para las reglas aprobadas de
+  umbral de stock y variación de coste de kits, con captura transaccional,
+  worker independiente, reintentos, dead-letter y contratos ampliados. Ver
+  límites y verificaciones actuales en la sección de datos abajo. No se usan
+  valores históricos supuestos.
 3. **Fases 3 y 4, cálculo:** añadir migraciones PostgreSQL para
    `reporting.weekly_office_program_performance` y `reporting.pipeline_runs`;
    instalar Prefect 3 en el entorno acordado; implementar
@@ -215,7 +213,7 @@ programa ni asignar estos tres IDs a filas preexistentes.
   entre programas. No se toca el informe técnico ni se implementa todavía
   el pipeline de reporting.
 
-### Datos y reglas pendientes para la Fase 2
+### Datos, reglas y estado de Fase 2
 
 **Verificación local de esta fase previa:** backend `test_inventory*.py` —
 **48 tests OK, 1 skip** (prueba opcional de concurrencia PostgreSQL); frontend
@@ -227,53 +225,107 @@ señala errores preexistentes fuera de los archivos modificados. No se migró
 ninguna base real ni se creó commit/push.
 
 El seed de inventario contiene productos y movimientos, pero no programas,
-precios unitarios, costes esperados ni composición de kits. El frontend muestra
-niveles visuales en 8 y 2 unidades; no hay umbrales persistidos por
-producto/oficina/programa ni regla backend de cuándo emitir una alerta. Por
-eso se propondrá y aprobará por separado el modelo y criterio de
-`stock_threshold_triggered` y `kit_cost_variance_detected`, sin deducir
-porcentajes ni precios de ejemplos. El KPI de salidas conserva exactamente la
-fórmula confirmada, independientemente de `quantity` o categoría.
-Como propuesta para aprobación futura: configurar un umbral explícito por
-producto/oficina/programa y emitir una alerta cuando un movimiento haga que
-el stock pase de igual o superior a inferior al umbral; hay que confirmar si
-el stock compartido entre programas admite atribuir esa alerta a uno solo.
-Para variaciones, mantener un coste esperado de kit aprobado y comparar su
-coste real de componentes de la misma oficina y moneda en el momento de una
-operación de kit; hay que definir qué operación es esa, qué componentes/costes
-la alimentan y qué condición porcentual merece un evento. Ninguna de estas
-reglas ni sus valores se implementa en la fase previa.
-La URL de inventario puede apuntar a un archivo SQLite de contenedor que no
-existe en este host: no se inspeccionó ese volumen ni las oficinas de
-movimientos reales. Antes de migrar una base de trabajo habrá que consultar
-sus filas de forma segura y acordar cómo conservar movimientos anteriores que
-no tienen programa.
+precios unitarios, costes esperados ni composición de kits. La implementación
+no infiere esos datos: un administrador configura umbrales por producto/oficina
+y composición/coste esperado del kit. Una alerta se genera solo al cruzar de
+stock igual o superior al umbral a stock inferior; su atribución de programa
+procede del movimiento que cruza el umbral, aunque el stock físico sea
+compartido. Para kits, la variación se calcula por kit y solo se emite cuando
+todo el coste de componentes es conocido y la variación positiva supera
+estrictamente el porcentaje configurado. Coste esperado cero o coste incompleto
+no generan evento. El KPI de salidas mantiene su fórmula aprobada y no se
+redefine aquí.
 
-### Fiabilidad de eventos: captura etapa 1 y trabajo pendiente
+Se añadieron tablas aditivas para valuación, ledger, regularizaciones
+auditables, umbrales, configuración/composición y snapshots de preparación.
+Las entradas actualizan coste medio ponderado; las salidas consumen primero
+stock sin coste conocido. La migración marca stock previo como no valuado; no
+reescribe movimientos históricos ni inventa costes o programas. Una
+regularización explícita requiere ADMIN y motivo. Los cambios de movimiento y
+sus eventos outbox comparten transacción. La moneda se deriva en backend
+(Valencia/EUR, Miami/USD).
+
+Existen endpoints autenticados para umbrales, configuración/preparación de
+kits y regularización; configuración y regularización están restringidas a
+ADMIN. No se añadió UI para estas operaciones: el alcance implementado es API
+y debe integrarse con una interfaz si se requiere su uso desde backoffice. Se
+retiró del flujo frontend el emisor best-effort duplicado de alertas.
+
+La migración CLI protegida por `--environment development|test` se ejecutó
+contra dos instancias PostgreSQL 16 desechables, locales y aisladas, sin
+volúmenes persistentes y distintas de los destinos configurados para la
+aplicación. Se creó allí un esquema histórico sintético, identificado
+explícitamente como fixture de prueba (un producto, una entrada sin coste y una
+salida). La migración creó las tablas aditivas y la valoración inicial
+`valued=0`, `unvalued=3`, `average_cost=0`; conservó los IDs/cantidades de
+movimientos y el coste histórico nulo. Se ejecutó repetidamente, incluyendo
+después de modificar el estado de valoración, y no lo sobrescribió. Los modelos
+SQLModel pudieron leer las tablas migradas. No se migraron filas reales ni se
+conectó con Supabase o producción.
+
+En PostgreSQL 16 desechable se probaron carreras con sesiones independientes:
+dos salidas simultáneas que cruzaban un umbral acabaron con stock 6, valoración
+6 y exactamente un evento de cruce; dos preparaciones de kit con stock
+suficiente consumieron dos unidades cada una y conservaron sus snapshots y
+eventos; con una sola unidad disponible, solo una de dos preparaciones pudo
+confirmar y la otra falló por stock insuficiente, sin efectos parciales. Una
+falla inyectada al insertar en outbox revirtió en conjunto la entrada, el
+ledger, la valoración y el evento. Estas son comprobaciones concurrentes
+concretas, no una prueba exhaustiva de todos los órdenes posibles.
+
+**Verificación previa conservada:** toda la suite backend de inventario
+(`test_inventory*.py`): **63 passed, 1 skipped, 28 subtests passed**,
+incluyendo cruce de umbral, migración temporal/idempotente, costes de kits,
+supresión por coste desconocido, rollback, regularización, autorización y
+validación de worker. El skip es una prueba opcional dependiente de PostgreSQL.
+El archivo
+`docs/telemetry/event-schemas.json` se validó como JSON y contiene los dos
+contratos nuevos. La suite Node pasó: **87 tests**. El build de producción
+Next.js también pasó, incluyendo TypeScript; emitió una advertencia por
+múltiples lockfiles. ESLint global no pasa por errores existentes en otros
+archivos, incluidos hooks de telemetría/formularios no modificados. No se
+ejecutó la suite backend completa del proyecto.
+
+**Validación final de persistencia y entrega:** el worker y repositorio reales
+entregaron ambos tipos de evento a `public.telemetry_events` en el PostgreSQL
+de telemetría desechable. Ambos outbox quedaron `delivered`. Se reabrieron los
+mismos IDs para simular una respuesta incierta y repetir el envío: el destino
+conservó exactamente una fila por `event_id` y el outbox volvió a `delivered`.
+La tabla de telemetría de prueba se creó con `event_id` como clave primaria,
+igual que el contrato de destino requerido para `ON CONFLICT`.
+
+El ESLint local instalado se ejecutó directamente sobre los tres archivos
+frontend Fase 2 modificados (`InboundFormPanel.tsx`, `OutboundFormPanel.tsx` y
+`telemetry-constants.ts`): terminó sin errores ni salida. No se descargó ni
+instaló ningún paquete. La ejecución global previa del lint había reportado
+problemas en `app/global-error.tsx`, `hooks/useFormLifecycleTracking.ts`,
+`hooks/useRecord.ts` y `hooks/useRecords.ts`, ajenos a los archivos modificados
+de esta fase; no se hizo limpieza global.
+
+### Fiabilidad de eventos: captura y entrega
 
 En este entorno `DATABASE_URL` es SQLite para inventario y
 `TELEMETRY_DATABASE_URL` es PostgreSQL: no hay transacción compartida. Un
-`emit_event()` directo tampoco garantiza entrega, porque captura fallos. La
-etapa 1 implementa el transactional outbox **en la misma base que los
-movimientos**: guardar movimiento y evento pendiente en una sola transacción.
-La etapa posterior añadirá un worker independiente que envíe cada evento a
-`public.telemetry_events` mediante el adaptador existente. La unicidad de
-`event_id` en destino permite reenvíos idempotentes; el worker deberá marcar
-como entregado solo tras confirmación. No escribir KPI en telemetría ni
-atribuir atomicidad entre SQLite y PostgreSQL.
+`emit_event()` directo tampoco garantiza entrega, porque captura fallos. El
+transactional outbox **en la misma base que los movimientos** guarda el
+movimiento y evento en una sola transacción. Un worker independiente entrega
+eventos a `public.telemetry_events` mediante el adaptador existente. La
+unicidad de `event_id` permite reenvíos idempotentes; la entrega es
+at-least-once y no hay atomicidad distribuida entre las bases. No escribir KPI
+en telemetría.
 
-**Estado de etapa 1:** cada movimiento inbound/outbound y su evento pendiente
-se guardan en una transacción de `DATABASE_URL`, con UUID estable, payload de
+**Estado actual:** cada movimiento inbound/outbound y su evento pendiente se
+guardan en una transacción de `DATABASE_URL`, con UUID estable, payload de
 dominio y referencia al movimiento. Las nuevas entradas requieren
-`unit_cost >= 0`; el coste es nullable para conservar históricos desconocidos,
-sin completarlos por inferencia. La UI recoge el coste y deja de emitir
-eventos de negocio duplicados con el emisor best-effort. La migración aditiva
-incorpora coste y outbox a bases existentes.
+`unit_cost >= 0`; el coste es nullable para conservar históricos desconocidos.
+El worker usa leases, reintentos con backoff y dead-letter, y marca entregado
+tras confirmación del destino. La retención/limpieza no debe confundirse con
+atomicidad distribuida. Los eventos `stock_threshold_triggered` y
+`kit_cost_variance_detected` están incluidos en el contrato y allowlist y se
+validan antes del envío.
 
-La etapa 1 **no entrega aún** eventos a `public.telemetry_events`: hasta
-implementar el worker, las filas se acumulan en `pending`. Quedan para la
-siguiente etapa el reclamo concurrente, reintentos y backoff acotado,
-clasificación de fallos, dead-letter, servicio Docker y limpieza/retención
-ejecutable. No hay atomicidad distribuida entre la base de movimientos y la
-base de telemetría. El worker debe marcar como entregado solo tras confirmación;
-la unicidad de `event_id` en destino permite reenvío idempotente.
+La validación final con PostgreSQL desechable confirmó generación → outbox →
+worker → `telemetry_events` para `stock_threshold_triggered` y
+`kit_cost_variance_detected`, así como la repetición idempotente por `event_id`.
+Esto no elimina la limitación de ausencia de transacción distribuida: la
+garantía se apoya en outbox at-least-once y unicidad en destino.

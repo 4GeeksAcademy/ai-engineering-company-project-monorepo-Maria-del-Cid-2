@@ -18,6 +18,10 @@ from app.inventory.operations import (
     create_inbound,
     create_outbound,
     create_programme,
+    configure_stock_threshold,
+    configure_kit,
+    prepare_kit,
+    create_inventory_regularization,
 )
 from app.inventory.queries import (
     get_asset_with_stock,
@@ -36,10 +40,17 @@ from app.inventory.schemas import (
     InventoryOrderResponse,
     ProgrammeCreate,
     ProgrammeResponse,
+    InventoryRegularizationCreate,
+    InventoryRegularizationResponse,
+    KitConfigurationWrite,
+    KitPreparationCreate,
+    KitPreparationResponse,
+    StockThresholdWrite,
 )
 from app.inventory.models import Programme
 from sqlalchemy import select
 from app.cache import TTLCache
+from app.auth.models import UserRole
 
 CACHE_TTL_PRODUCTS: float = 30.0
 _products_cache: TTLCache[list[AssetWithStockResponse]] = TTLCache(
@@ -207,6 +218,71 @@ def post_inventory_outbound(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except InventoryConflict as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.put("/thresholds", response_model=StockThresholdWrite)
+def put_stock_threshold(
+    payload: StockThresholdWrite,
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> StockThresholdWrite:
+    _require_admin(current_user)
+    try:
+        item = configure_stock_threshold(session, payload)
+    except InventoryConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return StockThresholdWrite.model_validate(item)
+
+
+@router.put("/kits", response_model=KitConfigurationWrite)
+def put_kit_configuration(
+    payload: KitConfigurationWrite,
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> KitConfigurationWrite:
+    _require_admin(current_user)
+    try:
+        configure_kit(session, payload)
+    except InventoryConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return payload
+
+
+@router.post("/kits/prepare", response_model=KitPreparationResponse, status_code=201)
+def post_kit_preparation(
+    payload: KitPreparationCreate,
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> KitPreparationResponse:
+    user_uuid = _require_user_uuid(current_user)
+    try:
+        result = prepare_kit(session, payload, user_uuid=user_uuid)
+        _products_cache.invalidate("list")
+        return KitPreparationResponse.model_validate(result)
+    except InsufficientStock as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except InventoryConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/valuation/regularizations", response_model=InventoryRegularizationResponse, status_code=201)
+def post_inventory_regularization(
+    payload: InventoryRegularizationCreate,
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> InventoryRegularizationResponse:
+    _require_admin(current_user)
+    user_uuid = _require_user_uuid(current_user)
+    try:
+        result = create_inventory_regularization(session, payload, user_uuid=user_uuid)
+        return InventoryRegularizationResponse.model_validate(result)
+    except InventoryConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+def _require_admin(current_user: User) -> None:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Administrator permission required.")
 
 
 def _require_user_uuid(current_user: User):

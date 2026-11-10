@@ -6,16 +6,13 @@ import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
 import { createInbound, listProducts, listProgrammes, inventoryErrorMessage } from "@/lib/inventory";
 import { nexovaApi } from "@/lib/nexova-api";
-import { useTelemetry } from "@/hooks/useTelemetry";
 import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
 import {
   INVENTORY_OFFICE_OPTIONS,
-  currencyForInventoryOffice,
   type AssetEntryCreate,
   type AssetWithStock,
   type Programme,
 } from "@/types/inventory";
-import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-threshold";
 
 interface InboundFormPanelProps {
   initialProductId?: string | null;
@@ -31,7 +28,6 @@ const EMPTY_FORM: AssetEntryCreate = {
 };
 
 export function InboundFormPanel({ initialProductId = null }: InboundFormPanelProps) {
-  const telemetry = useTelemetry();
   // Track form_opened and form_abandoned lifecycle
   const instanceId = useFormLifecycleTracking({
     formId: "inbound-form",
@@ -111,18 +107,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
     };
     try {
       const createdOrder = await createInbound(nexovaApi, payload);
-      const currency = currencyForInventoryOffice(createdOrder.office);
       // Inventory business events are durably queued by the API transaction.
-      void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
-        (updatedProduct) => {
-          if (!updatedProduct) return;
-          setProducts((current) =>
-            current.map((product) =>
-              product.id === updatedProduct.id ? updatedProduct : product,
-            ),
-          );
-        },
-      );
       // Mark form as successfully submitted to prevent form_abandoned tracking
       markFormAsSubmitted(instanceId);
       setCreated({

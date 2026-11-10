@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal, Union
 from uuid import UUID
 
@@ -93,6 +94,61 @@ class AssetExitResponse(AssetExitFields):
     user_uuid: UUID
     programme_id: str | None
     currency: InventoryCurrency
+
+
+class StockThresholdWrite(InventorySchema):
+    asset_id: int
+    office: InventoryOffice
+    threshold: Decimal = Field(ge=0, max_digits=18, decimal_places=6)
+
+
+class KitComponentWrite(InventorySchema):
+    component_asset_id: int
+    quantity_per_kit: Decimal = Field(gt=0, max_digits=18, decimal_places=6)
+
+
+class KitConfigurationWrite(InventorySchema):
+    kit_asset_id: int
+    office: InventoryOffice
+    expected_cost: Decimal = Field(ge=0, max_digits=18, decimal_places=6)
+    variance_threshold_percent: Decimal = Field(default=Decimal("10"), ge=0, max_digits=10, decimal_places=4)
+    components: list[KitComponentWrite] = Field(min_length=1)
+
+
+class KitPreparationCreate(InventorySchema):
+    kit_asset_id: int
+    office: InventoryOffice
+    programme_id: str = Field(min_length=1)
+    quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=6)
+
+
+class InventoryRegularizationCreate(InventorySchema):
+    asset_id: int
+    office: InventoryOffice
+    quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=6)
+    approved_unit_cost: Decimal = Field(ge=0, max_digits=18, decimal_places=6)
+    reason: str = Field(min_length=1, max_length=1000)
+
+
+class InventoryRegularizationResponse(InventoryRegularizationCreate):
+    id: int
+    user_uuid: UUID
+    created_at: datetime
+
+
+class KitPreparationResponse(InventorySchema):
+    id: int
+    kit_asset_id: int
+    programme_id: str
+    office: InventoryOffice
+    currency: InventoryCurrency
+    kit_quantity: Decimal
+    expected_cost: Decimal
+    actual_cost: Decimal | None
+    variance_percent: Decimal | None
+    composition_snapshot: list[dict[str, object]]
+    incomplete_cost: bool
+    created_at: datetime
 
 
 class AssetEntryOrderResponse(AssetEntryResponse):

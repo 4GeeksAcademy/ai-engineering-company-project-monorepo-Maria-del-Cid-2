@@ -17,6 +17,7 @@ from app.inventory_outbox_worker import (
     WorkerSettings,
     _claim_batch,
     _retry_delay,
+    _to_record,
     deliver_batch,
     purge_terminal_events,
 )
@@ -159,6 +160,42 @@ class InventoryOutboxWorkerTests(unittest.TestCase):
         stats = deliver_batch(self.engine, FakeTelemetryRepository(), self.settings, now=NOW)
         self.assertEqual(stats["dead"], 1)
         self.assertEqual(self.get_event().status, "dead")
+
+    def test_phase2_events_are_validated_and_converted(self) -> None:
+        threshold = TelemetryOutboxEvent(
+            event_id="threshold",
+            event_type="stock_threshold_triggered",
+            timestamp=NOW,
+            source="/nexova/inventory",
+            movement_type="exit",
+            movement_id=9,
+            tags={
+                "product_id": 7, "product_sku": "SKU-7", "product_category": "equipment",
+                "programme_id": "programme-1", "office": "Valencia", "currency": "EUR",
+                "current_stock": 2, "threshold": 2, "stock_level": "low", "movement_id": 9,
+            },
+        )
+        self.assertEqual(_to_record(threshold).event_type, "stock_threshold_triggered")
+
+        variance = TelemetryOutboxEvent(
+            event_id="variance",
+            event_type="kit_cost_variance_detected",
+            timestamp=NOW,
+            source="/nexova/inventory",
+            movement_type="kit_preparation",
+            movement_id=42,
+            tags={
+                "product_id": 8, "product_sku": "KIT-8", "product_category": "kit",
+                "programme_id": "programme-1", "office": "Miami", "currency": "USD",
+                "kit_composition": ["SKU-7"], "expected_cost": 10, "actual_cost": 12,
+                "variance_percent": 20, "preparation_id": 42,
+            },
+        )
+        self.assertEqual(_to_record(variance).event_type, "kit_cost_variance_detected")
+
+        variance.tags["currency"] = "EUR"
+        with self.assertRaises(ValueError):
+            _to_record(variance)
 
     def test_purge_deletes_only_expired_terminal_events(self) -> None:
         old = NOW - timedelta(days=6)
