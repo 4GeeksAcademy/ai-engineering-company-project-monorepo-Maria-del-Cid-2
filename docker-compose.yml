@@ -58,6 +58,8 @@ services:
       OUTBOX_BACKOFF_MAX_SECONDS: "${OUTBOX_BACKOFF_MAX_SECONDS:-900}"
       OUTBOX_RETENTION_DAYS: "${OUTBOX_RETENTION_DAYS:-90}"
       OUTBOX_JITTER_FRACTION: "${OUTBOX_JITTER_FRACTION:-0.2}"
+    volumes:
+      - ./services/data:/app/services/data
     depends_on:
       - backend
     restart: unless-stopped
