@@ -10,6 +10,8 @@ from sqlalchemy.engine import Engine, make_url
 
 from .database import get_database_url, get_engine
 from .models import (
+    AssetEntry,
+    AssetExit,
     InventoryRegularization,
     InventoryValuation,
     InventoryValuationLedger,
@@ -112,6 +114,26 @@ def migrate_phase2_events(engine: Engine) -> None:
             InventoryRegularization,
         ):
             model.__table__.create(connection, checkfirst=True)
+        for table in ("asset_entries", "asset_exits"):
+            columns = {column["name"] for column in inspect(connection).get_columns(table)}
+            if "seed_key" not in columns:
+                connection.execute(text(f"ALTER TABLE {table} ADD COLUMN seed_key VARCHAR NULL"))
+        entry_seed_index = next(index for index in AssetEntry.__table__.indexes if index.name == "uq_asset_entries_seed_key")
+        exit_seed_index = next(index for index in AssetExit.__table__.indexes if index.name == "uq_asset_exits_seed_key")
+        entry_seed_index.create(connection, checkfirst=True)
+        exit_seed_index.create(connection, checkfirst=True)
+        preparation_columns = {
+            column["name"] for column in inspect(connection).get_columns("inventory_kit_preparations")
+        }
+        if "idempotency_key" not in preparation_columns:
+            connection.execute(text(
+                "ALTER TABLE inventory_kit_preparations ADD COLUMN idempotency_key VARCHAR NULL"
+            ))
+        preparation_index = next(
+            index for index in KitPreparation.__table__.indexes
+            if index.name == "uq_inventory_kit_preparation_idempotency_key"
+        )
+        preparation_index.create(connection, checkfirst=True)
         connection.execute(text(
             "INSERT INTO inventory_valuations (asset_id, valued_quantity, unvalued_quantity, average_cost) "
             "SELECT a.id, 0, COALESCE(e.q, 0) - COALESCE(x.q, 0), 0 FROM assets a "

@@ -2,9 +2,9 @@
 
 Esta guía registra el diagnóstico del pipeline y el estado de implementación.
 La fase previa de **Programmes dentro de Inventory está implementada y
-validada localmente** (ver sección 6). La Fase 2 se limita a las reglas
-aprobadas de umbral y coste de kits, además de su captura y entrega durable.
-No se implementan aquí el pipeline de reporting ni las fases posteriores.
+validada localmente** (ver sección 6). La Fase 2 implementó outbox y worker; la
+Fase 3 actual agrega fixtures de demo y eventos de negocio al mismo flujo. No
+se implementan aquí el pipeline de reporting ni las fases posteriores.
 
 ## 1. Objetivo y contrato aprobado
 
@@ -65,12 +65,13 @@ upsert; la política de correcciones de negocio con otro UUID no está definida.
 1. **Fase previa propuesta, programas:** crear programas formativos y asociar
   cada movimiento de inventario a uno de ellos. El producto no pertenece a un
   programa; conserva su oficina y su moneda. Ver sección 6.
-2. **Fase 2, fuente y entrega:** implementada para las reglas aprobadas de
-  umbral de stock y variación de coste de kits, con captura transaccional,
-  worker independiente, reintentos, dead-letter y contratos ampliados. Ver
-  límites y verificaciones actuales en la sección de datos abajo. No se usan
-  valores históricos supuestos.
-3. **Fases 3 y 4, cálculo:** añadir migraciones PostgreSQL para
+2. **Fase 2, fuente y entrega:** outbox transaccional y worker independiente,
+   con leases, reintentos, dead-letter y deduplicación del destino.
+3. **Fase 3, fixtures de inventario:** seed demo explícito y protegido,
+   idempotencia de movimientos/preparaciones, valoración ponderada, escenarios
+   de umbral y eventos de variancia de kit. Se preservan los registros
+   históricos; ver el progreso detallado en `memory-bank/progress.md`.
+4. **Fases 4 y 5, cálculo:** añadir migraciones PostgreSQL para
    `reporting.weekly_office_program_performance` y `reporting.pipeline_runs`;
    instalar Prefect 3 en el entorno acordado; implementar
    `data/pipelines/pipeline.py` y transformaciones en `data/process/` con las
@@ -78,20 +79,19 @@ upsert; la política de correcciones de negocio con otro UUID no está definida.
    transformación ligada al contenido y semana, upsert transaccional, registro
    independiente de ejecución fallida y task opcional con `return_state=True`.
    Guardar snapshots opcionales en `data/eval/` sin convertirlos en fuente KPI.
-4. **Fase 5, acceso:** exponer CLI desde la raíz y adaptador de disparo en
+5. **Fase 6, acceso:** exponer CLI desde la raíz y adaptador de disparo en
    `data/pipelines/`; implementar los tres endpoints bajo `/api/reporting` en
    `services/api/app/reporting/` y registrar su router en
   `services/api/app/main.py`. Los servicios consultarán los resultados o
   solicitarán el flow, sin replicar cálculos. Prefect 3 será self-hosted,
   sin Prefect Cloud; configurar credenciales y permisos fuera del repositorio.
-5. **Fase 6, verificación:** validar con datos controlados los cuatro KPI,
+6. **Fase 7, verificación:** validar con datos controlados los cuatro KPI,
    rechazos, semanas UTC, deduplicación, upsert, fallos y reintentos, caché,
    CLI y endpoints. Contrastar la API y el informe técnico existentes. Anotar
    aquí los comandos ejecutados, resultados reales y limitaciones.
 
-La ejecución cada lunes a las 00:15 UTC está **aprobada**. En esta fase
-preliminar no se instalaron dependencias de reporting ni se modificó el
-pipeline técnico; sí se implementaron y validaron cambios locales de Inventory.
+La ejecución cada lunes a las 00:15 UTC está **aprobada**. No se instalaron
+dependencias de reporting ni se modificó el pipeline técnico.
 
 ## 4. Decisiones y límites pendientes
 

@@ -42,9 +42,11 @@ class AssetEntry(SQLModel, table=True):
     __tablename__ = "asset_entries"
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_asset_entries_quantity_positive"),
+        Index("uq_asset_entries_seed_key", "seed_key", unique=True),
     )
 
     id: int | None = Field(default=None, primary_key=True)
+    seed_key: str | None = Field(default=None, sa_type=String, nullable=True)
     asset_id: int = Field(foreign_key="assets.id", index=True)
     programme_id: str | None = Field(default=None, foreign_key="programmes.programme_id", index=True)
     quantity: float = Field(sa_column=Column(Float, nullable=False))
@@ -69,6 +71,7 @@ class AssetExit(SQLModel, table=True):
             "exit_type IN ('allocation', 'consumption')",
             name="ck_asset_exits_type",
         ),
+        Index("uq_asset_exits_seed_key", "seed_key", unique=True),
         CheckConstraint(
             "(exit_type = 'allocation' AND assigned_to IS NOT NULL) OR "
             "(exit_type = 'consumption' AND assigned_to IS NULL)",
@@ -77,6 +80,7 @@ class AssetExit(SQLModel, table=True):
     )
 
     id: int | None = Field(default=None, primary_key=True)
+    seed_key: str | None = Field(default=None, sa_type=String, nullable=True)
     asset_id: int = Field(foreign_key="assets.id", index=True)
     programme_id: str | None = Field(default=None, foreign_key="programmes.programme_id", index=True)
     quantity: float = Field(sa_column=Column(Float, nullable=False))
@@ -211,8 +215,13 @@ class KitPreparation(SQLModel, table=True):
     """Immutable cost snapshot for one atomic kit preparation."""
 
     __tablename__ = "inventory_kit_preparations"
+    __table_args__ = (
+        Index("uq_inventory_kit_preparation_idempotency_key", "idempotency_key", unique=True),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
+    # Nullable to preserve historical preparations and optional for ordinary API calls.
+    idempotency_key: str | None = Field(default=None, sa_type=String, nullable=True)
     kit_asset_id: int = Field(foreign_key="assets.id", index=True)
     programme_id: str = Field(foreign_key="programmes.programme_id", index=True)
     office: str = Field(sa_type=String, nullable=False)

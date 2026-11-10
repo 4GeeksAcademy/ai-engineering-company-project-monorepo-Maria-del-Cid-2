@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -21,18 +22,27 @@ from tinydb.storages import JSONStorage
 
 from app.auth.database import get_database_path
 from .database import get_engine
-from .models import Asset, AssetEntry, AssetExit, Programme
-from .operations import currency_for_office
+from .models import Asset, AssetEntry, AssetExit, KitPreparation, Programme, StockThreshold
+from .operations import configure_kit, configure_stock_threshold, currency_for_office, create_inbound, create_outbound, prepare_kit
+from .schemas import (
+    AssetEntryCreate, AssetExitCreate, KitComponentWrite, KitConfigurationWrite,
+    KitPreparationCreate, StockThresholdWrite,
+)
 
 SEED_USER_EMAIL_VARIABLE = "NEXOVA_INVENTORY_SEED_USER_EMAIL"
 SEED_ENVIRONMENT_ARGUMENT = "--environment"
 DATABASE_URL_VARIABLE = "DATABASE_URL"
 _ALLOWED_ENVIRONMENTS = {"development", "test"}
 _AUTHORIZED_SUPABASE_PROJECT_REF = "yamhkvudzwcqsbqvfmox"
+_DEMO_PROGRAMME_IDS = (
+    "prog-digital-skills-001",
+    "prog-technical-onboarding-001",
+    "prog-professional-development-001",
+)
 # A transaction-scoped PostgreSQL lock serializes concurrent runs of this seed.
 _POSTGRES_ADVISORY_LOCK_KEY = 5_842_914_773_201_105_007
 
-ASSET_SEED: tuple[dict[str, str], ...] = (
+HISTORICAL_ASSET_SEED: tuple[dict[str, str], ...] = (
     {
         "name": 'Portátil 14" Business',
         "sku": "NXV-IT-001",
@@ -71,17 +81,109 @@ ASSET_SEED: tuple[dict[str, str], ...] = (
     },
 )
 
-ENTRY_SEED: tuple[dict[str, Any], ...] = (
+HISTORICAL_ENTRY_SEED: tuple[dict[str, Any], ...] = (
     {"sku": "NXV-IT-001", "quantity": 10.0, "supplier": "TechDistrib Valencia S.L.", "office": "Valencia"},
     {"sku": "NXV-IT-001", "quantity": 5.0, "supplier": "TechDistrib Valencia S.L.", "office": "Valencia"},
     {"sku": "NXV-PER-001", "quantity": 8.0, "supplier": "TechDistrib Valencia S.L.", "office": "Valencia"},
     {"sku": "NXV-PER-002", "quantity": 12.0, "supplier": "Office Depot Miami", "office": "Miami"},
 )
 
-EXIT_SEED: tuple[dict[str, Any], ...] = (
+HISTORICAL_EXIT_SEED: tuple[dict[str, Any], ...] = (
     {"sku": "NXV-IT-001", "quantity": 2.0, "exit_type": "allocation", "assigned_to": "María García", "office": "Valencia"},
     {"sku": "NXV-IT-001", "quantity": 1.0, "exit_type": "consumption", "assigned_to": None, "office": "Valencia"},
     {"sku": "NXV-PER-001", "quantity": 1.0, "exit_type": "allocation", "assigned_to": "Carlos López", "office": "Valencia"},
+)
+
+# Backwards-compatible names for the original protected seed's public test surface.
+ASSET_SEED = HISTORICAL_ASSET_SEED
+ENTRY_SEED = HISTORICAL_ENTRY_SEED
+EXIT_SEED = HISTORICAL_EXIT_SEED
+
+_DEMO_PRODUCTS: tuple[tuple[str, str, str], ...] = (
+    ("Training Manual", "training_materials", "NXV-DEMO-MANUAL"),
+    ("Training Workbook", "training_materials", "NXV-DEMO-WORKBOOK"),
+    ("Learning Materials", "training_kit", "NXV-DEMO-LEARNING-KIT"),
+    ("Certification Voucher", "certification", "NXV-DEMO-VOUCHER"),
+    ("Exam Preparation Pack", "certification", "NXV-DEMO-EXAM-PACK"),
+    ("Laptop", "onboarding_equipment", "NXV-DEMO-LAPTOP"),
+    ("Headset", "peripherals", "NXV-DEMO-HEADSET"),
+    ("Wireless Mouse", "peripherals", "NXV-DEMO-MOUSE"),
+)
+
+# Product variants are explicitly separate assets because office, stock, and
+# currency are asset-level dimensions in the current inventory model.
+DEMO_ASSET_SEED: tuple[dict[str, str], ...] = tuple(
+    {
+        "name": name,
+        "sku": f"{sku}-{office_code}",
+        "category": category,
+        "office": office,
+    }
+    for name, category, sku in _DEMO_PRODUCTS
+    for office_code, office in (("VAL", "Valencia"), ("MIA", "Miami"))
+)
+
+# Demo inbound unit costs (EUR for Valencia, USD for Miami) come from the
+# business-approved test matrix, never from event payload construction.
+_DEMO_UNIT_COSTS: dict[tuple[str, str], float] = {
+    ("Training Manual", "Valencia"): 6,
+    ("Training Manual", "Miami"): 8,
+    ("Training Workbook", "Valencia"): 8,
+    ("Training Workbook", "Miami"): 10,
+    ("Learning Materials", "Valencia"): 12,
+    ("Learning Materials", "Miami"): 15,
+    ("Certification Voucher", "Valencia"): 10,
+    ("Certification Voucher", "Miami"): 12,
+    ("Exam Preparation Pack", "Valencia"): 75,
+    ("Exam Preparation Pack", "Miami"): 90,
+    ("Laptop", "Valencia"): 500,
+    ("Laptop", "Miami"): 750,
+    ("Headset", "Valencia"): 25,
+    ("Headset", "Miami"): 35,
+    ("Wireless Mouse", "Valencia"): 20,
+    ("Wireless Mouse", "Miami"): 30,
+}
+
+_DEMO_ENTRIES: tuple[dict[str, Any], ...] = (
+    {"sku": "NXV-DEMO-MANUAL-VAL", "quantity": 6.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-WORKBOOK-MIA", "quantity": 6.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+    {"sku": "NXV-DEMO-WORKBOOK-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+    {"sku": "NXV-DEMO-HEADSET-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-LEARNING-KIT-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-LEARNING-KIT-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-VOUCHER-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-VOUCHER-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-EXAM-PACK-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+    {"sku": "NXV-DEMO-EXAM-PACK-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-LAPTOP-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-HEADSET-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+)
+_DEMO_ENTRIES = tuple(
+    {
+        **movement,
+        "supplier": f"Demo Supplier {movement['office']}",
+        "unit_cost": _DEMO_UNIT_COSTS[(
+            next(name for name, _category, base in _DEMO_PRODUCTS
+                 if movement["sku"].startswith(base)), movement["office"]
+        )],
+        "seed_key": f"inventory-demo:entry:{movement['sku']}:primary",
+    }
+    for movement in _DEMO_ENTRIES
+)
+
+# The two threshold scenarios start at 5/6 units and finish at 2. Other
+# exits are distributed across both offices and all approved programmes.
+_DEMO_EXITS: tuple[dict[str, Any], ...] = (
+    {"sku": "NXV-DEMO-MANUAL-VAL", "quantity": 3.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-WORKBOOK-MIA", "quantity": 4.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+    {"sku": "NXV-DEMO-LEARNING-KIT-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-LEARNING-KIT-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+    {"sku": "NXV-DEMO-VOUCHER-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-VOUCHER-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-EXAM-PACK-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[1]},
+    {"sku": "NXV-DEMO-EXAM-PACK-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[2]},
+    {"sku": "NXV-DEMO-LAPTOP-VAL", "quantity": 1.0, "office": "Valencia", "programme_id": _DEMO_PROGRAMME_IDS[0]},
+    {"sku": "NXV-DEMO-HEADSET-MIA", "quantity": 1.0, "office": "Miami", "programme_id": _DEMO_PROGRAMME_IDS[1]},
 )
 
 
@@ -264,6 +366,49 @@ def _exit_exists(session: Session, values: dict[str, Any]) -> bool:
     return session.exec(statement).first() is not None
 
 
+def _demo_movement_exists(
+    session: Session,
+    movement_type: str,
+    seed_key: str,
+    expected: dict[str, Any],
+    assets_by_sku: dict[str, Asset],
+    user_uuid: UUID,
+) -> bool:
+    model = AssetEntry if movement_type == "entry" else AssetExit
+    existing = session.scalars(select(model).where(model.seed_key == seed_key)).first()
+    if existing is None:
+        return False
+
+    comparable_fields = (
+        ("quantity", "supplier", "office", "programme_id", "unit_cost", "user_uuid")
+        if movement_type == "entry"
+        else ("quantity", "exit_type", "assigned_to", "office", "programme_id", "user_uuid")
+    )
+    expected_values = {
+        "asset_id": assets_by_sku[expected["sku"]].id,
+        "quantity": expected["quantity"],
+        "office": expected["office"],
+        "programme_id": expected["programme_id"],
+        "user_uuid": user_uuid,
+    }
+    if movement_type == "entry":
+        expected_values.update({"supplier": expected["supplier"], "unit_cost": expected["unit_cost"]})
+    else:
+        expected_values.update({"exit_type": "consumption", "assigned_to": None})
+
+    def normalized(value: Any) -> Any:
+        return Decimal(str(value)) if isinstance(value, (int, float, Decimal)) else value
+
+    if existing.asset_id != expected_values["asset_id"] or any(
+        normalized(getattr(existing, field)) != normalized(expected_values[field])
+        for field in comparable_fields
+    ):
+        raise SeedSafetyError(
+            f"Demo movement key {seed_key} exists with a different payload; no row was changed."
+        )
+    return True
+
+
 def _current_stock(session: Session, asset_id: int) -> float:
     entries = session.exec(
         select(func.coalesce(func.sum(AssetEntry.quantity), 0.0)).where(
@@ -298,7 +443,7 @@ def seed_inventory(session: Session, user_uuid: UUID, programme_id: str) -> dict
             if session.get(Programme, programme_id) is None:
                 raise SeedSafetyError("The selected programme does not exist; no data was changed.")
             assets_by_sku: dict[str, Asset] = {}
-            for payload in ASSET_SEED:
+            for payload in HISTORICAL_ASSET_SEED:
                 asset, was_inserted = _existing_or_insert_asset(session, payload)
                 assets_by_sku[payload["sku"]] = asset
                 inserted["assets"] += int(was_inserted)
@@ -314,7 +459,7 @@ def seed_inventory(session: Session, user_uuid: UUID, programme_id: str) -> dict
                     "An existing asset has negative derived stock; no data was changed."
                 )
 
-            for seed_entry in ENTRY_SEED:
+            for seed_entry in HISTORICAL_ENTRY_SEED:
                 asset_id = assets_by_sku[seed_entry["sku"]].id
                 if asset_id is None:
                     raise SeedSafetyError("An asset ID was not assigned; no data was changed.")
@@ -340,7 +485,7 @@ def seed_inventory(session: Session, user_uuid: UUID, programme_id: str) -> dict
                 for asset_id in available_by_asset
             }
 
-            for seed_exit in EXIT_SEED:
+            for seed_exit in HISTORICAL_EXIT_SEED:
                 asset_id = assets_by_sku[seed_exit["sku"]].id
                 if asset_id is None:
                     raise SeedSafetyError("An asset ID was not assigned; no data was changed.")
@@ -372,21 +517,123 @@ def seed_inventory(session: Session, user_uuid: UUID, programme_id: str) -> dict
         raise
 
 
-def main(environment: str, programme_id: str | None = None) -> int:
+def seed_demo_inventory(session: Session, user_uuid: UUID) -> dict[str, int]:
+    """Seed the approved demo scenario through domain operations and outbox.
+
+    The whole fixture runs in one transaction, and stable seed keys make it
+    safe to rerun without duplicating movements, preparations, or events.
+    """
+    if session.in_transaction():
+        raise SeedSafetyError("Demo seed requires a clean session; no data was changed.")
+
+    counts = {"assets": 0, "entries": 0, "exits": 0, "thresholds": 0, "kit_preparations": 0}
+    try:
+        with session.begin():
+            _acquire_seed_lock(session)
+            programmes = {row.programme_id for row in session.scalars(select(Programme)).all()}
+            if not set(_DEMO_PROGRAMME_IDS).issubset(programmes):
+                raise SeedSafetyError("All three approved programmes must already exist.")
+
+            assets_by_sku: dict[str, Asset] = {}
+            for payload in DEMO_ASSET_SEED:
+                asset, created = _existing_or_insert_asset(session, payload)
+                assets_by_sku[payload["sku"]] = asset
+                counts["assets"] += int(created)
+            session.flush()
+
+            # Baseline inventory is deliberately appended (not reconstructed or
+            # overwritten); seed_key protects retries while domain operations
+            # create valuation, ledger, and transactional outbox rows.
+            for movement in _DEMO_ENTRIES:
+                if _demo_movement_exists(
+                    session, "entry", movement["seed_key"], movement, assets_by_sku, user_uuid,
+                ):
+                    continue
+                asset = assets_by_sku[movement["sku"]]
+                create_inbound(session, AssetEntryCreate(
+                    asset_id=asset.id, programme_id=movement["programme_id"],
+                    quantity=movement["quantity"], unit_cost=movement["unit_cost"],
+                    supplier=movement["supplier"], office=movement["office"],
+                    seed_key=movement["seed_key"],
+                ), user_uuid=user_uuid)
+                counts["entries"] += 1
+
+            for sku, office in (("NXV-DEMO-MANUAL-VAL", "Valencia"), ("NXV-DEMO-WORKBOOK-MIA", "Miami")):
+                asset = assets_by_sku[sku]
+                existing = session.scalars(select(StockThreshold).where(
+                    StockThreshold.asset_id == asset.id, StockThreshold.office == office,
+                )).first()
+                if existing is not None and existing.threshold != 3:
+                    raise SeedSafetyError(f"Demo threshold for {sku} already has a conflicting value.")
+                if existing is None:
+                    configure_stock_threshold(session, StockThresholdWrite(
+                        asset_id=asset.id, office=office, threshold=3,
+                    ))
+                    counts["thresholds"] += 1
+
+            # All ordinary exits run before kit preparation so its three
+            # component consumptions remain distinct and count as outbound.
+            for index, movement in enumerate(_DEMO_EXITS):
+                seed_key = f"inventory-demo:exit:{movement['sku']}:scenario"
+                if _demo_movement_exists(
+                    session, "exit", seed_key, {**movement, "seed_key": seed_key}, assets_by_sku, user_uuid,
+                ):
+                    continue
+                asset = assets_by_sku[movement["sku"]]
+                create_outbound(session, AssetExitCreate(
+                    asset_id=asset.id, programme_id=movement["programme_id"],
+                    quantity=movement["quantity"], exit_type="consumption",
+                    assigned_to=None, office=movement["office"], seed_key=seed_key,
+                ), user_uuid=user_uuid)
+                counts["exits"] += 1
+
+            kit = assets_by_sku["NXV-DEMO-LEARNING-KIT-VAL"]
+            manual = assets_by_sku["NXV-DEMO-MANUAL-VAL"]
+            workbook = assets_by_sku["NXV-DEMO-WORKBOOK-VAL"]
+            headset = assets_by_sku["NXV-DEMO-HEADSET-VAL"]
+            configure_kit(session, KitConfigurationWrite(
+                kit_asset_id=kit.id, office="Valencia", expected_cost=20,
+                variance_threshold_percent=10,
+                components=[
+                    KitComponentWrite(component_asset_id=manual.id, quantity_per_kit=1),
+                    KitComponentWrite(component_asset_id=workbook.id, quantity_per_kit=1),
+                    KitComponentWrite(component_asset_id=headset.id, quantity_per_kit=1),
+                ],
+            ))
+            prep_key = "inventory-demo:kit:training-starter-kit:valencia:v1"
+            prep_before = session.scalars(select(KitPreparation).where(
+                KitPreparation.idempotency_key == prep_key,
+            )).first()
+            if prep_before is None:
+                prepare_kit(session, KitPreparationCreate(
+                    kit_asset_id=kit.id, office="Valencia",
+                    programme_id=_DEMO_PROGRAMME_IDS[2], quantity=1,
+                    idempotency_key=prep_key,
+                ), user_uuid=user_uuid)
+                counts["kit_preparations"] = 1
+
+        counts["exits_total"] = counts["exits"] + counts["kit_preparations"] * 3
+        return counts
+    except Exception:
+        session.rollback()
+        raise
+
+
+def main(environment: str, programme_id: str | None = None, *, demo: bool = False) -> int:
     """Run only when the CLI caller explicitly selects a safe environment."""
 
     database_url = os.environ.get(DATABASE_URL_VARIABLE, "")
     raw_user_email = os.environ.get(SEED_USER_EMAIL_VARIABLE, "")
     try:
         validate_seed_target(environment, database_url)
-        if not programme_id:
+        if not demo and not programme_id:
             raise SeedSafetyError("--programme-id is required to seed new movements.")
         user_uuid = resolve_seed_user_uuid(raw_user_email)
 
         # Target checks happen before asking the lazy inventory boundary for an engine.
         engine = get_engine()
         with Session(engine) as session:
-            counts = seed_inventory(session, user_uuid, programme_id)
+            counts = seed_demo_inventory(session, user_uuid) if demo else seed_inventory(session, user_uuid, programme_id)
         print(
             "Inventory seed completed: "
             f"{counts['assets']} assets, {counts['entries']} entries, "
@@ -410,6 +657,10 @@ if __name__ == "__main__":
         choices=sorted(_ALLOWED_ENVIRONMENTS),
         help="Explicit target environment; this opt-in is not read from dotenv.",
     )
-    parser.add_argument("--programme-id", required=True, help="Existing programme for new demo movements.")
+    parser.add_argument("--programme-id", help="Existing programme for historical-style demo movements.")
+    parser.add_argument(
+        "--demo", action="store_true",
+        help="Seed the approved two-office fixture and business events (requires all three approved programmes).",
+    )
     args = parser.parse_args()
-    raise SystemExit(main(args.environment, args.programme_id))
+    raise SystemExit(main(args.environment, args.programme_id, demo=args.demo))

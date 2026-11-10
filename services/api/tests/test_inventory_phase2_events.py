@@ -17,7 +17,7 @@ from app.inventory.models import (
     TelemetryOutboxEvent,
 )
 from app.inventory.operations import (
-    InventoryConflict, configure_kit, configure_stock_threshold,
+    InventoryConflict, configure_kit, configure_stock_threshold, create_inbound,
     create_inbound, create_inventory_regularization, create_outbound,
     prepare_kit, InsufficientStock,
 )
@@ -56,11 +56,11 @@ class Phase2InventoryEventTests(unittest.TestCase):
                 unit_cost=cost, supplier="supplier", office="Valencia",
             ), user_uuid=USER)
 
-    def test_threshold_emits_only_on_crossing_and_requires_explicit_config(self) -> None:
+    def test_threshold_emits_only_on_crossing_below_limit_and_rearms_after_restock(self) -> None:
         self.inbound("A", 5, 2)
         with Session(self.engine) as session:
             configure_stock_threshold(session, StockThresholdWrite(
-                asset_id=self.asset_ids["A"], office="Valencia", threshold=2,
+                asset_id=self.asset_ids["A"], office="Valencia", threshold=3,
             ))
             create_outbound(session, AssetExitCreate(
                 asset_id=self.asset_ids["A"], programme_id="prog-test", quantity=2,
@@ -70,6 +70,7 @@ class Phase2InventoryEventTests(unittest.TestCase):
             self.assertEqual(session.exec(select(TelemetryOutboxEvent).where(
                 TelemetryOutboxEvent.event_type == "stock_threshold_triggered",
             )).all(), [])
+        # Crossing from exactly 3 to 2 emits one event.
         with Session(self.engine) as session:
             create_outbound(session, AssetExitCreate(
                 asset_id=self.asset_ids["A"], programme_id="prog-test", quantity=1,
@@ -80,8 +81,38 @@ class Phase2InventoryEventTests(unittest.TestCase):
                 TelemetryOutboxEvent.event_type == "stock_threshold_triggered",
             )).all()
             self.assertEqual(len(events), 1)
+            self.assertEqual(events[0].tags["current_stock"], 2.0)
+        with Session(self.engine) as session:
+            create_outbound(session, AssetExitCreate(
+                asset_id=self.asset_ids["A"], programme_id="prog-test", quantity=1,
+                exit_type="consumption", assigned_to=None, office="Valencia",
+            ), user_uuid=USER)
+        with Session(self.engine) as session:
+            # Staying below does not repeat the event; stock is 1.
+            events = session.exec(select(TelemetryOutboxEvent).where(
+                TelemetryOutboxEvent.event_type == "stock_threshold_triggered",
+            )).all()
+            self.assertEqual(len(events), 1)
             self.assertEqual(events[0].tags["currency"], "EUR")
             self.assertEqual(events[0].tags["current_stock"], 2.0)
+            # Restock to the threshold (or above) arms the next downward crossing.
+        with Session(self.engine) as session:
+            create_inbound(session, AssetEntryCreate(
+                asset_id=self.asset_ids["A"], programme_id="prog-test", quantity=2,
+                unit_cost=2, supplier="second restock", office="Valencia",
+            ), user_uuid=USER)
+        with Session(self.engine) as session:
+            create_outbound(session, AssetExitCreate(
+                asset_id=self.asset_ids["A"], programme_id="prog-test", quantity=1,
+                exit_type="consumption", assigned_to=None, office="Valencia",
+            ), user_uuid=USER)
+        with Session(self.engine) as session:
+            events = session.exec(select(TelemetryOutboxEvent).where(
+                TelemetryOutboxEvent.event_type == "stock_threshold_triggered",
+            )).all()
+            self.assertEqual(len(events), 2)
+            self.assertEqual(events[0].tags["currency"], "EUR")
+            self.assertEqual(events[-1].tags["current_stock"], 2.0)
 
     def test_legacy_stock_migration_marks_unknown_and_is_rerunnable(self) -> None:
         with Session(self.engine) as session:
@@ -122,6 +153,7 @@ class Phase2InventoryEventTests(unittest.TestCase):
             ))
             preparation = prepare_kit(session, KitPreparationCreate(
                 kit_asset_id=self.asset_ids["KIT"], office="Valencia", programme_id="prog-test", quantity=2,
+                idempotency_key="test-kit-prep-1",
             ), user_uuid=USER)
             self.assertEqual(preparation.expected_cost, 10)
             self.assertEqual(preparation.actual_cost, 12)
@@ -132,6 +164,23 @@ class Phase2InventoryEventTests(unittest.TestCase):
             self.assertEqual(event.tags["preparation_id"], preparation.id)
             self.assertEqual(event.tags["actual_cost"], 12.0)
             self.assertEqual(len(preparation.composition_snapshot), 2)
+            stock_after_first = session.exec(select(AssetEntry.quantity).where(
+                AssetEntry.asset_id == self.asset_ids["A"],
+            )).all()
+            repeated = prepare_kit(session, KitPreparationCreate(
+                kit_asset_id=self.asset_ids["KIT"], office="Valencia", programme_id="prog-test", quantity=2,
+                idempotency_key="test-kit-prep-1",
+            ), user_uuid=USER)
+            self.assertEqual(repeated.id, preparation.id)
+            self.assertEqual(session.exec(select(KitPreparation)).all(), [preparation])
+            self.assertEqual(session.exec(select(TelemetryOutboxEvent).where(
+                TelemetryOutboxEvent.event_type == "kit_cost_variance_detected",
+            )).all(), [event])
+            with self.assertRaises(InventoryConflict):
+                prepare_kit(session, KitPreparationCreate(
+                    kit_asset_id=self.asset_ids["KIT"], office="Valencia", programme_id="prog-test", quantity=1,
+                    idempotency_key="test-kit-prep-1",
+                ), user_uuid=USER)
 
     def test_unknown_cost_prevents_variance_and_failed_kit_rolls_back(self) -> None:
         with Session(self.engine) as session:

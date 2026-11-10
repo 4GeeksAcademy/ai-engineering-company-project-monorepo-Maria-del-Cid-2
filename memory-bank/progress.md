@@ -1,5 +1,40 @@
 # Progress — Nexova
 
+### Inventory reporting pipeline — Phase 3 demo/events (in progress)
+
+- Additional validation: disposable PostgreSQL 16 containers successfully ran schema creation and two reruns of both inventory migrations. A synthetic inbound event was delivered by `deliver_batch` to a separate disposable PostgreSQL telemetry database; a subsequent worker iteration claimed no duplicate, destination row count remained one, and source outbox status was `delivered`. Both containers were stopped/removed; no volumes were mounted.
+- Added SQLite legacy-schema migration regression test for nullable idempotency keys, unique indexes, historical-row preservation, and reruns. Added a successful demo-mode test proving no `programme_id` is required when the `--demo` branch is selected.
+- Focused validation now passes: `uv run pytest tests/test_inventory_seed.py tests/test_inventory_seed_migration.py tests/test_inventory_phase2_events.py -q` → 25 passed, 13 subtests passed. Editor diagnostics and `git diff --check` were clean at the previous checkpoint; rerun final review after this update.
+- Full API suite remains non-conclusive: prior run had 257 passed and one unrelated-looking concurrent TinyDB password-reset JSONDecodeError before KeyboardInterrupt. Do not claim a clean full-suite run.
+
+La Fase 3 amplía exclusivamente Inventory y el flujo outbox/worker existente;
+no incluye reporting/Prefect ni instrumentación frontend. Los datos históricos
+quedan intactos y los seeds demo son explícitos, aditivos y protegidos para
+destinos `development`/`test`. No se realizaron commits, push ni PR.
+
+- Implementados campos `seed_key` en entradas/salidas y `idempotency_key` en
+  preparaciones de kit, con migración aditiva y protección de repetición.
+- El seed demo crea 16 variantes de activos, 12 entradas, 10 salidas regulares
+  y una preparación de kit que registra 3 consumos; dos escenarios usan el
+  threshold aprobado. Movimientos pasan por operaciones de dominio para crear
+  ledger, valoración y outbox; el seed histórico conserva sus 6 activos y no
+  incorpora el catálogo demo.
+- Regla de cruce: `before_stock >= threshold` y `after_stock < threshold`; sin
+  repetición mientras stock siga bajo, y rearme al reponer hasta el límite.
+- Reparados imports de migración, separación del seed histórico y test de
+  threshold. Focalizados: `uv run pytest tests/test_inventory_phase2_events.py
+  tests/test_inventory_seed.py -q` → **21 passed, 13 subtests passed**.
+- El CLI permite omitir `--programme-id` con `--demo`; modo histórico continúa
+  exigiéndolo en `main`. Aún pendiente test de CLI dedicado.
+- Documentación actualizada en API, worker y contrato de esquema, además de
+  esta guía y Memory Bank.
+- Pendiente: pruebas demo de conteos/idempotencia y payload distinto para
+  `seed_key`; validar migración PostgreSQL y flujo outbox→worker→PostgreSQL con
+  bases desechables; revisar el stock del manual tras preparación del kit; el
+  checklist final/diff también sigue pendiente.
+
+Detenerse para revisión del usuario al completar pruebas seguras y sin commit.
+
 ### Inventory reporting pipeline — Phase 2 implementation
 
 **Status:** Implementación de persistencia transaccional y worker terminada; validación integral y decisiones de reglas de negocio documentadas abajo. No iniciar Phase 3 de este pipeline sin aprobación explícita.

@@ -136,7 +136,7 @@
       "x-category": "inventory",
       "x-emisible-hoy": true,
       "x-metricas": ["A9"],
-      "description": "Cruce descendente de un umbral mínimo explícitamente configurado por producto/oficina. Se emite una sola vez por movimiento que cruza de stock mayor que el umbral a stock menor o igual; no se crean umbrales por defecto.",
+      "description": "Cruce descendente de un umbral mínimo explícitamente configurado por producto/oficina. Se emite una sola vez por movimiento que cruza de stock igual o superior al umbral a stock inferior; no se repite mientras el stock permanezca por debajo y puede emitirse de nuevo tras reponer hasta el umbral o más. No se crean umbrales por defecto.",
       "type": "object",
       "required": ["product_id", "product_sku", "product_category", "programme_id", "office", "currency", "current_stock", "threshold", "stock_level", "movement_id"],
       "additionalProperties": false,

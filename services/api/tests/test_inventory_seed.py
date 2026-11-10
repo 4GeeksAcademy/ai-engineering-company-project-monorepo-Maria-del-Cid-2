@@ -15,7 +15,10 @@ from sqlmodel import SQLModel, Session, create_engine
 from tinydb import TinyDB
 from tinydb.storages import JSONStorage
 
-from app.inventory.models import Asset, AssetEntry, AssetExit, Programme
+from app.inventory.models import (
+    Asset, AssetEntry, AssetExit, KitPreparation, InventoryValuation,
+    Programme, StockThreshold, TelemetryOutboxEvent,
+)
 from app.inventory.seed_programmes import PROGRAMMES, seed_programmes
 from app.inventory.seed import (
     ASSET_SEED,
@@ -25,6 +28,7 @@ from app.inventory.seed import (
     SeedSafetyError,
     main,
     resolve_seed_user_uuid,
+    seed_demo_inventory,
     seed_inventory,
     validate_seed_target,
 )
@@ -111,6 +115,25 @@ class InventorySeedSafetyTests(unittest.TestCase):
         ):
             self.assertEqual(main("test", TEST_PROGRAMME_ID), 1)
         resolve_user.assert_called_once_with("authorized@example.test")
+
+    def test_demo_mode_does_not_require_programme_id(self) -> None:
+        environment = {
+            "DATABASE_URL": "sqlite:///:memory:",
+            SEED_USER_EMAIL_VARIABLE: "authorized@example.test",
+        }
+        engine = create_engine("sqlite:///:memory:")
+        with patch.dict(os.environ, environment, clear=True), patch(
+            "app.inventory.seed.resolve_seed_user_uuid", return_value=TEST_UUID
+        ) as resolve_user, patch(
+            "app.inventory.seed.get_engine", return_value=engine
+        ), patch(
+            "app.inventory.seed.seed_demo_inventory",
+            return_value={"assets": 16, "entries": 12, "exits": 10, "kit_preparations": 1, "exits_total": 13},
+        ) as seed_demo:
+            self.assertEqual(main("test", demo=True), 0)
+        resolve_user.assert_called_once_with("authorized@example.test")
+        seed_demo.assert_called_once()
+        engine.dispose()
 
 
 class InventorySeedUserResolutionTests(unittest.TestCase):
@@ -367,6 +390,67 @@ class InventorySeedDataTests(unittest.TestCase):
             self.assertEqual(second_user, {"assets": 0, "entries": 4, "exits": 3})
             self.assertEqual(session.exec(select(func.count()).select_from(AssetEntry)).one()[0], 8)
             self.assertEqual(session.exec(select(func.count()).select_from(AssetExit)).one()[0], 6)
+
+    def test_demo_seed_counts_stock_costs_and_repeated_run(self) -> None:
+        with Session(self.engine) as session:
+            first = seed_demo_inventory(session, TEST_UUID)
+            self.assertEqual(first, {
+                "assets": 16, "entries": 12, "exits": 10,
+                "thresholds": 2, "kit_preparations": 1, "exits_total": 13,
+            })
+            session.commit()
+            second = seed_demo_inventory(session, TEST_UUID)
+            self.assertEqual(second, {
+                "assets": 0, "entries": 0, "exits": 0,
+                "thresholds": 0, "kit_preparations": 0, "exits_total": 0,
+            })
+
+            assets = {row.sku: row for row in session.scalars(select(Asset)).all()}
+            self.assertEqual(len(assets), 16)
+            self.assertTrue(all(sku.startswith("NXV-DEMO-") for sku in assets))
+            self.assertEqual(session.exec(select(func.count()).select_from(AssetEntry)).one()[0], 12)
+            # 10 ordinary exits + 3 component consumptions from kit prep.
+            self.assertEqual(session.exec(select(func.count()).select_from(AssetExit)).one()[0], 13)
+            self.assertEqual(session.exec(select(func.count()).select_from(KitPreparation)).one()[0], 1)
+            self.assertEqual(session.exec(select(func.count()).select_from(StockThreshold)).one()[0], 2)
+
+            manual_val = assets["NXV-DEMO-MANUAL-VAL"]
+            workbook_mia = assets["NXV-DEMO-WORKBOOK-MIA"]
+            valuation = session.scalars(select(InventoryValuation).where(
+                InventoryValuation.asset_id == manual_val.id,
+            )).one()
+            self.assertEqual(valuation.valued_quantity, 2)
+            self.assertEqual(valuation.average_cost, 6)
+            self.assertEqual(self._stock(session, manual_val.id), 2)
+            self.assertEqual(self._stock(session, workbook_mia.id), 2)
+            self.assertEqual(session.exec(select(func.count()).select_from(TelemetryOutboxEvent)).one()[0], 28)
+
+            preparation = session.scalars(select(KitPreparation)).one()
+            self.assertEqual(preparation.actual_cost, 39)
+            self.assertEqual(preparation.expected_cost, 20)
+            self.assertEqual(preparation.variance_percent, 95)
+
+    def test_demo_seed_rejects_existing_seed_key_with_changed_payload(self) -> None:
+        with Session(self.engine) as session:
+            seed_demo_inventory(session, TEST_UUID)
+            entry = session.scalars(select(AssetEntry).where(
+                AssetEntry.seed_key == "inventory-demo:entry:NXV-DEMO-MANUAL-VAL:primary",
+            )).one()
+            entry.supplier = "Manually changed supplier"
+            session.commit()
+
+            with self.assertRaisesRegex(SeedSafetyError, "different payload"):
+                seed_demo_inventory(session, TEST_UUID)
+
+    @staticmethod
+    def _stock(session: Session, asset_id: int) -> float:
+        inbound = session.exec(select(func.coalesce(func.sum(AssetEntry.quantity), 0.0)).where(
+            AssetEntry.asset_id == asset_id,
+        )).one()
+        outbound = session.exec(select(func.coalesce(func.sum(AssetExit.quantity), 0.0)).where(
+            AssetExit.asset_id == asset_id,
+        )).one()
+        return float(inbound[0]) - float(outbound[0])
 
 
 if __name__ == "__main__":

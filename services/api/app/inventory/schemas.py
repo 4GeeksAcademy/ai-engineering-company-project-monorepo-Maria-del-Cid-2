@@ -51,6 +51,7 @@ class AssetEntryFields(InventorySchema):
     unit_cost: float = Field(ge=0, allow_inf_nan=False)
     supplier: str
     office: InventoryOffice
+    seed_key: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class AssetEntryCreate(AssetEntryFields):
@@ -74,6 +75,7 @@ class AssetExitFields(InventorySchema):
     exit_type: Literal["allocation", "consumption"]
     assigned_to: str | None = None
     office: InventoryOffice
+    seed_key: str | None = Field(default=None, min_length=1, max_length=128)
 
     @model_validator(mode="after")
     def validate_assignee_for_exit_type(self) -> AssetExitFields:
@@ -120,6 +122,7 @@ class KitPreparationCreate(InventorySchema):
     office: InventoryOffice
     programme_id: str = Field(min_length=1)
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=6)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class InventoryRegularizationCreate(InventorySchema):

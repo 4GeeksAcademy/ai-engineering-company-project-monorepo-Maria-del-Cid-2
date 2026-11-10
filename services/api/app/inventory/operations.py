@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from contextlib import AbstractContextManager
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -44,6 +45,11 @@ from .schemas import (
 OUTBOX_SOURCE = "/nexova/inventory"
 
 
+def _transaction_scope(session: Session) -> AbstractContextManager[object]:
+    """Join an orchestrating transaction with a savepoint when one is active."""
+    return session.begin_nested() if session.in_transaction() else session.begin()
+
+
 def _movement_event(
     event_type: str,
     movement_type: str,
@@ -77,7 +83,7 @@ def currency_for_office(office: str) -> str:
 def create_programme(session: Session, payload: ProgrammeCreate) -> ProgrammeResponse:
     programme = Programme(**payload.model_dump())
     try:
-        with session.begin():
+        with _transaction_scope(session):
             session.add(programme)
             session.flush()
     except IntegrityError as exc:
@@ -91,7 +97,7 @@ def create_asset(session: Session, payload: AssetCreate) -> AssetWithStockRespon
 
     asset = Asset(**payload.model_dump(), currency=currency_for_office(payload.office))
     try:
-        with session.begin():
+        with _transaction_scope(session):
             session.add(asset)
             session.flush()
     except IntegrityError as exc:
@@ -114,7 +120,7 @@ def create_inbound(
 
     movement = AssetEntry(**payload.model_dump(), currency=currency_for_office(payload.office), user_uuid=user_uuid)
     try:
-        with session.begin():
+        with _transaction_scope(session):
             asset = _require_asset(session, payload.asset_id, lock_for_update=True)
             _validate_movement(session, asset, payload.office, payload.programme_id)
             valuation = _valuation_for_asset(session, asset.id)
@@ -179,7 +185,7 @@ def create_outbound(
 
     movement = AssetExit(**payload.model_dump(), currency=currency_for_office(payload.office), user_uuid=user_uuid)
     try:
-        with session.begin():
+        with _transaction_scope(session):
             _set_postgres_read_committed(session)
             asset = _require_asset(session, payload.asset_id, lock_for_update=True)
             _validate_movement(session, asset, payload.office, payload.programme_id)
@@ -285,7 +291,7 @@ def _emit_threshold_if_crossed(
     if threshold is None:
         return
     limit = _decimal(threshold.threshold)
-    if before_stock > limit and after_stock <= limit:
+    if before_stock >= limit and after_stock < limit:
         session.add(_movement_event(
             "stock_threshold_triggered", "exit", movement_id,
             {
@@ -300,7 +306,7 @@ def _emit_threshold_if_crossed(
 
 
 def configure_stock_threshold(session: Session, payload: StockThresholdWrite) -> StockThreshold:
-    with session.begin():
+    with _transaction_scope(session):
         asset = _require_asset(session, payload.asset_id)
         if asset.office != payload.office:
             raise HTTPException(status_code=422, detail="Threshold office must match product office.")
@@ -317,7 +323,7 @@ def configure_stock_threshold(session: Session, payload: StockThresholdWrite) ->
 
 
 def configure_kit(session: Session, payload: KitConfigurationWrite) -> KitConfiguration:
-    with session.begin():
+    with _transaction_scope(session):
         kit = _require_asset(session, payload.kit_asset_id)
         if kit.office != payload.office:
             raise HTTPException(status_code=422, detail="Kit office must match product office.")
@@ -348,6 +354,7 @@ def configure_kit(session: Session, payload: KitConfigurationWrite) -> KitConfig
             config.variance_threshold_percent = payload.variance_threshold_percent
             for old in session.exec(select(KitComponent).where(KitComponent.kit_asset_id == kit.id)).all():
                 session.delete(old)
+            session.flush()
         session.add_all([row for _asset, row in components])
         session.flush()
     return config
@@ -358,9 +365,22 @@ def prepare_kit(
 ) -> KitPreparation:
     """Atomically consume one approved composition and snapshot its costs."""
     try:
-        with session.begin():
+        with _transaction_scope(session):
             _set_postgres_read_committed(session)
             kit = _require_asset(session, payload.kit_asset_id, lock_for_update=True)
+            if payload.idempotency_key is not None:
+                existing_preparation = session.exec(select(KitPreparation).where(
+                    KitPreparation.idempotency_key == payload.idempotency_key,
+                )).first()
+                if existing_preparation is not None:
+                    if (
+                        existing_preparation.kit_asset_id != payload.kit_asset_id
+                        or existing_preparation.office != payload.office
+                        or existing_preparation.programme_id != payload.programme_id
+                        or _decimal(existing_preparation.kit_quantity) != _decimal(payload.quantity)
+                    ):
+                        raise InventoryConflict("The kit idempotency key was already used for another request.")
+                    return existing_preparation
             if kit.office != payload.office:
                 raise HTTPException(status_code=422, detail="Preparation office must match kit office.")
             if session.get(Programme, payload.programme_id) is None:
@@ -403,6 +423,7 @@ def prepare_kit(
                     asset_id=asset.id, programme_id=payload.programme_id,
                     quantity=quantity, exit_type="consumption", assigned_to=None,
                     office=kit.office, currency=kit.currency, user_uuid=user_uuid,
+                    seed_key=(f"{payload.idempotency_key}:component:{asset.sku}" if payload.idempotency_key else None),
                 )
                 session.add(movement)
                 session.flush()
@@ -434,6 +455,7 @@ def prepare_kit(
             if actual_per_kit is not None and expected_per_kit > 0:
                 variance = (actual_per_kit - expected_per_kit) / expected_per_kit * Decimal("100")
             preparation = KitPreparation(
+                idempotency_key=payload.idempotency_key,
                 kit_asset_id=kit.id, programme_id=payload.programme_id,
                 office=kit.office, currency=kit.currency, kit_quantity=payload.quantity,
                 expected_cost=expected_per_kit, actual_cost=actual_per_kit,
@@ -460,7 +482,7 @@ def prepare_kit(
 def create_inventory_regularization(
     session: Session, payload: InventoryRegularizationCreate, *, user_uuid: UUID,
 ) -> InventoryRegularization:
-    with session.begin():
+    with _transaction_scope(session):
         asset = _require_asset(session, payload.asset_id, lock_for_update=True)
         if asset.office != payload.office:
             raise HTTPException(status_code=422, detail="Regularization office must match product office.")
