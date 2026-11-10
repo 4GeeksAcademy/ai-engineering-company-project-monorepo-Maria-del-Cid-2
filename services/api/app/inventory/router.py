@@ -129,6 +129,7 @@ def get_inventory_orders(session: SessionDependency) -> list[InventoryOrderRespo
             responses.append(AssetEntryOrderResponse(type="entry", **row))
         else:
             row.pop("supplier")
+            row.pop("unit_cost")
             responses.append(AssetExitOrderResponse(type="exit", **row))
     return responses
 

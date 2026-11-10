@@ -2,8 +2,9 @@
 
 Esta guía registra el diagnóstico del pipeline y el estado de implementación.
 La fase previa de **Programmes dentro de Inventory está implementada y
-validada localmente** (ver sección 6). La Fase 2 original del pipeline y sus
-fases posteriores siguen pendientes y no se han iniciado.
+validada localmente** (ver sección 6). La Fase 2 se está implementando por
+etapas con pausa para aprobación entre ellas; esta primera etapa añade coste
+unitario en nuevas entradas y captura transaccional de eventos de movimientos.
 
 ## 1. Objetivo y contrato aprobado
 
@@ -65,14 +66,12 @@ upsert; la política de correcciones de negocio con otro UUID no está definida.
 1. **Fase previa propuesta, programas:** crear programas formativos y asociar
   cada movimiento de inventario a uno de ellos. El producto no pertenece a un
   programa; conserva su oficina y su moneda. Ver sección 6.
-2. **Fase 2, fuente:** revisar el dominio para definir kits, costes reales,
-  umbrales persistidos y regla de detección de variaciones, previa aprobación
-  cuando falten datos de negocio. Completar los campos de los eventos desde
-  operaciones de dominio, tras aprobar la garantía de entrega; ampliar los
-  contratos en
-   `services/api/app/telemetry/tags.py` y `docs/telemetry/event-schemas.json`
-   para `programme_id` en alerta y variación. Verificar con los tests cercanos
-   de inventario y telemetría. No usar valores supuestos para rellenar datos.
+2. **Fase 2, fuente y entrega:** captura transaccional de eventos de
+  movimientos y coste de entrada en la etapa 1; luego worker independiente
+  para reclamar y entregar eventos con reintentos, dead-letter, backoff y
+  limpieza. Con las definiciones de negocio facilitadas, completar después
+  alertas de stock y variación de coste, y ampliar contratos para sus
+  dimensiones. No usar valores supuestos.
 3. **Fases 3 y 4, cálculo:** añadir migraciones PostgreSQL para
    `reporting.weekly_office_program_performance` y `reporting.pipeline_runs`;
    instalar Prefect 3 en el entorno acordado; implementar
@@ -107,7 +106,7 @@ pipeline técnico; sí se implementaron y validaron cambios locales de Inventory
 - No existe definición de kit, coste esperado ni regla de anomalía: estos datos
   y reglas deben ser facilitados o aprobados, no inferidos de ejemplos.
 - Prefect 3 será self-hosted, pero quedan por decidir host/work pool y rol de
-  base de datos. El outbox propuesto para entrega fiable necesita aprobación.
+  base de datos. El outbox acordado se entrega antes del cálculo/reporting.
 - Los eventos históricos sin dimensiones completas no pueden convertirse
   automáticamente en observaciones válidas del informe; no se ha acordado una
   política de backfill ni de corrección semántica.
@@ -212,9 +211,9 @@ programa ni asignar estos tres IDs a filas preexistentes.
   EUR y `programme_id = NULL` preservado con FK añadida. No se migró ninguna
   base real ni se comprobó PostgreSQL.
 5. El pipeline futuro descarta o contabiliza como inválidos los eventos sin
-  `programme_id`; nunca crea una fila semanal con ID nulo ni reparte importes
+  programme_id`; nunca crea una fila semanal con ID nulo ni reparte importes
   entre programas. No se toca el informe técnico ni se implementa todavía
-  el pipeline o el outbox.
+  el pipeline de reporting.
 
 ### Datos y reglas pendientes para la Fase 2
 
@@ -250,19 +249,31 @@ movimientos reales. Antes de migrar una base de trabajo habrá que consultar
 sus filas de forma segura y acordar cómo conservar movimientos anteriores que
 no tienen programa.
 
-### Propuesta de fiabilidad de eventos para aprobación
+### Fiabilidad de eventos: captura etapa 1 y trabajo pendiente
 
 En este entorno `DATABASE_URL` es SQLite para inventario y
 `TELEMETRY_DATABASE_URL` es PostgreSQL: no hay transacción compartida. Un
-`emit_event()` directo tampoco garantiza entrega, porque captura fallos. Se
-propone un transactional outbox **en la misma base que los movimientos**:
-guardar movimiento y evento pendiente en una sola transacción; después, un
-worker independiente envía cada evento a `public.telemetry_events` mediante
-el adaptador existente, con UUID estable, reintentos y monitorización de
-pendientes. La unicidad de `event_id` en destino hace idempotente el reenvío;
-marcar como entregado solo tras confirmación. Fallos prolongados dejan el
-evento pendiente para reintento sin perder el movimiento. No escribir KPI en
-telemetría ni atribuir atomicidad entre SQLite y PostgreSQL. Esto requiere
-definir el despliegue y concurrencia del worker y la política de retención
-antes de implementar la emisión de la Fase 2; no forma parte del alcance de
-la fase previa propuesta.
+`emit_event()` directo tampoco garantiza entrega, porque captura fallos. La
+etapa 1 implementa el transactional outbox **en la misma base que los
+movimientos**: guardar movimiento y evento pendiente en una sola transacción.
+La etapa posterior añadirá un worker independiente que envíe cada evento a
+`public.telemetry_events` mediante el adaptador existente. La unicidad de
+`event_id` en destino permite reenvíos idempotentes; el worker deberá marcar
+como entregado solo tras confirmación. No escribir KPI en telemetría ni
+atribuir atomicidad entre SQLite y PostgreSQL.
+
+**Estado de etapa 1:** cada movimiento inbound/outbound y su evento pendiente
+se guardan en una transacción de `DATABASE_URL`, con UUID estable, payload de
+dominio y referencia al movimiento. Las nuevas entradas requieren
+`unit_cost >= 0`; el coste es nullable para conservar históricos desconocidos,
+sin completarlos por inferencia. La UI recoge el coste y deja de emitir
+eventos de negocio duplicados con el emisor best-effort. La migración aditiva
+incorpora coste y outbox a bases existentes.
+
+La etapa 1 **no entrega aún** eventos a `public.telemetry_events`: hasta
+implementar el worker, las filas se acumulan en `pending`. Quedan para la
+siguiente etapa el reclamo concurrente, reintentos y backoff acotado,
+clasificación de fallos, dead-letter, servicio Docker y limpieza/retención
+ejecutable. No hay atomicidad distribuida entre la base de movimientos y la
+base de telemetría. El worker debe marcar como entregado solo tras confirmación;
+la unicidad de `event_id` en destino permite reenvío idempotente.

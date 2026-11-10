@@ -1,5 +1,18 @@
 # Progress — Nexova
 
+### Inventory reporting pipeline — Phase 2 implementation
+
+**Status:** Implementación de persistencia transaccional y worker terminada; validación integral y decisiones de reglas de negocio documentadas abajo. No iniciar Phase 3 de este pipeline sin aprobación explícita.
+
+- Entradas y salidas guardan su evento `inbound_order_created` / `outbound_order_created` en `telemetry_outbox` dentro de la misma transacción que el movimiento. Los eventos llevan ID estable y dimensiones actuales, incluido programa, coste de entrada y moneda.
+- Worker independiente con claims/leases recuperables, fencing token, entrega at-least-once, idempotencia de destino, reintentos acotados, dead-letter, cierre SIGTERM/SIGINT y retención de eventos terminales. Compose expone `inventory-outbox-worker` sin puertos.
+- Se agregaron pruebas SQLite aisladas de ciclo de vida del worker; **7 pasan** en `uv run pytest tests/test_inventory_outbox_worker.py -q`. Estas no verifican concurrencia PostgreSQL/`SKIP LOCKED`.
+- Validación backend focalizada: **56 passed, 1 skipped y 28 subtests passed** en la suite de inventario/worker. Frontend: tests de contrato de inventario **12 passed**; `npx tsc --noEmit` finalizó sin errores. `git diff --check` pasó. La suite frontend completa no se pudo validar porque los intentos no entregaron un resumen/estado concluyente y mostraron ruido `ERR_INVALID_URL` del endpoint de telemetría.
+- Validación adicional de las tareas pendientes: suite frontend completa **87/87 passed** (`npm test`); se ajustó el test de TelemetryService para simular `fetch`, ya que Node no resuelve el endpoint same-origin relativo `/api/telemetry/events` fuera del navegador. `docker compose config --quiet` y `docker compose build` pasaron para los tres servicios. Worker en contenedor: arranque correcto (`Inventory outbox worker started`) contra PostgreSQL desechable. Migración aplicada dos veces en PostgreSQL 16 desechable: tablas/columnas/índice de claim correctos, idempotente y preserva la fila legacy con `unit_cost=NULL`. Concurrencia: dos threads/workers reclamaron 20 eventos sin intersección; se probó expiración/recuperación del lease, token nuevo y rechazo de ack obsoleto. Los contenedores desechables se eliminaron al terminar.
+- El esquema de eventos fue corregido para reflejar la implementación real, sin afirmar que el catálogo entero esté instrumentado. `stock_threshold_triggered` y `kit_cost_variance_detected` no se emiten: falta aprobar umbrales, composición/coste esperado y reglas de variancia; no inferirlos desde las visuales existentes.
+- Integración E2E adicional completada en dos PostgreSQL 16 desechables: se migró Inventory/outbox, se preparó un movimiento/evento inbound de prueba, y el worker Compose lo entregó al PostgreSQL de telemetría (`claimed=1, delivered=1, retried=0, dead=0`). El outbox quedó `delivered`, el destino tuvo exactamente una fila con tags filtrados correctos, y repetir el mismo `event_id` no duplicó el evento. Se eliminaron worker y ambas bases temporales. Supabase y bases persistentes de usuario no se usaron.
+- Pendiente: despliegue operacional con configuración/datos reales y pruebas de entrega bajo fallos de red/destino. La prueba E2E fue controlada y desechable; no se usó Supabase ni una base persistente de usuario.
+
 ### Telemetry Instrumentation — Phase 3: Backoffice Event Instrumentation
 
 **Status:** ✅ **COMPLETE (14/14 events)**

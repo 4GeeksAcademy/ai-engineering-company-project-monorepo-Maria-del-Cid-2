@@ -12,7 +12,6 @@ import { trackStockThresholdIfCrossed } from "@/lib/telemetry/track-stock-thresh
 import {
   INVENTORY_EXIT_TYPES,
   INVENTORY_OFFICE_OPTIONS,
-  currencyForInventoryOffice,
   type AssetExitCreate,
   type AssetWithStock,
   type Programme,
@@ -152,20 +151,7 @@ export function OutboundFormPanel({ initialProductId = null }: OutboundFormPanel
     setCreated(null);
     try {
       const createdOrder = await createOutbound(nexovaApi, payload);
-      // Track outbound_order_created AFTER successful creation
-      if (selectedProduct) {
-        telemetry.track("outbound_order_created", {
-          product_id: selectedProduct.id,
-          product_sku: selectedProduct.sku,
-          product_category: selectedProduct.category,
-          programme_id: createdOrder.programme_id,
-          quantity: payload.quantity,
-          exit_type: payload.exit_type,
-          office: createdOrder.office,
-          currency: currencyForInventoryOffice(createdOrder.office),
-          user_uuid: createdOrder.user_uuid,
-        });
-      }
+      // Inventory business events are durably queued by the API transaction.
       void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
         (updatedProduct) => {
           if (!updatedProduct) return;

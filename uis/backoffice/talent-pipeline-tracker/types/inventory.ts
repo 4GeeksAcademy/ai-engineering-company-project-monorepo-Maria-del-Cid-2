@@ -71,17 +71,19 @@ export interface AssetEntryCreate {
   asset_id: number;
   programme_id: string;
   quantity: number;
+  unit_cost: number;
   supplier: string;
   office: string;
 }
 
 /** A created inbound movement as returned by the API. */
-export interface AssetEntry extends Omit<AssetEntryCreate, "programme_id"> {
+export interface AssetEntry extends Omit<AssetEntryCreate, "programme_id" | "unit_cost"> {
   id: number;
   created_at: string;
   user_uuid: string;
   programme_id: string | null;
   currency: InventoryCurrency;
+  unit_cost: number | null;
 }
 
 /** Payload to create an outbound movement (consumption or allocation). */

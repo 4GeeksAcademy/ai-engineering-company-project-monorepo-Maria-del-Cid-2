@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from uuid import UUID
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from .models import Asset, AssetEntry, AssetExit, Programme
+from .models import Asset, AssetEntry, AssetExit, Programme, TelemetryOutboxEvent
 from .schemas import (
     AssetCreate,
     AssetEntryCreate,
@@ -20,6 +21,26 @@ from .schemas import (
     ProgrammeCreate,
     ProgrammeResponse,
 )
+
+
+OUTBOX_SOURCE = "/nexova/inventory"
+
+
+def _movement_event(
+    event_type: str,
+    movement_type: str,
+    movement_id: int,
+    tags: dict[str, object],
+) -> TelemetryOutboxEvent:
+    return TelemetryOutboxEvent(
+        event_id=str(uuid4()),
+        event_type=event_type,
+        timestamp=datetime.now(timezone.utc),
+        source=OUTBOX_SOURCE,
+        tags=tags,
+        movement_type=movement_type,
+        movement_id=movement_id,
+    )
 
 
 def currency_for_office(office: str) -> str:
@@ -71,6 +92,26 @@ def create_inbound(
             _validate_movement(session, asset, payload.office, payload.programme_id)
             session.add(movement)
             session.flush()
+            session.add(
+                _movement_event(
+                    "inbound_order_created",
+                    "entry",
+                    movement.id,
+                    {
+                        "product_id": asset.id,
+                        "product_sku": asset.sku,
+                        "product_category": asset.category,
+                        "programme_id": movement.programme_id,
+                        "quantity": movement.quantity,
+                        "supplier": movement.supplier,
+                        "office": movement.office,
+                        "currency": movement.currency,
+                        "unit_cost": movement.unit_cost,
+                        "user_uuid": str(movement.user_uuid),
+                    },
+                )
+            )
+            session.flush()
     except IntegrityError as exc:
         session.rollback()
         raise InventoryConflict("The inventory movement conflicts with stored data.") from exc
@@ -105,6 +146,25 @@ def create_outbound(
                 raise InsufficientStock("Insufficient stock for this outbound movement.")
 
             session.add(movement)
+            session.flush()
+            session.add(
+                _movement_event(
+                    "outbound_order_created",
+                    "exit",
+                    movement.id,
+                    {
+                        "product_id": asset.id,
+                        "product_sku": asset.sku,
+                        "product_category": asset.category,
+                        "programme_id": movement.programme_id,
+                        "quantity": movement.quantity,
+                        "exit_type": movement.exit_type,
+                        "office": movement.office,
+                        "currency": movement.currency,
+                        "user_uuid": str(movement.user_uuid),
+                    },
+                )
+            )
             session.flush()
     except IntegrityError as exc:
         session.rollback()

@@ -25,6 +25,7 @@ const EMPTY_FORM: AssetEntryCreate = {
   asset_id: 0,
   programme_id: "",
   quantity: 0,
+  unit_cost: 0,
   supplier: "",
   office: "Valencia",
 };
@@ -106,23 +107,12 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
     const payload: AssetEntryCreate = {
       ...form,
       quantity: Number(form.quantity),
+      unit_cost: Number(form.unit_cost),
     };
     try {
       const createdOrder = await createInbound(nexovaApi, payload);
       const currency = currencyForInventoryOffice(createdOrder.office);
-      if (selectedProduct && currency) {
-        telemetry.track("inbound_order_created", {
-          product_id: selectedProduct.id,
-          product_sku: selectedProduct.sku,
-          product_category: selectedProduct.category,
-          programme_id: createdOrder.programme_id,
-          quantity: payload.quantity,
-          supplier: payload.supplier,
-          office: createdOrder.office,
-          currency,
-          user_uuid: createdOrder.user_uuid,
-        });
-      }
+      // Inventory business events are durably queued by the API transaction.
       void trackStockThresholdIfCrossed(telemetry, selectedProduct).then(
         (updatedProduct) => {
           if (!updatedProduct) return;
@@ -222,6 +212,15 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
               onChange={(event) =>
                 updateField("quantity", Number(event.target.value))
               }
+            />
+            <Input
+              label="Unit cost"
+              required
+              min={0}
+              step="0.01"
+              type="number"
+              value={form.unit_cost || ""}
+              onChange={(event) => updateField("unit_cost", Number(event.target.value))}
             />
             <Input
               label="Supplier"

@@ -47,6 +47,7 @@ class AssetWithStockResponse(AssetResponse):
 class AssetEntryFields(InventorySchema):
     asset_id: int
     quantity: float = Field(gt=0, allow_inf_nan=False)
+    unit_cost: float = Field(ge=0, allow_inf_nan=False)
     supplier: str
     office: InventoryOffice
 
@@ -61,6 +62,9 @@ class AssetEntryResponse(AssetEntryFields):
     user_uuid: UUID
     programme_id: str | None
     currency: InventoryCurrency
+
+    # Existing movements predate unit cost and remain valid with an unknown cost.
+    unit_cost: float | None
 
 
 class AssetExitFields(InventorySchema):

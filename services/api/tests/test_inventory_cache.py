@@ -47,7 +47,7 @@ def _seed_asset(session: Session, name: str, sku: str, stock: float) -> Asset:
     session.commit()
     if stock > 0:
         session.add(AssetEntry(
-            asset_id=asset.id, quantity=stock, supplier="Seed",
+            asset_id=asset.id, quantity=stock, unit_cost=2.5, supplier="Seed",
             office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid,
         ))
         session.commit()
@@ -82,7 +82,7 @@ class InventoryCacheTests(unittest.TestCase):
             self.asset_id = asset.id
             # Extra stock so outbound tests don't need per-test setup
             session.add(AssetEntry(
-                asset_id=self.asset_id, quantity=50, supplier="ExtraStock",
+                asset_id=self.asset_id, quantity=50, unit_cost=2.5, supplier="ExtraStock",
                 office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid,
             ))
             session.commit()
@@ -202,6 +202,7 @@ class InventoryCacheTests(unittest.TestCase):
             "/api/inventory/orders/inbound",
             json={
                 "asset_id": self.asset_id, "quantity": 10,
+                "unit_cost": 2.5,
                 "supplier": "Acme", "office": "Valencia", "programme_id": "prog-cache-test",
             },
         )

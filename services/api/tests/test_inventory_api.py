@@ -22,7 +22,7 @@ from sqlalchemy.engine import make_url
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserRole
 from app.inventory.database import get_session
-from app.inventory.models import Asset, AssetEntry, AssetExit, Programme
+from app.inventory.models import Asset, AssetEntry, AssetExit, Programme, TelemetryOutboxEvent
 from app.inventory.router import _products_cache
 from app.inventory.operations import (
     InsufficientStock,
@@ -87,8 +87,8 @@ class InventoryApiTests(unittest.TestCase):
         with Session(self.engine) as session:
             session.add_all(
                 [
-                    AssetEntry(asset_id=asset.id, quantity=10, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
-                    AssetEntry(asset_id=asset.id, quantity=5, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetEntry(asset_id=asset.id, quantity=10, unit_cost=4.0, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetEntry(asset_id=asset.id, quantity=5, unit_cost=4.0, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                     AssetExit(asset_id=asset.id, quantity=2, exit_type="allocation", assigned_to="Alex", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                     AssetExit(asset_id=asset.id, quantity=1, exit_type="consumption", assigned_to=None, office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                 ]
@@ -112,7 +112,7 @@ class InventoryApiTests(unittest.TestCase):
         with Session(self.engine) as session:
             session.add_all(
                 [
-                    AssetEntry(asset_id=asset.id, quantity=3, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
+                    AssetEntry(asset_id=asset.id, quantity=3, unit_cost=4.0, supplier="Acme", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                     AssetExit(asset_id=asset.id, quantity=1, exit_type="allocation", assigned_to="Alex", office="Valencia", currency="EUR", user_uuid=_FAKE_USER.user_uuid),
                 ]
             )
@@ -143,7 +143,7 @@ class InventoryApiTests(unittest.TestCase):
 
         for path, payload in (
             ("/api/inventory/products", {"name": "Laptop", "sku": "LAP-1", "category": "IT", "office": "Valencia"}),
-            ("/api/inventory/orders/inbound", {"asset_id": 1, "quantity": 1, "supplier": "Acme", "office": "Valencia"}),
+            ("/api/inventory/orders/inbound", {"asset_id": 1, "quantity": 1, "unit_cost": 12.5, "supplier": "Acme", "office": "Valencia"}),
             ("/api/inventory/orders/outbound", {"asset_id": 1, "quantity": 1, "exit_type": "consumption", "office": "Valencia"}),
         ):
             with self.subTest(method="POST", path=path):
@@ -176,6 +176,7 @@ class InventoryApiTests(unittest.TestCase):
             json={
                 "asset_id": asset.id,
                 "quantity": 8,
+                "unit_cost": 12.5,
                 "supplier": "Acme",
                 "office": "Valencia",
                 "programme_id": "prog-test",
@@ -183,6 +184,7 @@ class InventoryApiTests(unittest.TestCase):
         )
         self.assertEqual(inbound.status_code, 201, inbound.text)
         self.assertEqual(inbound.json()["user_uuid"], str(_FAKE_USER.user_uuid))
+        self.assertEqual(inbound.json()["unit_cost"], 12.5)
         self.assertNotIn("user_uuid", {"asset_id", "quantity", "supplier", "office"})
         self.assertEqual(
             self.client.get(f"/api/inventory/products/{asset.id}").json()["current_stock"],
@@ -209,6 +211,14 @@ class InventoryApiTests(unittest.TestCase):
         self.assertEqual(
             self.client.get("/api/inventory/orders").json()[0]["type"], "exit"
         )
+        with Session(self.engine) as session:
+            events = session.exec(select(TelemetryOutboxEvent).order_by(TelemetryOutboxEvent.event_type)).scalars().all()
+            self.assertEqual([event.event_type for event in events], ["inbound_order_created", "outbound_order_created"])
+            inbound_event = next(event for event in events if event.event_type == "inbound_order_created")
+            self.assertEqual(inbound_event.tags["unit_cost"], 12.5)
+            self.assertEqual(inbound_event.tags["programme_id"], "prog-test")
+            self.assertEqual(inbound_event.movement_id, inbound.json()["id"])
+            self.assertTrue(all(event.status == "pending" and event.attempt_count == 0 for event in events))
 
     def test_insufficient_stock_and_invalid_references_leave_no_movement(self) -> None:
         asset = self.add_asset()
@@ -230,6 +240,7 @@ class InventoryApiTests(unittest.TestCase):
             json={
                 "asset_id": 987654,
                 "quantity": 1,
+                "unit_cost": 3,
                 "supplier": "Acme",
                 "office": "Valencia",
                 "programme_id": "prog-test",
@@ -258,7 +269,7 @@ class InventoryApiTests(unittest.TestCase):
 
         response = self.client.post(
             "/api/inventory/orders/inbound",
-            json={"asset_id": asset.id, "quantity": 2, "supplier": "Acme", "office": "Valencia", "programme_id": "prog-test"},
+            json={"asset_id": asset.id, "quantity": 2, "unit_cost": 3, "supplier": "Acme", "office": "Valencia", "programme_id": "prog-test"},
         )
         self.assertEqual(response.status_code, 428)
         self.assertEqual(self.client.get("/api/inventory/orders").json(), [])
@@ -270,6 +281,7 @@ class InventoryApiTests(unittest.TestCase):
             json={
                 "asset_id": asset.id,
                 "quantity": 1,
+                "unit_cost": 3,
                 "supplier": "Acme",
                 "office": "Valencia",
                 "user_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -316,7 +328,7 @@ class InventoryApiTests(unittest.TestCase):
 
         response = self.client.post(
             "/api/inventory/orders/inbound",
-            json={"asset_id": asset.id, "quantity": 2, "supplier": "Acme", "office": "Valencia", "programme_id": "prog-test"},
+            json={"asset_id": asset.id, "quantity": 2, "unit_cost": 3, "supplier": "Acme", "office": "Valencia", "programme_id": "prog-test"},
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(self.client.get("/api/inventory/orders").json(), [])

@@ -41,6 +41,29 @@ services:
     networks:
       - nexova
 
+  inventory-outbox-worker:
+    build:
+      context: .
+      dockerfile: services/inventory-outbox-worker/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "${DATABASE_URL}"
+      TELEMETRY_DATABASE_URL: "${TELEMETRY_DATABASE_URL}"
+      OUTBOX_POLL_SECONDS: "${OUTBOX_POLL_SECONDS:-2}"
+      OUTBOX_BATCH_SIZE: "${OUTBOX_BATCH_SIZE:-50}"
+      OUTBOX_LEASE_SECONDS: "${OUTBOX_LEASE_SECONDS:-60}"
+      OUTBOX_MAX_ATTEMPTS: "${OUTBOX_MAX_ATTEMPTS:-10}"
+      OUTBOX_BACKOFF_BASE_SECONDS: "${OUTBOX_BACKOFF_BASE_SECONDS:-2}"
+      OUTBOX_BACKOFF_MAX_SECONDS: "${OUTBOX_BACKOFF_MAX_SECONDS:-900}"
+      OUTBOX_RETENTION_DAYS: "${OUTBOX_RETENTION_DAYS:-90}"
+      OUTBOX_JITTER_FRACTION: "${OUTBOX_JITTER_FRACTION:-0.2}"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - nexova
+
 volumes:
   interfaces_node_modules:
   interfaces_next_cache:

@@ -1,16 +1,15 @@
-"""Explicit additive migration of inventory programmes and office currencies."""
+"""Explicit additive migration of inventory costs, programmes, and telemetry outbox."""
 
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine, make_url
 
 from .database import get_database_url, get_engine
-from .models import Programme
+from .models import Programme, TelemetryOutboxEvent
 from .seed import validate_seed_target
 
 
@@ -36,6 +35,10 @@ def migrate_programmes(engine: Engine) -> None:
                     raise RuntimeError(f"{table} contains mismatched currencies; migration cancelled.")
 
         Programme.__table__.create(connection, checkfirst=True)
+        if "unit_cost" not in {
+            column["name"] for column in inspect(connection).get_columns("asset_entries")
+        }:
+            connection.execute(text("ALTER TABLE asset_entries ADD COLUMN unit_cost FLOAT"))
         for table in sorted(tables):
             columns = {column["name"] for column in inspect(connection).get_columns(table)}
             if "currency" not in columns:
@@ -47,6 +50,19 @@ def migrate_programmes(engine: Engine) -> None:
                 connection.execute(
                     text(f"ALTER TABLE {table} ADD COLUMN programme_id VARCHAR REFERENCES programmes (programme_id)")
                 )
+        TelemetryOutboxEvent.__table__.create(connection, checkfirst=True)
+        outbox_columns = {
+            column["name"] for column in inspect(connection).get_columns("telemetry_outbox")
+        }
+        if "locked_until" not in outbox_columns:
+            connection.execute(text("ALTER TABLE telemetry_outbox ADD COLUMN locked_until TIMESTAMP NULL"))
+        if "lease_token" not in outbox_columns:
+            connection.execute(text("ALTER TABLE telemetry_outbox ADD COLUMN lease_token VARCHAR NULL"))
+        claim_index = next(
+            index for index in TelemetryOutboxEvent.__table__.indexes
+            if index.name == "ix_telemetry_outbox_claim"
+        )
+        claim_index.create(connection, checkfirst=True)
 
 
 def main() -> None:

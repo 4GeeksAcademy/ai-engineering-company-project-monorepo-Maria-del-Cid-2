@@ -49,20 +49,33 @@ class InventorySchemaTests(unittest.TestCase):
             AssetCreate(**fields, current_stock=3)
 
     def test_entry_schema_requires_fields_uuid_is_response_only(self) -> None:
-        payload = AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=2, supplier="Acme", office="Valencia")
+        payload = AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=2, unit_cost=4.25, supplier="Acme", office="Valencia")
         with self.assertRaises(ValidationError):
-            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=0, supplier="Acme", office="Valencia")
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=0, unit_cost=4.25, supplier="Acme", office="Valencia")
         with self.assertRaises(ValidationError):
-            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, supplier="Acme", office="Valencia", user_uuid=str(TEST_UUID))
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, supplier="Acme", office="Valencia")
+        with self.assertRaises(ValidationError):
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, unit_cost=-0.01, supplier="Acme", office="Valencia")
+        with self.assertRaises(ValidationError):
+            AssetEntryCreate(asset_id=1, programme_id="prog-test", quantity=1, unit_cost=4.25, supplier="Acme", office="Valencia", user_uuid=str(TEST_UUID))
 
         response = AssetEntryResponse(
             id=1,
             created_at=datetime.now(timezone.utc),
             user_uuid=TEST_UUID,
             currency="EUR",
-            **payload.model_dump(),
+            **{**payload.model_dump(), "unit_cost": None},
         )
         self.assertEqual(response.user_uuid, TEST_UUID)
+        self.assertIsNone(response.unit_cost)
+        known_cost_response = AssetEntryResponse(
+            id=1,
+            created_at=datetime.now(timezone.utc),
+            user_uuid=TEST_UUID,
+            currency="EUR",
+            **payload.model_dump(),
+        )
+        self.assertEqual(known_cost_response.unit_cost, 4.25)
         with self.assertRaises(ValidationError):
             AssetEntryResponse(
                 id=1,
@@ -154,6 +167,7 @@ class InventoryOrmTests(unittest.TestCase):
         asset = Asset(name="Laptop", sku="LAP-1", category="IT", office="Valencia", currency="EUR")
         entry = AssetEntry(
             quantity=3,
+            unit_cost=4.25,
             supplier="Acme",
             office="Valencia",
             currency="EUR",
@@ -195,6 +209,7 @@ class InventoryOrmTests(unittest.TestCase):
         valid_payload = {
             "asset_id": 1,
             "quantity": 1,
+            "unit_cost": 4,
             "supplier": "Acme",
             "office": "Valencia",
             "currency": "EUR",
@@ -223,6 +238,7 @@ class InventoryOrmTests(unittest.TestCase):
                 AssetEntry(
                     asset_id=asset.id,
                     quantity=-1,
+                    unit_cost=4,
                     supplier="Acme",
                     office="Valencia",
                     currency="EUR",
@@ -252,6 +268,7 @@ class InventoryOrmTests(unittest.TestCase):
                 AssetEntry(
                     asset_id=999,
                     quantity=1,
+                    unit_cost=4,
                     supplier="Acme",
                     office="Valencia",
                     currency="EUR",
