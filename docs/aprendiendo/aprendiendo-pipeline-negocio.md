@@ -124,7 +124,7 @@ de datos no son una prueba integral del flujo de usuario.
 
 ## 7. Fase 6 — validación integral: evidencias y límites
 
-Validación local ejecutada el 2026-11-10 desde la raíz del monorepo:
+Validación inicial ejecutada el 2026-11-10 desde la raíz del monorepo:
 
 ```text
 uv run --project services/api python -m pytest \
@@ -155,7 +155,7 @@ no tiene cambios frente a la revisión base.
 | Fallo de task opcional no invalida ETL | Test de flow con task snapshot simulada fallida verifica run `completed` y error saneado. | PASS en flow unitario. |
 | Runs exitoso y fallido | Tests verifican flow fallido crítico y flow exitoso con snapshot opcional fallido mediante mocks; no crean/actualizan filas en PostgreSQL. | PASS en flow unitario, no E2E. |
 | Caché | Test verifica clave determinista por entradas, cambio de contenido y TTL de una hora; no espera expiración en runtime ni ejercita backend de resultados Prefect. | Parcial/unitario. |
-| CLI | Se inspeccionó parser/llamada al flow; no se ejecutó el CLI porque conectaría con URLs de entorno operativas y no hay configuración temporal E2E preparada. | No ejecutado. |
+| CLI | En la validación inicial solo se inspeccionó parser/llamada al flow. En la actualización del 2026-11-11, `python data/pipelines/pipeline.py --help` mostró `--week-start` y `--trigger-type`; no se invocó el flow. | PASS del parser/help; pipeline no ejecutado. |
 | Endpoints `/api/reporting` | Tests HTTP existentes cubren auth, roles, validación lunes, respuesta, filtros y errores saneados para las tres rutas. La última suite focalizada pasó. | PASS con dependencias/repositorios mock; sin DB ni Prefect reales. |
 | Compatibilidad `GET /api/telemetry/report` | Nueva prueba HTTP mockeada pasa; las pruebas de métricas Pandas pasan. `analysis.py` idéntico a HEAD. | PASS de contrato local; no consulta base real. |
 | Separación de destinos | Revisión estática: extracción hace SELECT a `public.telemetry_events`; todos los INSERT/UPDATE de pipeline apuntan a `reporting.*`. Ninguna prueba de escritura contra DB temporal ejecutada. | Confirmado por código, no por E2E. |
@@ -170,12 +170,98 @@ que no hay programa en los eventos; por eso no es una muestra apropiada para
 una corrida útil. El código y los tests no prueban que los nuevos eventos ya
 hayan llegado a telemetría.
 
-**Conclusión:** la Fase 6 tiene validación unitaria y de contrato sustancial,
-pero no está cerrada integralmente. Para declararla completa faltan una prueba
-CLI/flow con bases PostgreSQL desechables separadas, aplicación/re-ejecución de
-migración y upsert, verificación explícita de moneda/errores de persistencia,
-y observación de una corrida Prefect cuando exista una semana con eventos
-válidos. No se debe usar un destino operativo para estas pruebas.
+**Conclusión en ese momento:** la Fase 6 tenía validación unitaria y de
+contrato sustancial, pero faltaba la prueba de base de datos desechable. La
+actualización siguiente cubre el flujo PostgreSQL con fixtures sintéticos; no
+convierte en E2E validada la experiencia del dashboard autenticado ni una
+corrida del deployment de Prefect.
+
+### Actualización de validación (2026-11-11)
+
+Se amplió la verificación sin lanzar el pipeline ni alterar las bases:
+
+| Área | Comando/evidencia | Resultado y alcance |
+|---|---|---|
+| Backend reporting/telemetría | `uv run --project services/api python -m pytest services/api/tests/test_weekly_reporting_transform.py services/api/tests/test_weekly_reporting_pipeline.py services/api/tests/test_reporting_api.py services/api/tests/test_telemetry_router.py services/api/tests/test_telemetry_repository.py services/api/tests/test_telemetry_report.py -q` | 58 passed, 1 warning y 4 subtests en 36.82 s. La warning es Starlette/httpx; apareció ruido de logging Prefect al cerrar el servidor temporal después del resumen exitoso. Son tests unitarios/HTTP con dependencias mock, no una prueba PostgreSQL E2E. |
+| Frontend | `npm test` en `uis/backoffice/talent-pipeline-tracker` | 89 passed, 0 failed. Node emite warnings `MODULE_TYPELESS_PACKAGE_JSON`; la primera ejecución había incluido por error `--runInBand` (opción de Jest), y se repitió después con el script canónico limpio. |
+| Tipos, lint y build | `npx tsc --noEmit`; `npx eslint app/reports/business-analysis/page.tsx lib/business-reporting.ts types/business-reporting.ts`; `npm run build` | Los tres comandos terminaron con código 0. Next.js advierte que infirió la raíz en el lockfile del monorepo y detectó otro lockfile; la compilación de producción terminó correctamente. |
+| CLI | `uv run --project services/api python data/pipelines/pipeline.py --help` | PASS: muestra `--week-start` y `--trigger-type {scheduled,manual}`. Solo ayuda/parser; no ejecuta el flow ni conecta con las fuentes/destinos. Un primer intento con `PREFECT_LOGGING_TO_API=false` falló al validar esa configuración inválida de Prefect; se repitió correctamente sin ella. |
+| Servicios locales | `docker compose ps`; `curl` al health de Prefect y al dashboard | Backend, interfaces, reporting-db (healthy), Prefect server y worker aparecieron running; health de Prefect HTTP 200 y la ruta `/reports/business-analysis` responde HTTP 200. La navegación del navegador redirigió a `/login` al no haber sesión compartida, por lo que no se inspeccionaron datos renderizados con un usuario autenticado. |
+| Protección API | `GET http://localhost:8000/api/reporting/weekly-office-program-performance` sin token | HTTP 401 `Not authenticated`, `WWW-Authenticate: Bearer`; confirma el guard de autenticación en el servicio local, no el resultado autenticado ni los registros de reporting. |
+| Deployment Prefect | Lectura de `POST /api/deployments/filter` y `POST /api/flow_runs/filter` (filtros vacíos/por ID) | Deployment `weekly-office-program-performance` encontrado, `READY`, no pausado, pool `reporting-process-pool`; schedule activo `15 0 * * 1`, UTC. El historial devuelto contiene solo 3 runs `SCHEDULED` para 2026-11-16, 2026-11-23 y 2026-11-30; no hay evidencia en esta consulta de una ejecución completada/real. |
+| Datos/tablas | No se ejecutaron queries de negocio ni se inspeccionaron tablas del reporting DB en esta actualización. | La salud del contenedor no valida migración aplicada, contenido, permisos de escritura, upsert ni separación efectiva entre bases. |
+
+La matriz anterior debe interpretarse junto con la prueba desechable del
+2026-11-11 que sigue. Los tests del backend y frontend, el build y los checks
+estáticos pasan; los servicios locales y el deployment respondieron en la
+verificación previa. La ejecución de Prefect con bases independientes
+confirma migración de reporting, extracción, transformación, frontera semanal
+y upsert. La experiencia del dashboard con un usuario autenticado todavía no
+se pudo validar en navegador: la URL local fue reescrita por el Dev Tunnel y
+redirigida a autenticación de GitHub. No se introdujeron credenciales. La
+Fase 6, por tanto, queda **parcialmente verificada**, no E2E cerrada.
+
+### E2E con PostgreSQL desechable (2026-11-11)
+
+Se levantaron dos PostgreSQL 16 independientes en una red Docker de prueba
+dedicada, con almacenamiento temporal (tmpfs) y puertos enlazados solo a
+loopback: `telemetry_e2e` (fuente) y `reporting_e2e` (destino). No se usó ni
+reinició el stack Compose existente, no se consultaron `.env` y no se apuntó a
+una base operativa. Se aplicaron las migraciones correspondientes y se
+insertaron ocho eventos sintéticos; siete pertenecían a la semana UTC
+2026-10-26 y el octavo estaba exactamente en el límite exclusivo
+2026-11-02 00:00 UTC.
+
+**Hallazgo de migraciones:** la migración `001_create_telemetry_events.sql`
+crea ya la restricción única de `event_id` y el índice GIN con el nombre
+`idx_telemetry_events_tags_gin`. Al correr después
+`002_align_existing_telemetry_events.sql` sobre esa base recién creada,
+`ADD CONSTRAINT telemetry_events_event_id_key UNIQUE (event_id)` y el intento
+de renombrar `idx_telemetry_events_tags` chocan con ese esquema. El runner
+captura errores por sentencia y aun así imprime que las migraciones acabaron;
+por tanto, **no se considera que la migración 002 haya pasado limpiamente**.
+Debe revisarse la idempotencia/condiciones de migración y hacer que el runner
+falle de forma fiable cuando una migración deja una transacción abortada. Esto
+no impidió la prueba del pipeline sobre el esquema de reporting aplicado, pero
+sí limita la evidencia de migración de telemetría a que la tabla utilizable
+existía tras 001.
+
+| Ejecución sintética | Resultado observado |
+|---|---|
+| Primera corrida del flow para `2026-10-26` | `completed`; 7 eventos procesados, 2 claves insertadas, 0 actualizadas, 0 rechazadas. El evento en el límite del lunes siguiente quedó fuera. |
+| Valencia / `E2E-PROGRAM-01` | Coste inicial `37.50 EUR`; 2 kits entregados, 1 evento de shortage y 1 variancia de coste. |
+| Miami / `E2E-PROGRAM-02` | Coste `14.50 USD`; 1 kit entregado, 0 shortages y 0 variancias. Confirma agregación separada y moneda esperada. |
+| Segunda corrida sin cambios | `completed`; 7 procesados, 0 insertados, 2 actualizados, 0 rechazados; permanecieron exactamente dos filas para las claves de prueba. |
+| Tercera corrida tras cambiar cantidad inbound de Valencia de 3 a 5 | `completed`; volvió a extraer y recomputar el contenido: coste Valencia `62.50 EUR`; upsert actualizó las dos claves sin duplicarlas. |
+| Aislamiento de esquemas | La fuente tenía `public.telemetry_events` y no el esquema `reporting`; el destino tenía las tablas `reporting` y no `public.telemetry_events`. |
+
+La validación de usuario autenticado quedó bloqueada por el redireccionamiento
+del puerto local hacia la pantalla de acceso de GitHub del Dev Tunnel. Se
+inspeccionó que auth usa TinyDB configurable mediante `AUTH_DB_PATH`, que el
+secreto JWT procede de `SECRET_KEY` y que el frontend permite
+`NEXT_PUBLIC_NEXOVA_API_BASE`; sin embargo, no se inició otra API/UI ni se
+creó una cuenta para esta prueba. Así se evitó depender de la base de usuarios
+existente o solicitar credenciales. La API ya tiene evidencia automatizada de
+endpoints protegidos y de respuesta con repositorios sustituidos, pero no se
+afirma que se haya visto el dashboard con sesión autenticada ni que haya
+consultado las filas sintéticas.
+
+**Limpieza:** tras verificar por nombre e imagen que eran los dos contenedores
+`postgres:16-alpine` de la prueba, se eliminaron
+`nexova-e2e-telemetry-db` y `nexova-e2e-reporting-db`, la red
+`nexova-reporting-e2e-net` y el directorio de snapshot temporal
+`%LOCALAPPDATA%\Temp\nexova-reporting-e2e-snapshot`. Las comprobaciones
+posteriores confirmaron que esos nombres/ruta ya no existen. No se ejecutó
+`docker compose down`, `docker system prune` ni se tocaron volúmenes o
+contenedores del proyecto.
+
+**Conclusión actual:** hay evidencia de ejecución real del flow contra dos
+PostgreSQL desechables separados, incluyendo límites UTC, KPI EUR/USD,
+extracción fresca y upsert repetido/actualizado. Siguen pendientes la
+corrección y una validación limpia de la pareja de migraciones de telemetría,
+una prueba autenticada del dashboard accesible fuera del gate del túnel y una
+corrida completada del deployment programado de Prefect. No se deben usar
+destinos operativos para cerrar esas brechas.
 
 ## 6. Fase previa: Programmes dentro de Inventory
 
@@ -428,3 +514,190 @@ las 00:15 UTC; una corrida manual no cuenta como verificaci�n del cron. El
 backoffice ya tiene Reports/System Analytics; se recomienda considerar una
 vista admin de seguimiento del pipeline en esa secci�n, usando los endpoints
 protegidos existentes, pero no se modific� la interfaz.
+
+## Fase 5 — Refactorización del pipeline y dashboard Business Analysis
+
+### Por qué se dividió el pipeline
+
+El proceso de reporting reúne trabajos distintos: leer eventos de telemetría,
+validar y resumir esos eventos, y guardar los resultados semanales. Se separó
+en partes pequeñas para que cada etapa tenga una responsabilidad clara. Así es
+más fácil entender dónde ocurre un problema, probar las reglas del informe y
+reutilizar cada etapa sin mezclar la lectura de datos con el cálculo o el
+guardado.
+
+En Prefect, un **flow** es un proceso que organiza pasos de trabajo. Un
+**subflow** es un flow más pequeño que se ejecuta como parte de otro flow. Una
+comparación sencilla: el flow principal es el itinerario de un viaje y los
+subflows son tramos organizados —por ejemplo, salida, recorrido y llegada—.
+Prefect puede registrar esos tramos por separado y mostrar cuál se ejecutó o
+dónde se produjo un fallo. En esta implementación, los subflows de extracción,
+transformación y carga organizan las etapas; las operaciones concretas se
+realizan mediante tareas de Prefect.
+
+### Etapas del cálculo
+
+1. **Extracción:** se leen de `public.telemetry_events` los eventos de negocio
+   de la semana solicitada. La semana se interpreta en UTC, desde el lunes a
+   las 00:00 incluido hasta el lunes siguiente excluido. Esta lectura se hace
+   de nuevo en cada ejecución para que también puedan encontrarse eventos que
+   llegaron tarde.
+2. **Transformación:** se comprueba que cada evento tenga datos utilizables y
+   dimensiones coherentes, y se agrupa por semana, oficina y programa. Se
+   rechazan los eventos incompletos o inconsistentes y se evita contar dos
+   veces un mismo `event_id`. La oficina también determina la moneda: Valencia
+   usa EUR y Miami USD; no se convierten ni mezclan monedas.
+3. **Carga:** se guardan los KPI en las tablas de reporting. Si ya existe un
+   resultado para la misma semana, oficina y programa, se actualiza en vez de
+   crear una copia. El guardado de los resultados de una ejecución se realiza
+   en una transacción: si falla una escritura, no se deja una parte de esa
+   carga guardada.
+
+La transformación puede reutilizar durante una hora un cálculo para la misma
+semana y exactamente los mismos eventos. Si cambia el contenido de los
+eventos, la clave del cálculo cambia. La extracción, en cambio, no se almacena
+en caché. Los errores temporales de conexión pueden reintentarse; los errores
+de datos o de lógica no se tratan como fallos temporales.
+
+### Pruebas y ejecución desde la línea de comandos
+
+Las pruebas de transformación construyen eventos de ejemplo en memoria, como
+si fueran movimientos de inventario, y comparan el resultado calculado con el
+resultado esperado. Por ejemplo, comprueban que el coste de una entrada sea
+cantidad por coste unitario, que las oficinas mantengan sus monedas separadas,
+que el KPI de salidas cuente eventos y no unidades, y que los eventos inválidos
+o duplicados no inflen los resultados. Son importantes porque permiten
+comprobar las reglas con ejemplos controlados sin modificar la telemetría ni
+la base de reporting. Estas pruebas no equivalen a ejecutar el flujo completo
+contra bases de datos reales.
+
+El pipeline conserva su punto de entrada por línea de comandos desde la raíz
+del proyecto:
+
+```text
+uv run --project services/api python data/pipelines/pipeline.py --week-start YYYY-MM-DD
+```
+
+La fecha debe ser el lunes de la semana ISO que se quiere procesar. También se
+puede omitir `--week-start`; en ese caso se usa la última semana cerrada. La
+opción `--trigger-type manual|scheduled` permite indicar el tipo de ejecución.
+El comando sigue disponible, pero la validación documentada hasta ahora no
+incluye ejecutarlo contra bases temporales desechables. Las pruebas unitarias
+del pipeline y de transformación sí están documentadas en la sección 7.
+
+### Dashboard Business Analysis y significado de los KPI
+
+El backoffice incorpora **Reports → Business Analysis**. El dashboard no
+calcula los KPI en el navegador ni lee directamente los eventos de
+telemetría: solicita a la API las filas semanales que el pipeline ya guardó
+en `reporting.weekly_office_program_performance`. Por eso, una entrada recién
+creada no aparece necesariamente de inmediato: el evento debe llegar primero
+a telemetría y luego debe ejecutarse el reporting para la semana que lo
+contiene.
+
+Cada tarjeta representa una combinación de semana, oficina y programa. Muestra
+los siguientes indicadores:
+
+- **Total material cost:** coste total de las entradas válidas de esa
+  combinación. Se calcula sumando cantidad multiplicada por coste unitario y
+  se presenta en la moneda de la oficina.
+- **Kits delivered:** cantidad de eventos outbound válidos. Según la regla
+  aprobada, cada evento cuenta como una entrega, sin sumar su cantidad. El
+  evento outbound no demuestra por sí solo que la salida haya sido realmente
+  un kit; puede representar una asignación o un consumo genérico.
+- **Shortage events:** cantidad de eventos válidos que registran un cruce del
+  umbral de stock.
+- **Cost variance events:** cantidad de eventos válidos que registran una
+  variación de coste de kit.
+
+El selector del dashboard filtra por **semana ISO**, no por día: se elige el
+lunes que inicia la semana. Si no se aplica un filtro, se solicitan los
+resultados semanales disponibles más recientes. Los resultados de Valencia y
+Miami se muestran por separado, con EUR y USD respectivamente; no se presenta
+un total combinado entre monedas.
+
+Los interesados pueden abrir el dashboard desde el menú Reports del backoffice
+con una sesión autorizada y escoger la semana que quieren consultar. Si no hay
+filas, la pantalla informa que no hay resultados disponibles. Esto puede
+significar que todavía no se ha ejecutado el pipeline para esa semana o que
+sus eventos no aportaron datos válidos para crear una fila; no significa que
+el dashboard haya calculado KPI a partir de movimientos incompletos. El
+dashboard permite entender y comparar los resultados por semana, oficina y
+programa, pero no reemplaza la revisión del origen de los datos ni el informe
+técnico de telemetría.
+
+### Problemas encontrados, soluciones y límites pendientes
+
+- En la primera revisión de los eventos existentes se encontró que faltaban
+  dimensiones requeridas, como `programme_id`, y que muchas entradas
+  históricas no tenían coste unitario. La transformación real en memoria
+  confirmó que aquellos 14 eventos de la semana revisada se rechazaban y no
+  producían filas. Se mantuvo la regla de no inventar dimensiones ni costes y
+  no se inició una corrida de reporting que no pudiera generar KPI útiles.
+- Durante una comprobación posterior del pipeline, la API no pudo cargar
+  Business Analysis porque una variable `REPORTING_DATABASE_URL` vacía,
+  heredada por la sesión de PowerShell, sobrescribía la URL completa del
+  archivo `.env`. Se limpió esa variable vacía de la sesión y se recrearon los
+  servicios necesarios. Después se comprobó desde el backend una consulta a
+  la tabla de reporting. La tabla tenía cero filas en ese momento: la conexión
+  ya funcionaba, pero aún no había resultados guardados.
+- Al crear un inbound en el backoffice apareció un error 500 porque faltaban
+  tablas de valoración en la base SQLite local de inventario. Se ejecutó la
+  migración aditiva existente, protegida para el entorno de desarrollo. La
+  comprobación posterior encontró las tablas requeridas y conservó los datos
+  existentes; no se añadieron movimientos ni datos de demostración como parte
+  de esa migración.
+
+La refactorización conserva el CLI y los tests unitarios de transformación,
+pero todavía no se ha documentado una corrida end-to-end del CLI/flow contra
+bases desechables ni una ejecución natural del horario Prefect. La validación
+de extremo a extremo sigue parcial, tal como se detalla en la sección 7. En
+particular, la existencia de una fila en el dashboard depende de que haya
+eventos nuevos con dimensiones y costes válidos, que se entreguen a telemetría
+y que el pipeline procese su semana. El calendario semanal aprobado es los
+lunes a las 00:15 UTC; no se debe confundir ese horario con una prueba ya
+observada. También sigue pendiente decidir cómo corregir eventos históricos o
+de negocio con un identificador distinto, y el KPI de outbound conserva la
+limitación descrita: no puede confirmar por sí solo que cada salida sea un
+kit.
+
+### Resumen: qué trabajo de las fases anteriores queda documentado aquí
+
+Sí: la guía recoge el trabajo funcional y técnico realizado antes de esta fase
+de documentación. Para encontrarlo, las partes están distribuidas entre las
+secciones anteriores y la sección **Fase 5 — Refactorización del pipeline y
+dashboard Business Analysis**; no todo estaba reunido bajo una sola lista.
+Este resumen deja explícito ese alcance:
+
+- **Datos de negocio e inventario:** el catálogo de programas y su asociación
+  con movimientos, la conservación de movimientos históricos sin programa,
+  la valoración de inventario y los eventos que se generan desde movimientos
+  se describen en las secciones de Inventory y fiabilidad de eventos. Se
+  explican también el outbox transaccional, el worker, los reintentos y la
+  entrega idempotente a telemetría.
+- **Pipeline de reporting:** aquí se explican los subflows de extracción,
+  transformación y carga; la agregación semanal por oficina y programa; las
+  reglas y límites de los cuatro KPI; la caché de transformación, el upsert y
+  el horario Prefect.
+- **Pruebas unitarias:** la sección 7 registra el comando ejecutado y sus
+  resultados, y la matriz indica qué se probó para transformación, deduplicación,
+  validación, ventanas UTC, carga, retries, caché y flows. Incluye qué pruebas
+  usan mocks o datos sintéticos y qué aspectos no han sido probados contra una
+  base real. La sección sobre CLI indica que el comando está implementado, pero
+  que no se ejecutó contra bases temporales en la validación documentada.
+- **CLI y API:** se documentan cómo indicar la semana al CLI, el lunes ISO
+  obligatorio, la selección automática de la última semana cerrada y los
+  endpoints protegidos para consultar resultados, revisar ejecuciones y
+  solicitar una ejecución Prefect.
+- **Dashboard del backoffice:** se explica el acceso a **Reports → Business
+  Analysis**, cómo consulta resultados persistidos mediante la API, los estados
+  sin resultados, el filtro por semana (lunes) y la lectura de los KPI por
+  oficina, programa y moneda. El dashboard está implementado; la aparición de
+  datos depende de que existan eventos válidos y se haya ejecutado reporting.
+
+Esto cubre lo desarrollado y la evidencia disponible, pero no significa que
+cada parte haya pasado una prueba integral en producción: la guía distingue
+las pruebas unitarias y de contrato de una corrida E2E real. En particular,
+quedan pendientes la corrida del CLI/flow contra bases temporales de reporting,
+la validación con eventos completos de negocio y la observación de una
+ocurrencia natural del schedule, como se indica en la sección 7.
