@@ -297,6 +297,33 @@ def capture_optional_snapshot(summary: dict[str, int], week_start: date) -> None
         json.dump(snapshot, handle, sort_keys=True, default=str)
 
 
+@flow(name="extract_weekly_telemetry_events")
+def extract_weekly_telemetry_events_flow(week_start: date) -> list[dict[str, Any]]:
+    """Extract uncached telemetry events for one requested ISO week."""
+    extraction_state = extract_telemetry_events(week_start, return_state=True)
+    return extraction_state.result(raise_on_failure=True)
+
+
+@flow(name="transform_weekly_office_program_performance")
+def transform_weekly_office_program_performance_flow(
+    events: list[dict[str, Any]], week_start: date,
+) -> dict[str, Any]:
+    """Validate and aggregate telemetry into weekly office/programme KPIs."""
+    transform_state = transform_weekly_office_program_performance(
+        events, week_start, return_state=True,
+    )
+    return transform_state.result(raise_on_failure=True)
+
+
+@flow(name="load_weekly_office_program_performance")
+def load_weekly_office_program_performance_flow(
+    rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Persist weekly office/programme KPI rows using the existing atomic upsert task."""
+    load_state = load_weekly_office_program_performance(rows, return_state=True)
+    return load_state.result(raise_on_failure=True)
+
+
 @flow(name=PIPELINE_NAME)
 def weekly_office_program_performance_flow(
     week_start: date | None = None,
@@ -316,20 +343,13 @@ def weekly_office_program_performance_flow(
     run_id = _create_run(week_start, trigger_type)
     processed = rejected = inserted = updated = 0
     try:
-        extraction_state = extract_telemetry_events(week_start, return_state=True)
-        extracted = extraction_state.result(raise_on_failure=True)
-        transform_state = transform_weekly_office_program_performance(
-            extracted, week_start, return_state=True,
-        )
-        transformed = transform_state.result(raise_on_failure=True)
+        extracted = extract_weekly_telemetry_events_flow(week_start)
+        transformed = transform_weekly_office_program_performance_flow(extracted, week_start)
         processed = transformed["records_processed"]
         rejected = transformed["records_rejected"]
 
         # Critical ETL states are consumed explicitly; failures are re-raised.
-        load_state = load_weekly_office_program_performance(
-            transformed["rows"], return_state=True,
-        )
-        loaded = load_state.result(raise_on_failure=True)
+        loaded = load_weekly_office_program_performance_flow(transformed["rows"])
         inserted, updated = loaded["records_inserted"], loaded["records_updated"]
 
         # Secondary snapshot is best-effort, but its failure is recorded and does not hide ETL success.
