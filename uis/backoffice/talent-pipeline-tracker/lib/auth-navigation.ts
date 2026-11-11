@@ -10,6 +10,7 @@ const protectedRoutes = [
   "/inventory/orders/outbound",
   "/inventory/orders",
   "/reports/system-analytics",
+  "/reports/business-analysis",
 ];
 
 export interface AccountNavigationLink {

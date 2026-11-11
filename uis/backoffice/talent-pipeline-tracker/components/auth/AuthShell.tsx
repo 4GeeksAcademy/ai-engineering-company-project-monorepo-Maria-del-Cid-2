@@ -184,6 +184,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <NavigationLink href="/reports/system-analytics" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
           System Analytics
         </NavigationLink>
+        <NavigationLink href="/reports/business-analysis" onSelect={closeNavigation} className={menuLinkClass} role={menuItems ? "menuitem" : undefined}>
+          Business Analysis
+        </NavigationLink>
       </>
     );
   }
