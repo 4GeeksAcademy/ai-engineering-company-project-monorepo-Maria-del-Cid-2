@@ -19,6 +19,12 @@ from typing import Callable, Sequence
 
 import psycopg
 
+from csv_artifact_lock import artifact_lock
+
+SERVICES_DIRECTORY = Path(__file__).resolve().parents[1] / "services"
+if str(SERVICES_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SERVICES_DIRECTORY))
+
 from job_runner import DEFAULT_JOB_NAME, JobRunner
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -111,21 +117,25 @@ def export_daily_audit_csv(target: date, destination_dir: Path | None = None) ->
     output_path = output_dir / f"telemetry-events-{target.isoformat()}.csv"
     temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
     try:
-        with temporary_path.open("w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=AUDIT_COLUMNS)
-            writer.writeheader()
-            for event_id, event_type, timestamp, tags in rows:
-                writer.writerow(
-                    {
-                        "event_id": str(event_id),
-                        "event_type": event_type,
-                        "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp),
-                        "tags": tags if isinstance(tags, str) else json.dumps(
-                            tags if tags is not None else {}, sort_keys=True, separators=(",", ":")
-                        ),
-                    }
-                )
-        os.replace(temporary_path, output_path)
+        # The cleaner takes the same OS lock before inspecting/deleting this
+        # path. Hold it across writing and atomic publication so it cannot
+        # remove the previous CSV or race the replacement.
+        with artifact_lock(output_path):
+            with temporary_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=AUDIT_COLUMNS)
+                writer.writeheader()
+                for event_id, event_type, timestamp, tags in rows:
+                    writer.writerow(
+                        {
+                            "event_id": str(event_id),
+                            "event_type": event_type,
+                            "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp),
+                            "tags": tags if isinstance(tags, str) else json.dumps(
+                                tags if tags is not None else {}, sort_keys=True, separators=(",", ":")
+                            ),
+                        }
+                    )
+            os.replace(temporary_path, output_path)
     except Exception:
         temporary_path.unlink(missing_ok=True)
         raise

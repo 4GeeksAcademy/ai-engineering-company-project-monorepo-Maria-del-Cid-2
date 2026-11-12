@@ -12,8 +12,11 @@ from typing import Any
 
 import pytest
 
-SERVICES_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SERVICES_DIR = REPO_ROOT / "services"
+SCRIPTS_DIR = REPO_ROOT / "scripts"
 sys.path.insert(0, str(SERVICES_DIR))
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 import nightly_export  # noqa: E402
 
