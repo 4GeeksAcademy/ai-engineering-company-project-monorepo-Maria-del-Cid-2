@@ -1,4 +1,4 @@
-# PHASE 3 — Quick Reference Guide
+﻿# PHASE 3 â€” Quick Reference Guide
 ## Event Instrumentation Points
 
 **Status:** Ready for implementation  
@@ -73,8 +73,8 @@ try {
 ```
 
 **Data to Track:**
-- ✅ asset_id, quantity, office, exit_type
-- ❌ supplier name, assigned_to (PII)
+- âœ… asset_id, quantity, office, exit_type
+- âŒ supplier name, assigned_to (PII)
 
 ---
 
@@ -132,12 +132,12 @@ if (Object.keys(errors).length > 0) {
 ```
 
 **Section Mapping:**
-- `/` → "candidates"
-- `/login`, `/register` → "auth"
-- `/inventory/**` → "inventory"
-- `/incidents/**` → "incidents"
-- `/suppliers` → "suppliers"
-- `/account/**` → "profile"
+- `/` â†’ "candidates"
+- `/login`, `/register` â†’ "auth"
+- `/inventory/**` â†’ "inventory"
+- `/incidents/**` â†’ "incidents"
+- `/suppliers` â†’ "suppliers"
+- `/account/**` â†’ "profile"
 
 ---
 
@@ -231,21 +231,21 @@ async function handleRateUpdate(supplier, newRate) {
 
 ## Implementation Order (Priority)
 
-1. **Auth Events** (1–2 hours)
+1. **Auth Events** (1â€“2 hours)
    - Modify: components/auth/AuthForm.tsx
    - Test: login, register, session expiry scenarios
 
-2. **Inventory Events** (1–2 hours)
+2. **Inventory Events** (1â€“2 hours)
    - Modify: components/inventory/InboundFormPanel.tsx, OutboundFormPanel.tsx
    - Test: Create inbound, create outbound
 
-3. **Frontend Events** (2–3 hours)
+3. **Frontend Events** (2â€“3 hours)
    - Modify: app/error.tsx, app/layout.tsx
    - Create: hooks/useSectionTracking.ts
    - Modify: All form components (10+ files)
    - Test: Page navigation, form validation, error scenarios
 
-4. **Form Events** (1–2 hours)
+4. **Form Events** (1â€“2 hours)
    - Modify: components/suppliers/SupplierDirectoryPanel.tsx
    - Modify: components/incidents/IncidentManagerPanel.tsx
    - Test: Modal open/close, field editing
@@ -254,7 +254,7 @@ async function handleRateUpdate(supplier, newRate) {
    - Modify: components/incidents/IncidentManagerPanel.tsx, suppliers/SupplierDirectoryPanel.tsx
    - Test: Status/rate updates
 
-**Total Estimated Time:** 6–10 hours
+**Total Estimated Time:** 6â€“10 hours
 
 ---
 
@@ -262,7 +262,7 @@ async function handleRateUpdate(supplier, newRate) {
 
 **Already Imported useTelemetry:**
 ```
-hooks/useTelemetry.ts ← Already exists, ready to use
+hooks/useTelemetry.ts â† Already exists, ready to use
 ```
 
 **Files to Modify:**
@@ -289,7 +289,7 @@ hooks/useTelemetry.ts ← Already exists, ready to use
 - [ ] Event data matches expected schema
 - [ ] No PII in event payload
 - [ ] Event does not break component functionality
-- [ ] Multiple events queued → batch sent
+- [ ] Multiple events queued â†’ batch sent
 - [ ] Network tab shows CloudEvents structure
 - [ ] Backend receives and logs events
 - [ ] Page unload sends remaining events via sendBeacon
@@ -298,14 +298,14 @@ hooks/useTelemetry.ts ← Already exists, ready to use
 
 ## Common Pitfalls to Avoid
 
-❌ **Do NOT:**
+âŒ **Do NOT:**
 - Track before validation (events should reflect actual state)
 - Include sensitive data (passwords, full names, phone numbers)
 - Call telemetry.track() in every render (use useEffect with deps)
 - Ignore telemetry errors (always wrap in try/catch to not break app)
 - Track premature (e.g., before API response)
 
-✅ **DO:**
+âœ… **DO:**
 - Track after successful state changes
 - Use minimal data (IDs, status values, counts)
 - Use useEffect with proper dependencies

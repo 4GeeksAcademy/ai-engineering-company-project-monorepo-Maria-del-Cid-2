@@ -1,4 +1,4 @@
-# Form Validation Patterns - Telemetry Integration Guide
+﻿# Form Validation Patterns - Telemetry Integration Guide
 
 ## Overview
 This document catalogs all form components in the backoffice talent-pipeline-tracker, their validation methods, error handling patterns, and where to emit `form_validation_failed` events for Phase 3 telemetry instrumentation.
@@ -51,7 +51,7 @@ function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 ```
 
 #### Current Telemetry
-✅ Already implemented:
+âœ… Already implemented:
 - `login_succeeded` - tracked after successful sign-in
 - `login_failed` - tracked on auth error
 - `account_created` - tracked after successful registration
@@ -68,7 +68,7 @@ async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
   setErrors(nextErrors);
   setSubmitError(null);
   
-  // 🔴 ADD HERE: Track validation failures
+  // ðŸ”´ ADD HERE: Track validation failures
   if (Object.keys(nextErrors).length > 0) {
     telemetry.track("form_validation_failed", {
       form_name: isLogin ? "login" : "register",
@@ -131,7 +131,7 @@ async function submit(event: React.FormEvent<HTMLFormElement>) {
   setErrors(nextErrors);
   setSubmitError(null);
   
-  // 🔴 ADD HERE: Track validation failures
+  // ðŸ”´ ADD HERE: Track validation failures
   if (Object.keys(nextErrors).length > 0) {
     telemetry.track("form_validation_failed", {
       form_name: "password_reset",
@@ -169,13 +169,13 @@ const validate = (): boolean => {
   if (!formData.email.trim())
     newErrors.email = "El email es obligatorio";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-    newErrors.email = "Email no válido";
+    newErrors.email = "Email no vÃ¡lido";
   if (!formData.phone.trim())
-    newErrors.phone = "El teléfono es obligatorio";
+    newErrors.phone = "El telÃ©fono es obligatorio";
   if (!formData.position.trim())
     newErrors.position = "El puesto es obligatorio";
   if (formData.experience_years === undefined || formData.experience_years < 0)
-    newErrors.experience_years = "Los años de experiencia deben ser 0 o más";
+    newErrors.experience_years = "Los aÃ±os de experiencia deben ser 0 o mÃ¡s";
   
   setErrors(newErrors);
   return Object.keys(newErrors).length === 0;
@@ -203,7 +203,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 ```
 
 #### Current Telemetry
-❌ Not yet implemented - ready for Phase 3
+âŒ Not yet implemented - ready for Phase 3
 
 #### Where to Add form_validation_failed
 **Location:** Line 65 in `handleSubmit` function
@@ -211,7 +211,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   
-  // 🔴 ADD HERE: Track validation failures
+  // ðŸ”´ ADD HERE: Track validation failures
   if (!validate()) {
     telemetry.track("form_validation_failed", {
       form_name: "candidate_form",
@@ -295,7 +295,7 @@ async function submit(event: FormEvent<HTMLFormElement>) {
 ```
 
 #### Current Telemetry
-✅ Already implemented:
+âœ… Already implemented:
 - `inbound_order_created` - tracked after successful creation
 
 #### Where to Add form_validation_failed
@@ -304,7 +304,7 @@ async function submit(event: FormEvent<HTMLFormElement>) {
 async function submit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault();
   
-  // 🔴 ADD CLIENT-SIDE VALIDATION HERE
+  // ðŸ”´ ADD CLIENT-SIDE VALIDATION HERE
   const validationErrors: string[] = [];
   if (!form.asset_id || form.asset_id === 0) validationErrors.push("product");
   if (!form.quantity || Number(form.quantity) <= 0) validationErrors.push("quantity");
@@ -397,7 +397,7 @@ async function submit(event: FormEvent<HTMLFormElement>) {
 ```
 
 #### Current Telemetry
-✅ Already implemented:
+âœ… Already implemented:
 - `outbound_order_created` - tracked after successful creation
 
 #### Where to Add form_validation_failed
@@ -412,7 +412,7 @@ async function submit(event: FormEvent<HTMLFormElement>) {
     assigned_to: form.exit_type === "consumption" ? null : assigneeText,
   } as AssetExitCreate;
   
-  // 🔴 ADD HERE: Track validation failures
+  // ðŸ”´ ADD HERE: Track validation failures
   if (insufficientStock) {
     telemetry.track("form_validation_failed", {
       form_name: "outbound_form",
@@ -442,7 +442,7 @@ async function submit(event: FormEvent<HTMLFormElement>) {
       inventory_entry_type: "outbound",
       exit_type: form.exit_type,
     });
-    setError("Debes especificar a quién se asigna el inventario.");
+    setError("Debes especificar a quiÃ©n se asigna el inventario.");
     return;
   }
   
@@ -538,17 +538,17 @@ export function ComponentName() {
 ## 7. Testing Considerations
 
 When implementing Phase 3, verify:
-- ✅ Validation failures emit `form_validation_failed` events
-- ✅ Only validation failures are tracked (not network errors)
-- ✅ Event includes relevant field and context information
-- ✅ Multiple validation errors are captured in single event
-- ✅ Clearing a field error removes it from future events
-- ✅ Successful submission does NOT emit validation failure event
+- âœ… Validation failures emit `form_validation_failed` events
+- âœ… Only validation failures are tracked (not network errors)
+- âœ… Event includes relevant field and context information
+- âœ… Multiple validation errors are captured in single event
+- âœ… Clearing a field error removes it from future events
+- âœ… Successful submission does NOT emit validation failure event
 
 ---
 
 ## 8. Related Documentation
 
-- [PHASE2_TELEMETRY_FRONTEND.md](PHASE2_TELEMETRY_FRONTEND.md) - Frontend service architecture
-- [PHASES_1_2_SUMMARY.md](../../PHASES_1_2_SUMMARY.md) - Overall telemetry roadmap
+- [PHASE2_TELEMETRY_FRONTEND.md](implementation/phase-2/PHASE2_TELEMETRY_FRONTEND.md) - Frontend service architecture
+- [PHASES_1_2_SUMMARY.md](implementation/PHASES_1_2_SUMMARY.md) - Overall telemetry roadmap
 - [TelemetryService Integration Examples](../../uis/backoffice/talent-pipeline-tracker/lib/telemetry/INTEGRATION_EXAMPLES.ts) - Code examples

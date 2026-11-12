@@ -1,4 +1,4 @@
-# PHASE 3 — Instrumentation Points Mapping
+﻿# PHASE 3 â€” Instrumentation Points Mapping
 ## Talent Pipeline Tracker (backoffice)
 
 **Document:** Comprehensive mapping of telemetry event instrumentation points  
@@ -26,15 +26,15 @@
 
 **Trigger:** User successfully logs in
 
-**Location:** [components/auth/AuthForm.tsx](components/auth/AuthForm.tsx#L60-L70)
+**Location:** [components/auth/AuthForm.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/auth/AuthForm.tsx#L60-L70)
 
 **Component:** `AuthForm` (mode: "login")
 
-**Function:** `handleSubmit()` → `signIn()` (success path)
+**Function:** `handleSubmit()` â†’ `signIn()` (success path)
 
 **Code Location Details:**
 - File: `components/auth/AuthForm.tsx`
-- Lines: 60–72 (handleSubmit function)
+- Lines: 60â€“72 (handleSubmit function)
 - State managed by: `setSubmitting()`, `setSubmitError()`
 - Success condition: `signIn()` completes without exception
 
@@ -52,12 +52,12 @@
 // In handleSubmit(), after signIn() succeeds and router.replace("/"):
 await telemetry.track("login_succeeded", {
   email: email,  // Already captured in state
-  // No PII exposure — email is necessary for event identification
+  // No PII exposure â€” email is necessary for event identification
 });
 ```
 
 **Test Cases:**
-- Valid email + password → successful login → event fired
+- Valid email + password â†’ successful login â†’ event fired
 - Event contains email only (no password)
 - Event fired BEFORE page navigation
 
@@ -67,15 +67,15 @@ await telemetry.track("login_succeeded", {
 
 **Trigger:** User attempts login but fails (invalid credentials, network error, server error)
 
-**Location:** [components/auth/AuthForm.tsx](components/auth/AuthForm.tsx#L60-L72)
+**Location:** [components/auth/AuthForm.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/auth/AuthForm.tsx#L60-L72)
 
 **Component:** `AuthForm` (mode: "login")
 
-**Function:** `handleSubmit()` → `signIn()` (error path)
+**Function:** `handleSubmit()` â†’ `signIn()` (error path)
 
 **Code Location Details:**
 - File: `components/auth/AuthForm.tsx`
-- Lines: 68–69 (catch block)
+- Lines: 68â€“69 (catch block)
 - State managed by: `setSubmitError(error)`, `setSubmitting(false)`
 - Failure condition: `signIn()` throws exception or validation fails
 
@@ -102,9 +102,9 @@ await telemetry.track("login_failed", {
 ```
 
 **Test Cases:**
-- Valid email + wrong password → login_failed fired with reason: "invalid_credentials"
-- Network error → login_failed fired with reason: "network_error"
-- Server error (500) → login_failed fired with reason: "server_error"
+- Valid email + wrong password â†’ login_failed fired with reason: "invalid_credentials"
+- Network error â†’ login_failed fired with reason: "network_error"
+- Server error (500) â†’ login_failed fired with reason: "server_error"
 - Event contains reason but NOT password
 
 ---
@@ -113,15 +113,15 @@ await telemetry.track("login_failed", {
 
 **Trigger:** User successfully creates a new account during registration
 
-**Location:** [components/auth/AuthForm.tsx](components/auth/AuthForm.tsx#L60-L80)
+**Location:** [components/auth/AuthForm.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/auth/AuthForm.tsx#L60-L80)
 
 **Component:** `AuthForm` (mode: "register")
 
-**Function:** `handleSubmit()` → `registerUser()` (success path)
+**Function:** `handleSubmit()` â†’ `registerUser()` (success path)
 
 **Code Location Details:**
 - File: `components/auth/AuthForm.tsx`
-- Lines: 66–68 (register success path)
+- Lines: 66â€“68 (register success path)
 - State managed by: `setRegistered(true)`, `setSubmitting(false)`
 - Success condition: `registerUser()` completes without exception
 
@@ -145,7 +145,7 @@ setRegistered(true);
 ```
 
 **Test Cases:**
-- Valid email + password + confirm password match → account_created fired
+- Valid email + password + confirm password match â†’ account_created fired
 - User sees success message
 - User can proceed to login
 - Event fired BEFORE success message is shown
@@ -156,21 +156,21 @@ setRegistered(true);
 
 **Trigger:** User's session has expired and they are redirected to login with `?expired=1`
 
-**Location:** [app/login/page.tsx](app/login/page.tsx)
+**Location:** [app/login/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/login/page.tsx)
 
 **Component:** `AuthForm` (mode: "login" with `expired={true}`)
 
 **Code Location Details:**
 - File: `app/login/page.tsx`
-- Lines: 10–13 (check for expired query param)
+- Lines: 10â€“13 (check for expired query param)
 - File: `components/auth/AuthForm.tsx`
-- Lines: 113–119 (render expired message)
+- Lines: 113â€“119 (render expired message)
 - Status message shown but no form submission
 
 **Data Available:**
 ```typescript
 {
-  // Minimal data — this is a UI state event
+  // Minimal data â€” this is a UI state event
   timestamp: string        // RFC 3339 (auto-generated)
 }
 ```
@@ -191,13 +191,13 @@ useEffect(() => {
 - Token expires (manually set token to null or wait for expiry)
 - Page redirect to `/login?expired=1`
 - Event fired when page loads
-- User sees "Tu sesión ha expirado" message
+- User sees "Tu sesiÃ³n ha expirado" message
 
 ---
 
 ### 5. Auth Context: Session Management
 
-**Session Validation Location:** [components/auth/AuthProvider.tsx](components/auth/AuthProvider.tsx)
+**Session Validation Location:** [components/auth/AuthProvider.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/auth/AuthProvider.tsx)
 
 **Details:**
 - SessionSnapshot stored in context with: `status`, `user`, `error`
@@ -214,7 +214,7 @@ useEffect(() => {
 
 **Trigger:** User submits a form to create an inbound order (received goods)
 
-**Location:** [components/inventory/InboundFormPanel.tsx](components/inventory/InboundFormPanel.tsx)
+**Location:** [components/inventory/InboundFormPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/inventory/InboundFormPanel.tsx)
 
 **Component:** `InboundFormPanel`
 
@@ -222,7 +222,7 @@ useEffect(() => {
 
 **Code Location Details:**
 - File: `components/inventory/InboundFormPanel.tsx`
-- Lines: ~100–120 (handleSubmit / async submit function)
+- Lines: ~100â€“120 (handleSubmit / async submit function)
 - State managed by: `setSaving(true)`, `setSaving(false)`
 - Success condition: `createInbound()` completes without exception
 - Success UI: `setCreated()` shows confirmation message
@@ -272,11 +272,11 @@ try {
 ```
 
 **Test Cases:**
-- Fill form with valid data → submit → inbound_order_created fired
+- Fill form with valid data â†’ submit â†’ inbound_order_created fired
 - Event contains asset_id, quantity, office
 - Event does NOT contain supplier name
 - Success message shows after event
-- Multiple submissions → multiple events
+- Multiple submissions â†’ multiple events
 
 ---
 
@@ -284,7 +284,7 @@ try {
 
 **Trigger:** User submits a form to create an outbound order (goods assigned or consumed)
 
-**Location:** [components/inventory/OutboundFormPanel.tsx](components/inventory/OutboundFormPanel.tsx)
+**Location:** [components/inventory/OutboundFormPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/inventory/OutboundFormPanel.tsx)
 
 **Component:** `OutboundFormPanel`
 
@@ -292,7 +292,7 @@ try {
 
 **Code Location Details:**
 - File: `components/inventory/OutboundFormPanel.tsx`
-- Lines: ~100–120 (handleSubmit / async submit function)
+- Lines: ~100â€“120 (handleSubmit / async submit function)
 - State managed by: `setSaving(true)`, `setSaving(false)`
 - Success condition: `createOutbound()` completes without exception
 - Success UI: `setCreated()` shows confirmation message
@@ -315,7 +315,7 @@ try {
   quantity: number,
   exit_type: "allocation" | "consumption",
   office: "Valencia" | "Miami",
-  // assigned_to NOT included (PII — person name)
+  // assigned_to NOT included (PII â€” person name)
   timestamp: string                    // RFC 3339 (auto-generated)
 }
 ```
@@ -346,11 +346,11 @@ try {
 ```
 
 **Test Cases:**
-- Fill form with "allocation" → submit → outbound_order_created fired with exit_type: "allocation"
-- Fill form with "consumption" → submit → outbound_order_created fired with exit_type: "consumption"
+- Fill form with "allocation" â†’ submit â†’ outbound_order_created fired with exit_type: "allocation"
+- Fill form with "consumption" â†’ submit â†’ outbound_order_created fired with exit_type: "consumption"
 - Event does NOT contain assigned_to name
 - Success message shows after event
-- Multiple submissions → multiple events
+- Multiple submissions â†’ multiple events
 
 ---
 
@@ -360,13 +360,13 @@ try {
 
 **Trigger:** A rendering error occurs in a page route
 
-**Location:** [app/error.tsx](app/error.tsx)
+**Location:** [app/error.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/error.tsx)
 
 **Component:** `Error` (Next.js error boundary)
 
 **Code Location Details:**
 - File: `app/error.tsx`
-- Lines: 8–19 (useEffect that logs errors)
+- Lines: 8â€“19 (useEffect that logs errors)
 - This is the **per-page error boundary** (not global)
 - Triggered when a component in a route throws during render
 
@@ -409,7 +409,7 @@ useEffect(() => {
 
 **Trigger:** A page successfully loads and renders
 
-**Location:** [app/page.tsx](app/page.tsx) (and other route pages)
+**Location:** [app/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/page.tsx) (and other route pages)
 
 **Component:** Each page component
 
@@ -470,9 +470,9 @@ useEffect(() => {
 **Recommended:** Strategy 1 (centralized, easier to maintain)
 
 **Test Cases:**
-- Navigate to home page → frontend_page_loaded fired with page_type: "candidates_list"
-- Navigate to login → frontend_page_loaded fired with page_type: "login"
-- Navigate to candidate detail → frontend_page_loaded fired with page_type: "candidate_detail"
+- Navigate to home page â†’ frontend_page_loaded fired with page_type: "candidates_list"
+- Navigate to login â†’ frontend_page_loaded fired with page_type: "login"
+- Navigate to candidate detail â†’ frontend_page_loaded fired with page_type: "candidate_detail"
 - user_authenticated reflects actual auth status
 - Event fires after route transition completes
 
@@ -483,19 +483,19 @@ useEffect(() => {
 **Trigger:** User submits a form with validation errors (fields required, invalid format, etc.)
 
 **Location:** Multiple form components:
-- [components/auth/AuthForm.tsx](components/auth/AuthForm.tsx) (login/register)
-- [components/candidates/CandidateForm.tsx](components/candidates/CandidateForm.tsx) (create candidate)
-- [components/inventory/InboundFormPanel.tsx](components/inventory/InboundFormPanel.tsx) (inbound order)
-- [components/inventory/OutboundFormPanel.tsx](components/inventory/OutboundFormPanel.tsx) (outbound order)
-- [components/incidents/IncidentManagerPanel.tsx](components/incidents/IncidentManagerPanel.tsx) (create incident)
-- [components/suppliers/SupplierDirectoryPanel.tsx](components/suppliers/SupplierDirectoryPanel.tsx) (add supplier)
+- [components/auth/AuthForm.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/auth/AuthForm.tsx) (login/register)
+- [components/candidates/CandidateForm.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/candidates/CandidateForm.tsx) (create candidate)
+- [components/inventory/InboundFormPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/inventory/InboundFormPanel.tsx) (inbound order)
+- [components/inventory/OutboundFormPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/inventory/OutboundFormPanel.tsx) (outbound order)
+- [components/incidents/IncidentManagerPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/incidents/IncidentManagerPanel.tsx) (create incident)
+- [components/suppliers/SupplierDirectoryPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/suppliers/SupplierDirectoryPanel.tsx) (add supplier)
 
 **Component:** Any form with validation
 
 **Code Location Details (AuthForm as example):**
 - File: `components/auth/AuthForm.tsx`
-- Lines: 52–60 (validateLoginFields / validateRegistrationFields)
-- Lines: 55–56 (check if errors exist before submission)
+- Lines: 52â€“60 (validateLoginFields / validateRegistrationFields)
+- Lines: 55â€“56 (check if errors exist before submission)
 - State: `setErrors(nextErrors)`
 
 **Data Available:**
@@ -551,9 +551,9 @@ const validate = (): boolean => {
 ```
 
 **Test Cases:**
-- Submit login form with empty email → form_validation_failed with field_names: ["email"]
-- Submit register form with mismatched passwords → form_validation_failed with field_names: ["confirmPassword"]
-- Submit candidate form with missing multiple fields → form_validation_failed with field_count: 3+
+- Submit login form with empty email â†’ form_validation_failed with field_names: ["email"]
+- Submit register form with mismatched passwords â†’ form_validation_failed with field_names: ["confirmPassword"]
+- Submit candidate form with missing multiple fields â†’ form_validation_failed with field_count: 3+
 - Validation errors shown to user immediately
 - Event contains field names but NOT field values (no PII)
 
@@ -564,12 +564,12 @@ const validate = (): boolean => {
 **Trigger:** User navigates to or views a major section/page of the application
 
 **Location:** Multiple page components:
-- [app/page.tsx](app/page.tsx) (candidates list)
-- [app/login/page.tsx](app/login/page.tsx) (authentication)
-- [app/inventory/page.tsx](app/inventory/page.tsx) (inventory management)
-- [app/incidents/manager/page.tsx](app/incidents/manager/page.tsx) (incident manager)
-- [app/suppliers/page.tsx](app/suppliers/page.tsx) (supplier directory)
-- [app/account/profile/page.tsx](app/account/profile/page.tsx) (user profile)
+- [app/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/page.tsx) (candidates list)
+- [app/login/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/login/page.tsx) (authentication)
+- [app/inventory/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/inventory/products/page.tsx) (inventory management)
+- [app/incidents/manager/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/incidents/manager/page.tsx) (incident manager)
+- [app/suppliers/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/suppliers/page.tsx) (supplier directory)
+- [app/account/profile/page.tsx](../../../../uis/backoffice/talent-pipeline-tracker/app/account/profile/page.tsx) (user profile)
 
 **Component:** Route pages or layout
 
@@ -628,10 +628,10 @@ export default function RootLayout({ children }) {
 ```
 
 **Test Cases:**
-- Navigate to home (candidates list) → section_viewed with section_name: "candidates"
-- Navigate to /inventory → section_viewed with section_name: "inventory"
-- Navigate to /incidents/manager → section_viewed with section_name: "incidents"
-- Navigate to /suppliers → section_viewed with section_name: "suppliers"
+- Navigate to home (candidates list) â†’ section_viewed with section_name: "candidates"
+- Navigate to /inventory â†’ section_viewed with section_name: "inventory"
+- Navigate to /incidents/manager â†’ section_viewed with section_name: "incidents"
+- Navigate to /suppliers â†’ section_viewed with section_name: "suppliers"
 - user_authenticated reflects actual auth status
 - Event fires on every route change
 
@@ -644,10 +644,10 @@ export default function RootLayout({ children }) {
 **Trigger:** User opens a modal or form dialog for data entry
 
 **Location:** Components with modal/dialog forms:
-- [components/inventory/InboundFormPanel.tsx](components/inventory/InboundFormPanel.tsx) (if wrapped in modal)
-- [components/inventory/OutboundFormPanel.tsx](components/inventory/OutboundFormPanel.tsx) (if wrapped in modal)
-- [components/suppliers/SupplierDirectoryPanel.tsx](components/suppliers/SupplierDirectoryPanel.tsx) (Modal for add supplier)
-- [components/incidents/IncidentManagerPanel.tsx](components/incidents/IncidentManagerPanel.tsx) (Modal for create incident)
+- [components/inventory/InboundFormPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/inventory/InboundFormPanel.tsx) (if wrapped in modal)
+- [components/inventory/OutboundFormPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/inventory/OutboundFormPanel.tsx) (if wrapped in modal)
+- [components/suppliers/SupplierDirectoryPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/suppliers/SupplierDirectoryPanel.tsx) (Modal for add supplier)
+- [components/incidents/IncidentManagerPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/incidents/IncidentManagerPanel.tsx) (Modal for create incident)
 
 **Component:** Any component using `Modal` component or `<dialog>` element
 
@@ -694,8 +694,8 @@ useEffect(() => {
 **Recommended:** Strategy 1 (more explicit, easier to control)
 
 **Test Cases:**
-- Click "Add supplier" button → form_opened fires with form_type: "add_supplier"
-- Click "Create incident" button → form_opened fires with form_type: "create_incident"
+- Click "Add supplier" button â†’ form_opened fires with form_type: "add_supplier"
+- Click "Create incident" button â†’ form_opened fires with form_type: "create_incident"
 - Modal/dialog appears on screen
 - Event fires BEFORE form is visible to user
 
@@ -754,10 +754,10 @@ function handleClose() {
 ```
 
 **Test Cases:**
-- Open "Add supplier" modal → click X to close → form_abandoned fires
-- Open "Create incident" modal, edit 1 field → close → form_abandoned with fields_touched: 1
-- Open modal but immediately close (pristine form) → form_abandoned with fields_touched: 0 (or not fired if fields_touched === 0)
-- Form successfully submitted → form_abandoned NOT fired
+- Open "Add supplier" modal â†’ click X to close â†’ form_abandoned fires
+- Open "Create incident" modal, edit 1 field â†’ close â†’ form_abandoned with fields_touched: 1
+- Open modal but immediately close (pristine form) â†’ form_abandoned with fields_touched: 0 (or not fired if fields_touched === 0)
+- Form successfully submitted â†’ form_abandoned NOT fired
 - Event fires when modal closes via:
   - Close button (X)
   - ESC key
@@ -772,13 +772,13 @@ function handleClose() {
 
 **Trigger:** User updates an incident's status from one value to another
 
-**Location:** [components/incidents/IncidentManagerPanel.tsx](components/incidents/IncidentManagerPanel.tsx)
+**Location:** [components/incidents/IncidentManagerPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/incidents/IncidentManagerPanel.tsx)
 
 **Component:** `IncidentManagerPanel`
 
 **Code Location Details:**
 - File: `components/incidents/IncidentManagerPanel.tsx`
-- Lines: ~200–250 (status update section / dropdown)
+- Lines: ~200â€“250 (status update section / dropdown)
 - Function called: `updateIncidentStatus(id, newStatus)`
 - State managed by: Loading state during update
 
@@ -828,7 +828,7 @@ async function handleStatusChange(incident: Incident, newStatus: IncidentManager
 - User clicks dropdown and selects "in_progress"
 - incident_status_changed fires with from_status: "open", to_status: "in_progress"
 - Incident detail updates to show new status
-- Multiple status changes → multiple events
+- Multiple status changes â†’ multiple events
 
 ---
 
@@ -838,13 +838,13 @@ async function handleStatusChange(incident: Incident, newStatus: IncidentManager
 
 **Trigger:** User updates a supplier's monthly rate
 
-**Location:** [components/suppliers/SupplierDirectoryPanel.tsx](components/suppliers/SupplierDirectoryPanel.tsx)
+**Location:** [components/suppliers/SupplierDirectoryPanel.tsx](../../../../uis/backoffice/talent-pipeline-tracker/components/suppliers/SupplierDirectoryPanel.tsx)
 
 **Component:** `SupplierDirectoryPanel`
 
 **Code Location Details:**
 - File: `components/suppliers/SupplierDirectoryPanel.tsx`
-- Lines: ~150–200 (rate update section)
+- Lines: ~150â€“200 (rate update section)
 - Function called: `updateSupplierRate(id, monthly_rate)`
 - State managed by: Form input + submit handler
 
@@ -888,7 +888,7 @@ async function handleRateUpdate(supplier: Supplier, newRate: number) {
 - Click Save/Update
 - supplier_rate_updated fires with supplier_id, new_rate: 750, currency
 - Supplier list updates to show new rate
-- Multiple updates → multiple events
+- Multiple updates â†’ multiple events
 
 ---
 
@@ -897,30 +897,30 @@ async function handleRateUpdate(supplier: Supplier, newRate: number) {
 ### Phase 3 Implementation Steps
 
 - [ ] **Auth Events (4 events)**
-  - [ ] `login_succeeded` — After successful signIn()
-  - [ ] `login_failed` — Catch block in handleSubmit()
-  - [ ] `account_created` — After registerUser() success
-  - [ ] `session_expired` — useEffect in AuthForm with expired prop
+  - [ ] `login_succeeded` â€” After successful signIn()
+  - [ ] `login_failed` â€” Catch block in handleSubmit()
+  - [ ] `account_created` â€” After registerUser() success
+  - [ ] `session_expired` â€” useEffect in AuthForm with expired prop
 
 - [ ] **Inventory Events (2 events)**
-  - [ ] `inbound_order_created` — After createInbound() success
-  - [ ] `outbound_order_created` — After createOutbound() success
+  - [ ] `inbound_order_created` â€” After createInbound() success
+  - [ ] `outbound_order_created` â€” After createOutbound() success
 
 - [ ] **Frontend Events (4 events)**
-  - [ ] `frontend_render_error` — In app/error.tsx useEffect
-  - [ ] `frontend_page_loaded` — Centralized hook in layout
-  - [ ] `form_validation_failed` — In all form handleSubmit validation checks
-  - [ ] `section_viewed` — useEffect on pathname change
+  - [ ] `frontend_render_error` â€” In app/error.tsx useEffect
+  - [ ] `frontend_page_loaded` â€” Centralized hook in layout
+  - [ ] `form_validation_failed` â€” In all form handleSubmit validation checks
+  - [ ] `section_viewed` â€” useEffect on pathname change
 
 - [ ] **Form Events (2 events)**
-  - [ ] `form_opened` — When modal/form opens
-  - [ ] `form_abandoned` — When modal closes without submission
+  - [ ] `form_opened` â€” When modal/form opens
+  - [ ] `form_abandoned` â€” When modal closes without submission
 
 - [ ] **Incidents Events (1 event)**
-  - [ ] `incident_status_changed` — After updateIncidentStatus() success
+  - [ ] `incident_status_changed` â€” After updateIncidentStatus() success
 
 - [ ] **Suppliers Events (1 event)**
-  - [ ] `supplier_rate_updated` — After updateSupplierRate() success
+  - [ ] `supplier_rate_updated` â€” After updateSupplierRate() success
 
 **Total Events to Instrument: 14**
 
@@ -929,12 +929,12 @@ async function handleRateUpdate(supplier: Supplier, newRate: number) {
 ## Code Quality Standards for Phase 3
 
 1. **No PII Exposure:**
-   - ✅ Email in login_succeeded/login_failed (necessary for identification)
-   - ✅ Email in account_created (necessary for identification)
-   - ❌ Passwords, tokens, API keys
-   - ❌ Personal names (assigned_to in outbound orders, supplier contacts)
-   - ❌ Phone numbers, addresses
-   - ❌ Sensitive form data (CV URLs, LinkedIn URLs — use generic identifiers)
+   - âœ… Email in login_succeeded/login_failed (necessary for identification)
+   - âœ… Email in account_created (necessary for identification)
+   - âŒ Passwords, tokens, API keys
+   - âŒ Personal names (assigned_to in outbound orders, supplier contacts)
+   - âŒ Phone numbers, addresses
+   - âŒ Sensitive form data (CV URLs, LinkedIn URLs â€” use generic identifiers)
 
 2. **Timing & Ordering:**
    - Events fire AFTER validation succeeds but BEFORE API calls in some cases
@@ -964,24 +964,24 @@ async function handleRateUpdate(supplier: Supplier, newRate: number) {
 ## Migration Checklist from Phase 2 to Phase 3
 
 **Phase 2 Deliverables (Frontend Service):**
-- ✅ TelemetryService singleton
-- ✅ Queue + batching
-- ✅ Retry logic with exponential backoff
-- ✅ sendBeacon integration
-- ✅ useTelemetry() hook
+- âœ… TelemetryService singleton
+- âœ… Queue + batching
+- âœ… Retry logic with exponential backoff
+- âœ… sendBeacon integration
+- âœ… useTelemetry() hook
 
 **Phase 3 Prerequisites:**
-- ✅ Backend telemetry endpoint ready (Phase 1)
-- ✅ Frontend service ready (Phase 2)
-- ✅ All 14 events defined in telemetry-types.ts
-- ✅ Event allowlist configured in TelemetryService
+- âœ… Backend telemetry endpoint ready (Phase 1)
+- âœ… Frontend service ready (Phase 2)
+- âœ… All 14 events defined in telemetry-types.ts
+- âœ… Event allowlist configured in TelemetryService
 
 **Phase 3 Work:**
 1. Create new branch for Phase 3 instrumentation
 2. Add useTelemetry hook calls to each component
 3. Implement each event per checklist above
 4. Run tests for each modified component
-5. End-to-end test: User action → Event queued → Batch sent → Backend received
+5. End-to-end test: User action â†’ Event queued â†’ Batch sent â†’ Backend received
 6. Verify CloudEvents structure in network tab
 7. Verify no PII in events
 8. Create PR with all changes
@@ -991,40 +991,40 @@ async function handleRateUpdate(supplier: Supplier, newRate: number) {
 ## Files to Modify in Phase 3
 
 ### Auth Components
-- `components/auth/AuthForm.tsx` — Add login_succeeded, login_failed, account_created events
-- `app/login/page.tsx` — Ensure session_expired event fires
+- `components/auth/AuthForm.tsx` â€” Add login_succeeded, login_failed, account_created events
+- `app/login/page.tsx` â€” Ensure session_expired event fires
 
 ### Inventory Components
-- `components/inventory/InboundFormPanel.tsx` — Add inbound_order_created event
-- `components/inventory/OutboundFormPanel.tsx` — Add outbound_order_created event
+- `components/inventory/InboundFormPanel.tsx` â€” Add inbound_order_created event
+- `components/inventory/OutboundFormPanel.tsx` â€” Add outbound_order_created event
 
 ### Frontend Events
-- `app/error.tsx` — Add frontend_render_error event
-- Create `hooks/useSectionTracking.ts` — Add frontend_page_loaded, section_viewed events
-- `app/layout.tsx` — Import and call useSectionTracking
-- All form components — Add form_validation_failed events
+- `app/error.tsx` â€” Add frontend_render_error event
+- Create `hooks/useSectionTracking.ts` â€” Add frontend_page_loaded, section_viewed events
+- `app/layout.tsx` â€” Import and call useSectionTracking
+- All form components â€” Add form_validation_failed events
 
 ### Form Events
-- `components/suppliers/SupplierDirectoryPanel.tsx` — Add form_opened, form_abandoned, supplier_rate_updated events
-- `components/incidents/IncidentManagerPanel.tsx` — Add form_opened, form_abandoned, incident_status_changed events
+- `components/suppliers/SupplierDirectoryPanel.tsx` â€” Add form_opened, form_abandoned, supplier_rate_updated events
+- `components/incidents/IncidentManagerPanel.tsx` â€” Add form_opened, form_abandoned, incident_status_changed events
 
 ### Tests
-- Create `tests/telemetry-integration.test.mjs` — Integration tests for all events
-- Existing component tests — Add telemetry assertions
+- Create `tests/telemetry-integration.test.mjs` â€” Integration tests for all events
+- Existing component tests â€” Add telemetry assertions
 
 ---
 
 ## Dependencies
 
 **Already Available:**
-- ✅ `lib/telemetry/telemetry-service.ts` (TelemetryService singleton)
-- ✅ `lib/telemetry/telemetry-types.ts` (Event types)
-- ✅ `hooks/useTelemetry.ts` (React hook for tracking)
-- ✅ Backend endpoint: `POST /api/telemetry/events`
+- âœ… `lib/telemetry/telemetry-service.ts` (TelemetryService singleton)
+- âœ… `lib/telemetry/telemetry-types.ts` (Event types)
+- âœ… `hooks/useTelemetry.ts` (React hook for tracking)
+- âœ… Backend endpoint: `POST /api/telemetry/events`
 
 **New Files to Create:**
-- `hooks/useSectionTracking.ts` — Centralized section tracking
-- `tests/telemetry-integration.test.mjs` — E2E tests
+- `hooks/useSectionTracking.ts` â€” Centralized section tracking
+- `tests/telemetry-integration.test.mjs` â€” E2E tests
 
 **Modified Files:**
 - See "Files to Modify in Phase 3" section above
@@ -1064,16 +1064,16 @@ async function handleRateUpdate(supplier: Supplier, newRate: number) {
 A: Track separately as optional negative events if required (not in Phase 3 scope currently)
 
 **Q: Should form_abandoned track form values?**  
-A: No — track only field count and which fields were touched (names), not values
+A: No â€” track only field count and which fields were touched (names), not values
 
 **Q: Should we track page unload (beforeunload)?**  
 A: Handled automatically via sendBeacon in TelemetryService (Phase 2)
 
 **Q: What about manual filtering or sorting on the candidates list?**  
-A: Not in scope for Phase 3 (covered under section_viewed → querystring changes)
+A: Not in scope for Phase 3 (covered under section_viewed â†’ querystring changes)
 
 ---
 
-**Document Status:** ✅ Ready for Phase 3 Implementation  
+**Document Status:** âœ… Ready for Phase 3 Implementation  
 **Created:** 2026-11-02  
 **Next Step:** Awaiting user approval to begin Phase 3 instrumentation

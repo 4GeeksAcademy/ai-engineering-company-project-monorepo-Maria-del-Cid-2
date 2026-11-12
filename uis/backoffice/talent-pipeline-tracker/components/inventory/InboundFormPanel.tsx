@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Input, Select, Spinner } from "@/components/ui";
 import { createInbound, listProducts, listProgrammes, inventoryErrorMessage } from "@/lib/inventory";
+import { listSuppliers } from "@/lib/suppliers-api";
 import { nexovaApi } from "@/lib/nexova-api";
 import { useFormLifecycleTracking, markFormAsSubmitted } from "@/hooks/useFormLifecycleTracking";
 import {
@@ -13,9 +14,16 @@ import {
   type AssetWithStock,
   type Programme,
 } from "@/types/inventory";
+import type { Supplier, SupplierCountry } from "@/types/supplier";
 
 interface InboundFormPanelProps {
   initialProductId?: string | null;
+}
+
+interface SupplierLoadResult {
+  country: SupplierCountry;
+  suppliers: Supplier[];
+  error: string | null;
 }
 
 const EMPTY_FORM: AssetEntryCreate = {
@@ -37,6 +45,7 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
 
   const [products, setProducts] = useState<AssetWithStock[]>([]);
   const [programmes, setProgrammes] = useState<Programme[]>([]);
+  const [supplierLoadResult, setSupplierLoadResult] = useState<SupplierLoadResult | null>(null);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productError, setProductError] = useState<string | null>(null);
 
@@ -83,6 +92,50 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
     [products, form.asset_id],
   );
 
+  const supplierCountry: SupplierCountry | null =
+    selectedProduct?.office === "Valencia"
+      ? "Spain"
+      : selectedProduct?.office === "Miami"
+        ? "USA"
+        : null;
+  const supplierResult = supplierCountry && supplierLoadResult?.country === supplierCountry
+    ? supplierLoadResult
+    : null;
+  const suppliers = supplierResult?.suppliers ?? [];
+  const loadingSuppliers = Boolean(supplierCountry && !supplierResult);
+  const supplierError = supplierResult?.error ?? null;
+  const selectedSupplier = suppliers.find((supplier) => supplier.name === form.supplier) ?? null;
+
+  // Load active suppliers only for the country of the selected product.
+  useEffect(() => {
+    let isCurrentRequest = true;
+    if (!supplierCountry) return () => { isCurrentRequest = false; };
+
+    void listSuppliers({ country: supplierCountry })
+      .then((items) => {
+        if (isCurrentRequest) {
+          setSupplierLoadResult({
+            country: supplierCountry,
+            suppliers: items.filter(
+              (supplier) => supplier.country === supplierCountry && supplier.status === "active",
+            ),
+            error: null,
+          });
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (isCurrentRequest) {
+          setSupplierLoadResult({
+            country: supplierCountry,
+            suppliers: [],
+            error: inventoryErrorMessage(requestError, "No se pudieron cargar los proveedores.") ?? "",
+          });
+        }
+      })
+
+    return () => { isCurrentRequest = false; };
+  }, [supplierCountry]);
+
   function updateField<K extends keyof AssetEntryCreate>(
     key: K,
     value: AssetEntryCreate[K],
@@ -97,6 +150,10 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!selectedSupplier || selectedSupplier.country !== supplierCountry || selectedSupplier.status !== "active") {
+      setError("Selecciona un proveedor activo del mismo país que el producto.");
+      return;
+    }
     setSaving(true);
     setError(null);
     setCreated(null);
@@ -163,10 +220,17 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
                 }))}
                 value={form.asset_id ? String(form.asset_id) : ""}
                 onChange={(event) =>
-                  setForm((current) => {
+                  {
                     const product = products.find((item) => item.id === Number(event.target.value));
-                    return { ...current, asset_id: product?.id ?? 0, office: (product?.office ?? current.office) as AssetEntryCreate["office"] };
-                  })
+                    setCreated(null);
+                    setError(null);
+                    setForm((current) => ({
+                      ...current,
+                      asset_id: product?.id ?? 0,
+                      office: (product?.office ?? current.office) as AssetEntryCreate["office"],
+                      supplier: "",
+                    }));
+                  }
                 }
                 disabled={loadingProducts || products.length === 0}
               />
@@ -207,13 +271,38 @@ export function InboundFormPanel({ initialProductId = null }: InboundFormPanelPr
               value={form.unit_cost || ""}
               onChange={(event) => updateField("unit_cost", Number(event.target.value))}
             />
-            <Input
-              label="Supplier"
-              required
-              placeholder="e.g. Nexova Procurement"
-              value={form.supplier}
-              onChange={(event) => updateField("supplier", event.target.value)}
-            />
+            <div>
+              <Select
+                label="Supplier"
+                required
+                placeholder={
+                  !selectedProduct
+                    ? "Select a product first"
+                    : loadingSuppliers
+                      ? "Loading suppliers…"
+                      : supplierError
+                        ? "Suppliers unavailable"
+                        : "Select a supplier"
+                }
+                options={suppliers.map((supplier) => ({
+                  value: supplier.name,
+                  label: supplier.name,
+                }))}
+                value={form.supplier}
+                onChange={(event) => updateField("supplier", event.target.value)}
+                disabled={!supplierCountry || loadingSuppliers || suppliers.length === 0}
+              />
+              {supplierError ? (
+                <p role="alert" className="mt-1 text-xs text-red-600">{supplierError}</p>
+              ) : selectedProduct && !loadingSuppliers && suppliers.length === 0 ? (
+                <p className="mt-1 text-xs leading-5 text-brand-anthracite/70">
+                  No hay proveedores activos para {supplierCountry ?? "el país del producto"}. Añádelo primero en{" "}
+                  <Link href="/suppliers" className="font-semibold text-brand-orange-dark underline underline-offset-2">
+                    Suppliers
+                  </Link>.
+                </p>
+              ) : null}
+            </div>
             <Select
               label="Office"
               options={INVENTORY_OFFICE_OPTIONS}
