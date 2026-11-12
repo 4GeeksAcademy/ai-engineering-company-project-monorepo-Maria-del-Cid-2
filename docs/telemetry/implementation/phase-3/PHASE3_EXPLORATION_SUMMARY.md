@@ -1,9 +1,9 @@
-# Phase 3 — Exploration Summary Report
+﻿# Phase 3 â€” Exploration Summary Report
 ## Telemetry Instrumentation Points Mapping
 
 **Date:** 2026-11-02  
 **Application:** Talent Pipeline Tracker (backoffice)  
-**Status:** ✅ EXPLORATION COMPLETE — Ready for Phase 3 Implementation  
+**Status:** âœ… EXPLORATION COMPLETE â€” Ready for Phase 3 Implementation  
 **Deliverables:** 3 comprehensive mapping documents + repository memory updated
 
 ---
@@ -14,7 +14,7 @@ A comprehensive analysis of the Talent Pipeline Tracker application has been com
 
 ### Key Findings
 
-✅ **14 Total Events Identified**
+âœ… **14 Total Events Identified**
 - 4 Auth events (login, register, session expiry)
 - 2 Inventory events (inbound/outbound orders)
 - 4 Frontend events (page loads, render errors, validation failures)
@@ -22,7 +22,7 @@ A comprehensive analysis of the Talent Pipeline Tracker application has been com
 - 1 Incident event (status changes)
 - 1 Supplier event (rate updates)
 
-✅ **11 Components to Modify**
+âœ… **11 Components to Modify**
 - auth/AuthForm.tsx
 - inventory/InboundFormPanel.tsx, OutboundFormPanel.tsx
 - incidents/IncidentManagerPanel.tsx
@@ -30,17 +30,17 @@ A comprehensive analysis of the Talent Pipeline Tracker application has been com
 - app/error.tsx, app/layout.tsx
 - All form validation locations (10+ files)
 
-✅ **1 New Hook to Create**
+âœ… **1 New Hook to Create**
 - hooks/useSectionTracking.ts (centralized page tracking)
 
-✅ **Infrastructure Ready**
-- Backend telemetry endpoint complete (Phase 1) ✓
-- Frontend TelemetryService complete (Phase 2) ✓
-- useTelemetry() hook ready ✓
-- Event type definitions complete ✓
-- All 14 events pre-configured in allowlist ✓
+âœ… **Infrastructure Ready**
+- Backend telemetry endpoint complete (Phase 1) âœ“
+- Frontend TelemetryService complete (Phase 2) âœ“
+- useTelemetry() hook ready âœ“
+- Event type definitions complete âœ“
+- All 14 events pre-configured in allowlist âœ“
 
-✅ **PII Compliance Verified**
+âœ… **PII Compliance Verified**
 - No passwords, tokens, or API keys in events
 - No personal names, phone numbers, or addresses
 - Email included only where necessary for identification
@@ -51,10 +51,10 @@ A comprehensive analysis of the Talent Pipeline Tracker application has been com
 ## Exploration Methodology
 
 ### 1. Context Gathering
-- ✓ Read projectbrief.md, techContext.md, progress.md
-- ✓ Reviewed AGENTS.md and local application context.md
-- ✓ Examined Phase 1 & 2 telemetry implementations
-- ✓ Identified application stack (Next.js 16, React 19, TypeScript 5)
+- âœ“ Read projectbrief.md, techContext.md, progress.md
+- âœ“ Reviewed AGENTS.md and local application context.md
+- âœ“ Examined Phase 1 & 2 telemetry implementations
+- âœ“ Identified application stack (Next.js 16, React 19, TypeScript 5)
 
 ### 2. Directory Structure Analysis
 Explored all main directories and components:
@@ -92,14 +92,14 @@ Analyzed key components:
 - SupplierDirectoryPanel.tsx (CRUD suppliers, rate updates)
 
 **Frontend:**
-- app/page.tsx (home → candidates list)
+- app/page.tsx (home â†’ candidates list)
 - app/error.tsx (per-route error boundary)
 - app/global-error.tsx (global error boundary)
 - components/ui/Modal.tsx (modal dialog)
 
 ### 4. Event Flow Analysis
 Traced user actions through components:
-- User clicks button → Handler function → API call → Success/Error → Event tracked
+- User clicks button â†’ Handler function â†’ API call â†’ Success/Error â†’ Event tracked
 - Identified exact locations where each event should fire
 - Verified timing (before/after state changes)
 - Ensured no premature event firing
@@ -130,36 +130,36 @@ Identified all form validation points:
 
 ---
 
-## Phase 3 Events — Detailed Mapping
+## Phase 3 Events â€” Detailed Mapping
 
 ### 1. AUTH EVENTS (4)
 
 #### Event: login_succeeded
 - **Location:** components/auth/AuthForm.tsx:70
-- **Trigger:** User enters valid email + password, clicks "Iniciar sesión"
-- **Action:** handleSubmit() → signIn(nexovaApi, email, password) succeeds
+- **Trigger:** User enters valid email + password, clicks "Iniciar sesiÃ³n"
+- **Action:** handleSubmit() â†’ signIn(nexovaApi, email, password) succeeds
 - **Data to Track:** email (required for identification)
 - **Timing:** After signIn() completes, before router.replace("/")
-- **Test Case:** Valid credentials → event fired → redirect to home
+- **Test Case:** Valid credentials â†’ event fired â†’ redirect to home
 
 #### Event: login_failed
 - **Location:** components/auth/AuthForm.tsx:68 (catch block)
 - **Trigger:** Invalid credentials, network error, or server error
-- **Action:** handleSubmit() → signIn() throws exception
+- **Action:** handleSubmit() â†’ signIn() throws exception
 - **Data to Track:** email, reason (invalid_credentials/network_error/server_error)
 - **Timing:** In catch block immediately after error
 - **Test Cases:** 
-  - Wrong password → reason: "invalid_credentials"
-  - Network down → reason: "network_error"
-  - Server error (500) → reason: "server_error"
+  - Wrong password â†’ reason: "invalid_credentials"
+  - Network down â†’ reason: "network_error"
+  - Server error (500) â†’ reason: "server_error"
 
 #### Event: account_created
 - **Location:** components/auth/AuthForm.tsx:68
 - **Trigger:** User registers new account successfully
-- **Action:** handleSubmit() (mode=register) → registerUser() succeeds
+- **Action:** handleSubmit() (mode=register) â†’ registerUser() succeeds
 - **Data to Track:** email (new account email)
 - **Timing:** After registerUser() succeeds, before setRegistered(true)
-- **Test Case:** Fill register form → submit → account_created fired → success message shown
+- **Test Case:** Fill register form â†’ submit â†’ account_created fired â†’ success message shown
 
 #### Event: session_expired
 - **Location:** components/auth/AuthForm.tsx:113
@@ -167,12 +167,12 @@ Identified all form validation points:
 - **Action:** useEffect fires when component renders with expired={true} prop
 - **Data to Track:** Minimal (just event name + timestamp)
 - **Timing:** First render of AuthForm with expired prop
-- **Test Case:** Force token expiry → redirect to login → session_expired event fired → message displayed
+- **Test Case:** Force token expiry â†’ redirect to login â†’ session_expired event fired â†’ message displayed
 
 ### 2. INVENTORY EVENTS (2)
 
 #### Event: inbound_order_created
-- **Location:** components/inventory/InboundFormPanel.tsx:100–120
+- **Location:** components/inventory/InboundFormPanel.tsx:100â€“120
 - **Trigger:** User submits form to create inbound order (received goods)
 - **Form Fields:**
   ```typescript
@@ -187,13 +187,13 @@ Identified all form validation points:
 - **API Call:** createInbound(nexovaApi, form)
 - **Timing:** After createInbound() succeeds, before setCreated()
 - **Test Cases:**
-  - Fill form → submit → inbound_order_created fired
+  - Fill form â†’ submit â†’ inbound_order_created fired
   - Event contains asset_id=1, quantity=50, office="Valencia"
   - Event does NOT contain supplier name (PII)
-  - Validation errors → form_validation_failed instead
+  - Validation errors â†’ form_validation_failed instead
 
 #### Event: outbound_order_created
-- **Location:** components/inventory/OutboundFormPanel.tsx:100–120
+- **Location:** components/inventory/OutboundFormPanel.tsx:100â€“120
 - **Trigger:** User submits form to create outbound order (consumption/allocation)
 - **Form Fields:**
   ```typescript
@@ -209,14 +209,14 @@ Identified all form validation points:
 - **API Call:** createOutbound(nexovaApi, form)
 - **Timing:** After createOutbound() succeeds, before setCreated()
 - **Test Cases:**
-  - Fill allocation → submit → outbound_order_created with exit_type: "allocation"
-  - Fill consumption → submit → outbound_order_created with exit_type: "consumption"
+  - Fill allocation â†’ submit â†’ outbound_order_created with exit_type: "allocation"
+  - Fill consumption â†’ submit â†’ outbound_order_created with exit_type: "consumption"
   - Event does NOT contain assigned_to name (PII)
 
 ### 3. FRONTEND EVENTS (4)
 
 #### Event: frontend_render_error
-- **Location:** app/error.tsx:8–19
+- **Location:** app/error.tsx:8â€“19
 - **Trigger:** Component in a route throws error during render
 - **Action:** Next.js error.tsx boundary catches it, useEffect fires
 - **Data Available:**
@@ -229,7 +229,7 @@ Identified all form validation points:
   ```
 - **Timing:** In useEffect when error.digest is present
 - **Test Cases:**
-  - Component throws ReferenceError → boundary catches → frontend_render_error fired
+  - Component throws ReferenceError â†’ boundary catches â†’ frontend_render_error fired
   - User sees error message + "Reintentar" button
   - Digest is stable (same error = same digest)
 
@@ -247,9 +247,9 @@ Identified all form validation points:
   ```
 - **Implementation:** Centralized hook called in app/layout.tsx
 - **Test Cases:**
-  - Navigate to / → frontend_page_loaded with page_type: "candidates"
-  - Navigate to /login → frontend_page_loaded with page_type: "auth", user_authenticated: false
-  - Navigate to /inventory → frontend_page_loaded with page_type: "inventory", user_authenticated: true
+  - Navigate to / â†’ frontend_page_loaded with page_type: "candidates"
+  - Navigate to /login â†’ frontend_page_loaded with page_type: "auth", user_authenticated: false
+  - Navigate to /inventory â†’ frontend_page_loaded with page_type: "inventory", user_authenticated: true
 
 #### Event: form_validation_failed
 - **Location:** All form components (10+ files)
@@ -275,9 +275,9 @@ Identified all form validation points:
 - **Action:** In handleSubmit(), validate() returns errors
 - **Timing:** When Object.keys(errors).length > 0, before returning/throwing
 - **Test Cases:**
-  - Submit login with empty email → field_names: ["email"]
-  - Submit register with mismatched passwords → field_names: ["confirmPassword"]
-  - Submit multiple fields invalid → field_count: 3, field_names: [...]
+  - Submit login with empty email â†’ field_names: ["email"]
+  - Submit register with mismatched passwords â†’ field_names: ["confirmPassword"]
+  - Submit multiple fields invalid â†’ field_count: 3, field_names: [...]
 
 #### Event: section_viewed
 - **Location:** hooks/useSectionTracking.ts
@@ -292,14 +292,14 @@ Identified all form validation points:
   }
   ```
 - **Section Mapping:**
-  - `/` → "candidates"
-  - `/login`, `/register` → "auth"
-  - `/inventory/**` → "inventory"
-  - `/incidents/**` → "incidents"
-  - `/suppliers` → "suppliers"
-  - `/account/**` → "profile"
-  - `/candidates/[id]` → "candidates"
-  - `/new` → "candidates"
+  - `/` â†’ "candidates"
+  - `/login`, `/register` â†’ "auth"
+  - `/inventory/**` â†’ "inventory"
+  - `/incidents/**` â†’ "incidents"
+  - `/suppliers` â†’ "suppliers"
+  - `/account/**` â†’ "profile"
+  - `/candidates/[id]` â†’ "candidates"
+  - `/new` â†’ "candidates"
 
 ### 4. FORM EVENTS (2)
 
@@ -316,8 +316,8 @@ Identified all form validation points:
   ```
 - **Timing:** Before modal appears (before state update)
 - **Test Cases:**
-  - Click "Add supplier" button → form_opened fired → modal appears
-  - Click "Create incident" button → form_opened fired → modal appears
+  - Click "Add supplier" button â†’ form_opened fired â†’ modal appears
+  - Click "Create incident" button â†’ form_opened fired â†’ modal appears
 
 #### Event: form_abandoned
 - **Location:** Same modal-based forms
@@ -338,14 +338,14 @@ Identified all form validation points:
   - Click outside modal (backdrop)
   - But NOT when form is submitted successfully
 - **Test Cases:**
-  - Open modal → immediately close → form_abandoned with fields_touched: 0
-  - Open modal → edit 2 fields → close → form_abandoned with fields_touched: 2
-  - Open modal → fill completely → submit → form_abandoned NOT fired
+  - Open modal â†’ immediately close â†’ form_abandoned with fields_touched: 0
+  - Open modal â†’ edit 2 fields â†’ close â†’ form_abandoned with fields_touched: 2
+  - Open modal â†’ fill completely â†’ submit â†’ form_abandoned NOT fired
 
 ### 5. INCIDENTS EVENTS (1)
 
 #### Event: incident_status_changed
-- **Location:** components/incidents/IncidentManagerPanel.tsx:200–250
+- **Location:** components/incidents/IncidentManagerPanel.tsx:200â€“250
 - **Trigger:** User updates incident status from one value to another
 - **Action:** handleStatusChange(incident, newStatus) fires after updateIncidentStatus() succeeds
 - **Status Values:** "open" | "in_progress" | "resolved" | "closed"
@@ -361,14 +361,14 @@ Identified all form validation points:
 - **API Call:** updateIncidentStatus(id, newStatus)
 - **Timing:** After API succeeds, before UI refresh
 - **Test Cases:**
-  - Incident in "open" → change to "in_progress" → incident_status_changed fired
+  - Incident in "open" â†’ change to "in_progress" â†’ incident_status_changed fired
   - from_status: "open", to_status: "in_progress"
-  - Multiple status changes → multiple events
+  - Multiple status changes â†’ multiple events
 
 ### 6. SUPPLIERS EVENTS (1)
 
 #### Event: supplier_rate_updated
-- **Location:** components/suppliers/SupplierDirectoryPanel.tsx:150–200
+- **Location:** components/suppliers/SupplierDirectoryPanel.tsx:150â€“200
 - **Trigger:** User updates supplier's monthly rate
 - **Action:** handleRateUpdate(supplier, newRate) fires after updateSupplierRate() succeeds
 - **Data to Track:**
@@ -383,9 +383,9 @@ Identified all form validation points:
 - **API Call:** updateSupplierRate(id, monthly_rate)
 - **Timing:** After API succeeds, before UI refresh
 - **Test Cases:**
-  - Edit rate from 500 to 750 EUR → supplier_rate_updated fires
+  - Edit rate from 500 to 750 EUR â†’ supplier_rate_updated fires
   - new_rate: 750, currency: "EUR"
-  - Multiple updates → multiple events
+  - Multiple updates â†’ multiple events
 
 ---
 
@@ -393,21 +393,21 @@ Identified all form validation points:
 
 | Data Type | Include? | Reason | Location |
 |-----------|----------|--------|----------|
-| Email (auth events) | ✅ Yes | Necessary for identification | login_succeeded, login_failed, account_created |
-| Password | ❌ No | Never track passwords | Never |
-| API Tokens | ❌ No | Security risk | Never |
-| Personal Names | ❌ No | PII | Never in outbound_order (assigned_to), supplier creation |
-| Phone Numbers | ❌ No | PII | Never |
-| Addresses | ❌ No | PII | Never |
-| Supplier Names | ❌ No | Could be sensitive | Never in inbound/outbound events (use asset_id instead) |
-| User UUIDs | ✅ Yes | For tracking sessions | Auto-generated by service |
-| Asset IDs | ✅ Yes | System identifiers | Inventory events |
-| Incident IDs | ✅ Yes | System identifiers | Incident events |
-| Supplier IDs | ✅ Yes | System identifiers | Supplier events |
-| Timestamps | ✅ Yes | Event timing | All events |
-| Status/Stage Values | ✅ Yes | Business data | All status change events |
-| Quantities | ✅ Yes | Business data | Inventory events |
-| Numeric Amounts | ✅ Yes | Business data | Supplier rate events |
+| Email (auth events) | âœ… Yes | Necessary for identification | login_succeeded, login_failed, account_created |
+| Password | âŒ No | Never track passwords | Never |
+| API Tokens | âŒ No | Security risk | Never |
+| Personal Names | âŒ No | PII | Never in outbound_order (assigned_to), supplier creation |
+| Phone Numbers | âŒ No | PII | Never |
+| Addresses | âŒ No | PII | Never |
+| Supplier Names | âŒ No | Could be sensitive | Never in inbound/outbound events (use asset_id instead) |
+| User UUIDs | âœ… Yes | For tracking sessions | Auto-generated by service |
+| Asset IDs | âœ… Yes | System identifiers | Inventory events |
+| Incident IDs | âœ… Yes | System identifiers | Incident events |
+| Supplier IDs | âœ… Yes | System identifiers | Supplier events |
+| Timestamps | âœ… Yes | Event timing | All events |
+| Status/Stage Values | âœ… Yes | Business data | All status change events |
+| Quantities | âœ… Yes | Business data | Inventory events |
+| Numeric Amounts | âœ… Yes | Business data | Supplier rate events |
 
 ---
 
@@ -415,58 +415,58 @@ Identified all form validation points:
 
 ### Infrastructure (Already Complete)
 
-- ✅ Phase 1: Backend telemetry endpoint `POST /api/telemetry/events`
+- âœ… Phase 1: Backend telemetry endpoint `POST /api/telemetry/events`
   - Receives CloudEvents 1.0 formatted events
   - Validates UUID, timestamp, event type
   - Returns 200 with `{received: N}`
   - Comprehensive test coverage (32 tests)
 
-- ✅ Phase 2: Frontend TelemetryService singleton
+- âœ… Phase 2: Frontend TelemetryService singleton
   - Queue + batching strategy
   - Retry logic with exponential backoff
   - sendBeacon integration
   - React hooks (useTelemetry)
   - Comprehensive test coverage (17 tests)
 
-- ✅ All 14 events pre-defined in `lib/telemetry/telemetry-types.ts`
+- âœ… All 14 events pre-defined in `lib/telemetry/telemetry-types.ts`
 
-- ✅ All 14 events in allowlist in TelemetryService
+- âœ… All 14 events in allowlist in TelemetryService
 
 ### Code Quality Standards
 
-- ✅ No PII in events
-- ✅ Timing verified (before/after state changes)
-- ✅ TypeScript compliance (specific event types)
-- ✅ Error handling (try/catch around tracking)
-- ✅ No blocking on telemetry
+- âœ… No PII in events
+- âœ… Timing verified (before/after state changes)
+- âœ… TypeScript compliance (specific event types)
+- âœ… Error handling (try/catch around tracking)
+- âœ… No blocking on telemetry
 
 ### Testing Strategy
 
-- ✅ Unit tests for each event
-- ✅ Integration tests (event → queue → batch → API)
-- ✅ Network tab inspection (CloudEvents format)
-- ✅ End-to-end user journeys
-- ✅ PII compliance verification
+- âœ… Unit tests for each event
+- âœ… Integration tests (event â†’ queue â†’ batch â†’ API)
+- âœ… Network tab inspection (CloudEvents format)
+- âœ… End-to-end user journeys
+- âœ… PII compliance verification
 
 ---
 
 ## Files Modified/Created Summary
 
 ### Modify (11 files)
-1. components/auth/AuthForm.tsx — Auth events
-2. components/inventory/InboundFormPanel.tsx — Inbound event
-3. components/inventory/OutboundFormPanel.tsx — Outbound event
-4. components/suppliers/SupplierDirectoryPanel.tsx — Supplier events
-5. components/incidents/IncidentManagerPanel.tsx — Incident events
-6. app/error.tsx — Render error event
-7. app/layout.tsx — Import tracking hook
-8. components/candidates/CandidateForm.tsx — Form validation
-9. components/profile/ProfilePanel.tsx — Form validation
-10. app/account/change-password/page.tsx — Form validation
+1. components/auth/AuthForm.tsx â€” Auth events
+2. components/inventory/InboundFormPanel.tsx â€” Inbound event
+3. components/inventory/OutboundFormPanel.tsx â€” Outbound event
+4. components/suppliers/SupplierDirectoryPanel.tsx â€” Supplier events
+5. components/incidents/IncidentManagerPanel.tsx â€” Incident events
+6. app/error.tsx â€” Render error event
+7. app/layout.tsx â€” Import tracking hook
+8. components/candidates/CandidateForm.tsx â€” Form validation
+9. components/profile/ProfilePanel.tsx â€” Form validation
+10. app/account/change-password/page.tsx â€” Form validation
 11. (Other form validation points as needed)
 
 ### Create (1 file)
-1. hooks/useSectionTracking.ts — Centralized page/section tracking
+1. hooks/useSectionTracking.ts â€” Centralized page/section tracking
 
 ### No Changes
 - lib/telemetry/ (Phase 2 complete)
@@ -486,7 +486,7 @@ Identified all form validation points:
 | Instrument status/rate change events | 1 hour | Hook ready |
 | End-to-end testing | 1.5 hours | All instrumentation done |
 | Code review & fixes | 1 hour | Tests passing |
-| **Total** | **8–9 hours** | |
+| **Total** | **8â€“9 hours** | |
 
 ---
 
@@ -534,7 +534,7 @@ Identified all form validation points:
 - Modal-based forms track open/abandon via parent, not Modal.tsx (to avoid multiple tracking)
 - form_validation_failed fires for each user submission, not per field
 - section_viewed fires on every pathname change (same event as frontend_page_loaded, provides alternative perspective)
-- No negative events tracked (e.g., inbound_order_failed) — only positive state changes
+- No negative events tracked (e.g., inbound_order_failed) â€” only positive state changes
 
 ### Future Enhancements (Post Phase 3)
 - Track API request failures as negative events
@@ -556,7 +556,7 @@ A: Track if fields_touched > 0. Pristine forms (fields_touched === 0) can fire o
 A: Before setShowModal(true) in parent component's button handler. The tracking call comes first, then state update shows modal.
 
 **Q: Do we track both frontend_page_loaded AND section_viewed?**  
-A: Yes — they're both useful (page_type is more specific, section_name is more general). They fire at the same time with same data but offer different analytics perspectives.
+A: Yes â€” they're both useful (page_type is more specific, section_name is more general). They fire at the same time with same data but offer different analytics perspectives.
 
 **Q: Should we track navigation events (links clicked)?**  
 A: Not in scope for Phase 3 (covered by section_viewed on arrival).
@@ -599,7 +599,7 @@ A: Not in scope for Phase 3 (covered by section_viewed on arrival).
 
 ## Approval & Next Steps
 
-**Status:** ✅ **READY FOR PHASE 3 IMPLEMENTATION**
+**Status:** âœ… **READY FOR PHASE 3 IMPLEMENTATION**
 
 **Awaiting:** User approval to begin implementation
 
@@ -611,13 +611,13 @@ A: Not in scope for Phase 3 (covered by section_viewed on arrival).
 5. Deploy to production
 
 **User Instructions Acknowledged:**  
-*"Explora la estructura del codebase para mapear puntos de instrumentación para la Fase 3. Para cada área, lista archivos/directorios principales, identifica componentes y sus propósitos, nota los modelos de datos usados, y marca problemas o implementaciones faltantes. Retorna un mapeo completo que muestre exactamente dónde se debe instrumentar cada evento."*
+*"Explora la estructura del codebase para mapear puntos de instrumentaciÃ³n para la Fase 3. Para cada Ã¡rea, lista archivos/directorios principales, identifica componentes y sus propÃ³sitos, nota los modelos de datos usados, y marca problemas o implementaciones faltantes. Retorna un mapeo completo que muestre exactamente dÃ³nde se debe instrumentar cada evento."*
 
-✅ **Deliverable:** Comprehensive mapping completed and documented
+âœ… **Deliverable:** Comprehensive mapping completed and documented
 
 ---
 
-**Document Status:** ✅ COMPLETE  
+**Document Status:** âœ… COMPLETE  
 **Created:** 2026-11-02  
 **Ready for:** Phase 3 Implementation  
 **Next Action:** User approval to proceed
