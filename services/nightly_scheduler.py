@@ -1,4 +1,4 @@
-"""Run the nightly export entry point once per day at 02:00 UTC."""
+"""Run the nightly export entry point daily at 10:00 Europe/Madrid."""
 
 from __future__ import annotations
 
@@ -10,9 +10,13 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 ENTRY_POINT = Path(__file__).resolve().parents[1] / "scripts" / "nightly_export.py"
+SCHEDULE_TIMEZONE = ZoneInfo("Europe/Madrid")
+SCHEDULE_HOUR = 10
+SCHEDULE_MINUTE = 0
 logger = logging.getLogger("nightly_scheduler")
 shutdown_requested = False
 
@@ -23,13 +27,27 @@ def _request_shutdown(_signum: int, _frame: object) -> None:
 
 
 def next_run(now: datetime) -> datetime:
-    """Return the next 02:00 UTC boundary, strictly after ``now``."""
+    """Return the next 10:00 Europe/Madrid boundary, strictly after ``now``.
+
+    Constructing the next local calendar date in the IANA timezone lets the
+    UTC offset follow Madrid's winter/summer time changes automatically.
+    """
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
-    utc_now = now.astimezone(timezone.utc)
-    candidate = utc_now.replace(hour=2, minute=0, second=0, microsecond=0)
-    if candidate <= utc_now:
-        candidate += timedelta(days=1)
+    local_now = now.astimezone(SCHEDULE_TIMEZONE)
+    candidate = local_now.replace(
+        hour=SCHEDULE_HOUR, minute=SCHEDULE_MINUTE, second=0, microsecond=0
+    )
+    if candidate <= local_now:
+        next_date = local_now.date() + timedelta(days=1)
+        candidate = datetime(
+            next_date.year,
+            next_date.month,
+            next_date.day,
+            SCHEDULE_HOUR,
+            SCHEDULE_MINUTE,
+            tzinfo=SCHEDULE_TIMEZONE,
+        )
     return candidate
 
 
@@ -42,7 +60,10 @@ def main() -> int:
     signal.signal(signal.SIGINT, _request_shutdown)
     while not shutdown_requested:
         scheduled_for = next_run(datetime.now(timezone.utc))
-        wait_seconds = max(0.0, (scheduled_for - datetime.now(timezone.utc)).total_seconds())
+        wait_seconds = max(
+            0.0,
+            (scheduled_for.astimezone(timezone.utc) - datetime.now(timezone.utc)).total_seconds(),
+        )
         logger.info("Next nightly export scheduled for %s", scheduled_for.isoformat())
         deadline = time.monotonic() + wait_seconds
         while not shutdown_requested:
