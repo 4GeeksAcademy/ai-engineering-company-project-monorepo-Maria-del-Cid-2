@@ -1,4 +1,64 @@
 services:
+  postgres-integration:
+    image: postgres:16-alpine
+    profiles: [integration]
+    environment:
+      POSTGRES_DB: test_job_runner
+      POSTGRES_USER: phase3_test
+      POSTGRES_PASSWORD: phase3_test_only
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phase3_test -d test_job_runner"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  nightly-scheduler:
+    build:
+      context: .
+      dockerfile: services/scheduler.Dockerfile
+    env_file:
+      - .env
+    environment:
+      TZ: UTC
+      NIGHTLY_EXPORT_AUDIT_DIR: /var/lib/nightly-export/audit
+    volumes:
+      - nightly_export_audit:/var/lib/nightly-export
+    networks:
+      - nexova
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
+    depends_on:
+      reporting-db:
+        condition: service_healthy
+
+  retention-scheduler:
+    build:
+      context: .
+      dockerfile: services/retention-scheduler.Dockerfile
+    environment:
+      TZ: UTC
+      LOG_LEVEL: INFO
+      RETENTION_SCHEDULE_UTC: "${RETENTION_SCHEDULE_UTC:-03:00}"
+      NIGHTLY_EXPORT_AUDIT_DIR: /var/lib/nightly-export/audit
+    volumes:
+      - nightly_export_audit:/var/lib/nightly-export
+    networks:
+      - nexova
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
+
   interfaces:
     build:
       context: .
@@ -142,6 +202,7 @@ services:
       - nexova
 
 volumes:
+  nightly_export_audit:
   interfaces_node_modules:
   interfaces_next_cache:
   reporting_postgres_data:
