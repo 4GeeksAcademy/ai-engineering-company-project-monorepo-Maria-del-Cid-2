@@ -639,7 +639,7 @@ calculan; PostgreSQL materializa y registra. No se ha creado el módulo, el
 router, las tablas, las importaciones ni el deployment en este hito de diseño.
 
 
-## Phase 5 implementation status � CLI and HTTP reporting
+## Phase 5 implementation status ù CLI and HTTP reporting
 
 The CLI is exposed as `main(argv=None)` and remains runnable from the repository
 root with `uv run --project services/api python data/pipelines/pipeline.py`.
