@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 
 class IncidentAnalysisResponse(BaseModel):
-    """Aggregate, privacy-safe response returned by ``POST /api/incidents/analyze``.
+    """Aggregate, privacy-safe result returned after an async analysis task.
 
     Every field is derived from validated rows; no raw CSV column
     (customer email, ticket id, description) is ever exposed.
@@ -26,3 +26,18 @@ class IncidentAnalysisResponse(BaseModel):
     satisfaction_distribution: dict[str, int]
     average_satisfaction: float | None = None
     invalid_by_type: dict[str, int]
+
+
+class IncidentAnalysisTaskAccepted(BaseModel):
+    """Acknowledgement returned when an analysis task is queued."""
+
+    task_id: str
+
+
+class IncidentAnalysisTaskStatus(BaseModel):
+    """Privacy-safe task state and optional completed aggregate."""
+
+    task_id: str
+    status: str
+    result: IncidentAnalysisResponse | None = None
+    error: str | None = None

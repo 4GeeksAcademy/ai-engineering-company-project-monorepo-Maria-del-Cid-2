@@ -57,11 +57,47 @@ No uses `*`. Permite los headers `Authorization` y `Content-Type`.
 
 ## Incident Analysis
 
-- `POST /api/incidents/analyze` recibe el campo multipart `file` y devuelve métricas agregadas. Ausencia, formato no CSV, contenido vacío o inválido producen HTTP 400.
-- `GET /api/incidents/results/export` descarga como CSV el último resultado agregado del proceso. Antes de un análisis válido responde HTTP 404.
-- El último resultado solo vive en memoria del proceso: no es persistente ni
-    compartido entre workers. No se guardan ni devuelven filas originales o
-    `customer_email`.
+- `POST /api/incidents/analyze` recibe el campo multipart `file`, valida el CSV y
+    responde `202` con un `task_id`. El límite por defecto es 10 MiB y se puede
+    cambiar con `INCIDENT_ANALYSIS_MAX_UPLOAD_BYTES`. Ausencia, formato no CSV,
+    contenido vacío o inválido producen HTTP 400; los archivos demasiado grandes
+    producen HTTP 413.
+- `GET /api/tasks/{task_id}` devuelve el estado (`pending`, `started`, `success`,
+  `failure`, `retry` o `revoked`) y, al terminar correctamente, el resultado
+    agregado. Los errores son genéricos y no exponen excepciones del worker.
+- `GET /api/incidents/tasks/{task_id}/export` descarga el CSV agregado de esa
+    tarea concreta. No hay resultado global “último”, por lo que las peticiones
+    concurrentes no se mezclan.
+- En Compose, API y `incident-analysis-worker` comparten el volumen
+    `incident_analysis_uploads` en `/var/lib/nexova/incident-analysis`. El broker
+    y backend de resultados son Redis. La API publica solo un identificador opaco;
+    CSV, emails, descripciones y filas nunca viajan por Celery ni se devuelven.
+    Los archivos tienen permisos restrictivos, se eliminan al procesarse y una
+    limpieza oportunista retira archivos antiguos tras 24 horas. Si se despliegan
+    workers en varios hosts, sustituir el volumen local por almacenamiento de
+    objetos compartido.
+- La tarea reintenta errores transitorios seleccionados hasta dos veces (tres
+    intentos en total), con esperas exponenciales de 1 y 2 segundos. Éxitos y
+    fallos terminales eliminan el CSV; los fallos terminales se registran de
+    forma idempotente por `task_id` en `public.celery_incident_analysis_dlq`.
+- La DLQ usa `CELERY_DATABASE_URL` con TLS obligatorio y una tabla/migración
+    propia. La comprobación de identidad efectiva confirmó que este URL y
+    `TELEMETRY_DATABASE_URL` llegan a la misma base PostgreSQL de Supabase y al
+    esquema `public`; la separación existente es a nivel de tabla: la DLQ y
+    `public.telemetry_events` son relaciones independientes, sin compartir ni
+    duplicar filas. Reporting permanece en la base local `nexova_reporting`,
+    con sus tablas bajo el esquema `reporting`; la tabla DLQ no existe allí.
+    No se creó otra base/proyecto ni se modificaron tablas de telemetría o
+    reporting. Esta separación es lógica a nivel de tabla, no aislamiento por
+    esquema o por rol PostgreSQL.
+- La DLQ almacena solo ID/nombre de tarea, fecha, número de intento y clase de
+    error saneada; no guarda CSV, filas, emails, descripciones ni mensajes de
+    excepción. Las pruebas de Etapa 2 cubren el flujo local con worker real,
+    reintentos, limpieza, terminal DLQ/TLS e idempotencia. La validación
+    registrada: 16 pruebas enfocadas de backend y 89 pruebas del backoffice
+    pasan. La suite completa de backend reportó 291 pasadas, 27 subtests
+    pasados y un fallo ajeno a esta etapa en el CLI por codificación `cp1252`
+    en Windows.
 - La CLI está en `scripts/analyze.py`; puede exportar resultados agregados de forma interactiva. Revisa el destino antes de ejecutarla porque puede crear un archivo en el directorio de trabajo.
 
 ## Incident Manager

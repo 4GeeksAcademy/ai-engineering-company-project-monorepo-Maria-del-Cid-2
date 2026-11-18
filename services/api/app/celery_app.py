@@ -10,7 +10,7 @@ celery_app = Celery(
     "nexova",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["app.tasks.test_tasks"],
+    include=["app.tasks.test_tasks", "app.tasks.incident_analysis"],
 )
 
 celery_app.conf.update(
@@ -21,4 +21,7 @@ celery_app.conf.update(
     timezone="Europe/Madrid",
     enable_utc=True,
     broker_connection_retry_on_startup=True,
+    result_expires=3600,
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
 )

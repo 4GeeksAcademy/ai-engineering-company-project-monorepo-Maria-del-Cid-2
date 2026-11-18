@@ -1,5 +1,43 @@
 ﻿# Progress â€” Nexova
 
+### Celery Incident Analysis â€” Stage 2 implementation (complete; operational deployment pending)
+
+- Stage 1 audit decisions were approved and recorded in
+  `services/api/CELERY_ASYNC_AUDIT.md`: shared named Docker volume for single-host
+  CSV handoff, opaque IDs only in broker messages, and a dedicated DLQ table.
+  Current DLQ persistence uses `CELERY_DATABASE_URL` over TLS. Read-only identity
+  checks confirmed it reaches the same effective Supabase database and `public`
+  schema as `TELEMETRY_DATABASE_URL`; isolation is at the table level, not by
+  database, schema, or role. `REPORTING_DATABASE_URL` resolves to the separate
+  local `nexova_reporting` database; its reporting tables are in schema
+  `reporting` and no DLQ table exists there. No database/project was created and
+  telemetry/reporting tables were not altered.
+- Converted `POST /api/incidents/analyze` to `202 Accepted` with a `task_id`,
+  bounded streaming upload (10 MiB default), early CSV structure validation,
+  restrictive file permissions and shared-volume storage. Added Celery task,
+  bounded Redis result retention, late ack/worker-loss redelivery, task status
+  and per-task aggregate export endpoints. Removed the global latest-result
+  contract to avoid cross-request result mixing.
+- Compose now mounts `incident_analysis_uploads` into API and a dedicated
+  `incident-analysis-worker`. Inputs are removed after worker processing;
+  opportunistic cleanup removes files older than 24 hours. Task results and
+  status errors are allow-listed aggregate fields / generic messages only.
+- Updated backoffice client/UI to poll task state and export by task ID; updated
+  API README and async API tests, and refreshed the frontend API client contract
+  test to cover submission, polling and task-scoped export. Header-only CSV
+  validation returns HTTP 400, and worker/submission logs avoid raw error text.
+- Validation: focused backend reliability/API/worker tests passed: **16 passed**;
+  backoffice `npm test`: **89 passed**. The backend full suite reported **291
+  passed, 27 subtests passed, 1 failed**; the failure is the unrelated Windows
+  CLI `cp1252` encoding error in `tests/test_cli.py::IncidentCliTests.test_end_of_input_returns_error`.
+  Read-only DLQ preflight and direct identity/table checks passed for Celery,
+  telemetry and local reporting targets. Editor diagnostics reported no errors
+  in reviewed Phase 2 files.
+- DLQ schema migration is recorded and the table exists. Compose configuration
+  includes the dedicated Celery worker, but the worker was not running during
+  final inspection; do not describe the feature as deployed/actively processing.
+- No Phase 3 work, commit, push, or PR was performed.
+
 ### Reporting semanal de negocio â€” validaciÃ³n operacional pendiente
 
 - Prefect local en Compose, pool process y deployment

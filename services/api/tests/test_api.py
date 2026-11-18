@@ -2,7 +2,10 @@
 
 import csv
 import io
+import os
+import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -27,6 +30,13 @@ class IncidentApiTests(unittest.TestCase):
         cls.client = TestClient(app)
         cls.safe_error_client = TestClient(app, raise_server_exceptions=False)
         cls.csv_bytes = DATASET.read_bytes()
+        cls.upload_dir = tempfile.TemporaryDirectory()
+        os.environ["INCIDENT_ANALYSIS_UPLOAD_DIR"] = cls.upload_dir.name
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.upload_dir.cleanup()
+        os.environ.pop("INCIDENT_ANALYSIS_UPLOAD_DIR", None)
 
     def post_csv(self, content: bytes, filename: str = "incidents.csv"):
         return self.client.post(
@@ -34,68 +44,27 @@ class IncidentApiTests(unittest.TestCase):
             files={"file": (filename, content, "text/csv")},
         )
 
-    def test_valid_csv_returns_expected_aggregate_response(self) -> None:
+    @patch("app.main.analyze_incidents_task.apply_async")
+    def test_valid_csv_is_accepted_and_only_opaque_reference_is_queued(self, enqueue) -> None:
+        enqueue.return_value.id = "8fa7f66f-bad9-4585-ae8d-bb19e2b38666"
         response = self.post_csv(self.csv_bytes)
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload["total_records"], 100)
-        self.assertEqual(payload["valid_records"], 96)
-        self.assertEqual(payload["invalid_records"], 4)
-        self.assertEqual(payload["by_category"], {
-            "TECHNICAL": 28,
-            "BILLING": 18,
-            "ACCESS": 21,
-            "HR_QUERY": 17,
-            "COMPLAINT": 12,
-        })
-        self.assertEqual(payload["by_status"], {
-            "OPEN": 27,
-            "CLOSED": 56,
-            "DISCARDED": 13,
-        })
-        self.assertEqual(payload["satisfaction_distribution"], {
-            "1": 2,
-            "2": 5,
-            "3": 10,
-            "4": 22,
-            "5": 17,
-        })
-        self.assertEqual(payload["average_satisfaction"], 3.84)
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json(), {"task_id": enqueue.return_value.id})
+        queued_args = enqueue.call_args.kwargs.get("args") or enqueue.call_args.args[0]
+        self.assertEqual(len(queued_args), 1)
+        self.assertRegex(queued_args[0], r"^[0-9a-f]{32}$")
 
-    def test_response_contains_only_aggregate_fields(self) -> None:
+    @patch("app.main.analyze_incidents_task.apply_async")
+    def test_upload_content_is_not_in_task_message_or_acknowledgement(self, enqueue) -> None:
+        enqueue.return_value.id = "8fa7f66f-bad9-4585-ae8d-bb19e2b38666"
         response = self.post_csv(self.csv_bytes)
-        response_text = response.text
-
-        self.assertNotIn("customer_email", response_text)
-        self.assertNotIn("@", response_text)
-        self.assertNotIn("ticket_id", response_text)
-        self.assertNotIn("description", response_text)
-
-    def test_analyze_response_has_exactly_aggregate_keys(self) -> None:
-        """The payload is locked to exactly the eight aggregate fields.
-
-        Guards against future serialization drift (extra fields leaking or
-        aggregate fields being renamed/removed), which would break the
-        frontend ``IncidentAnalysisResult`` contract.
-        """
-        response = self.post_csv(self.csv_bytes)
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(
-            set(payload.keys()),
-            {
-                "total_records",
-                "valid_records",
-                "invalid_records",
-                "by_category",
-                "by_status",
-                "satisfaction_distribution",
-                "average_satisfaction",
-                "invalid_by_type",
-            },
-        )
+        self.assertEqual(response.status_code, 202)
+        self.assertNotIn("customer_email", response.text)
+        self.assertNotIn("@", response.text)
+        self.assertNotIn("ticket_id", response.text)
+        self.assertNotIn("description", response.text)
+        self.assertNotIn("@", repr(enqueue.call_args))
 
     def test_openapi_declares_incident_analysis_response_schema(self) -> None:
         """``POST /api/incidents/analyze`` documents a response_model contract.
@@ -106,24 +75,15 @@ class IncidentApiTests(unittest.TestCase):
         """
         schema = app.openapi()
         post_path = schema["paths"]["/api/incidents/analyze"]["post"]
-        response_schema = post_path["responses"]["200"]["content"][
+        response_schema = post_path["responses"]["202"]["content"][
             "application/json"
         ]["schema"]
-        self.assertEqual(response_schema["$ref"], "#/components/schemas/IncidentAnalysisResponse")
+        self.assertEqual(response_schema["$ref"], "#/components/schemas/IncidentAnalysisTaskAccepted")
 
-        component = schema["components"]["schemas"]["IncidentAnalysisResponse"]
+        component = schema["components"]["schemas"]["IncidentAnalysisTaskAccepted"]
         self.assertEqual(
             set(component["properties"].keys()),
-            {
-                "total_records",
-                "valid_records",
-                "invalid_records",
-                "by_category",
-                "by_status",
-                "satisfaction_distribution",
-                "average_satisfaction",
-                "invalid_by_type",
-            },
+            {"task_id"},
         )
         self.assertNotIn("customer_email", component["properties"])
         self.assertNotIn("ticket_id", component["properties"])
@@ -191,6 +151,11 @@ class IncidentApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"], "Invalid CSV file")
+
+    def test_oversized_csv_returns_payload_too_large(self) -> None:
+        with patch("app.main.MAX_INCIDENT_UPLOAD_BYTES", 8):
+            response = self.post_csv(self.csv_bytes)
+        self.assertEqual(response.status_code, 413)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,25 @@ export interface IncidentAnalysisResult {
   invalid_by_type: Partial<Record<ValidationErrorCode, number>>;
 }
 
+export interface IncidentAnalysisTaskAccepted {
+  task_id: string;
+}
+
+export type IncidentAnalysisTaskState =
+  | "pending"
+  | "started"
+  | "success"
+  | "failure"
+  | "retry"
+  | "revoked";
+
+export interface IncidentAnalysisTaskStatus {
+  task_id: string;
+  status: IncidentAnalysisTaskState;
+  result?: IncidentAnalysisResult;
+  error?: string;
+}
+
 export class IncidentAnalysisApiError extends ApiClientError {
   constructor(
     status: number,
