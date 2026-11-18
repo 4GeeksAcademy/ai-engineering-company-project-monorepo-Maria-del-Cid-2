@@ -201,6 +201,27 @@ services:
     networks:
       - nexova
 
+redis:
+    image: redis:7-alpine
+    container_name: nexova-redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory-policy
+      - noeviction
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+
 volumes:
   nightly_export_audit:
   interfaces_node_modules:
@@ -208,7 +229,14 @@ volumes:
   reporting_postgres_data:
   prefect_server_data:
   prefect_worker_data:
+  redis_data:
 
 networks:
   nexova:
     name: "${DOCKER_NETWORK_NAME}"
+
+
+  
+
+
+   
