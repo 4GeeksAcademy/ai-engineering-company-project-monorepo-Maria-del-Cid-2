@@ -35,8 +35,27 @@ export interface IncidentAnalysisResult {
   by_category: Partial<Record<IncidentCategory, number>>;
   by_status: Partial<Record<IncidentStatus, number>>;
   satisfaction_distribution: Partial<Record<SatisfactionScore, number>>;
-  average_satisfaction: number | null;
+  average_satisfaction?: number | null;
   invalid_by_type: Partial<Record<ValidationErrorCode, number>>;
+}
+
+export interface IncidentAnalysisTaskAccepted {
+  task_id: string;
+}
+
+export type IncidentAnalysisTaskState =
+  | "pending"
+  | "started"
+  | "success"
+  | "failure"
+  | "retry"
+  | "revoked";
+
+export interface IncidentAnalysisTaskStatus {
+  task_id: string;
+  status: IncidentAnalysisTaskState;
+  result?: IncidentAnalysisResult;
+  error?: string;
 }
 
 export class IncidentAnalysisApiError extends ApiClientError {

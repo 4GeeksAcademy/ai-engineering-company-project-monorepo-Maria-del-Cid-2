@@ -91,15 +91,20 @@ services:
     env_file:
       - .env
     environment:
+      REDIS_URL: redis://redis:6379/0
       TELEMETRY_DATABASE_URL: "${TELEMETRY_DATABASE_URL}"
       REPORTING_DATABASE_URL: "${REPORTING_DATABASE_URL}"
       PREFECT_API_URL: "http://prefect-server:4200/api"
+      INCIDENT_ANALYSIS_UPLOAD_DIR: /var/lib/nexova/incident-analysis
+      INCIDENT_ANALYSIS_MAX_UPLOAD_BYTES: "10485760"
+      INCIDENT_ANALYSIS_UPLOAD_RETENTION_SECONDS: "86400"
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:
       - ./services/api:/app/services/api
       - ./packages/shared/python:/app/packages/shared/python
       - ./services/data:/app/services/data
+      - incident_analysis_uploads:/var/lib/nexova/incident-analysis
     depends_on:
       reporting-db:
         condition: service_healthy
@@ -160,6 +165,59 @@ services:
     networks:
       - nexova
 
+  incident-analysis-worker:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    working_dir: /app/services/api
+    command: ["python", "-m", "celery", "-A", "app.celery_app:celery_app", "worker", "--loglevel=INFO", "--events"]
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      INCIDENT_ANALYSIS_UPLOAD_DIR: /var/lib/nexova/incident-analysis
+    volumes:
+      - ./services/api:/app/services/api
+      - ./packages/shared/python:/app/packages/shared/python
+      - incident_analysis_uploads:/var/lib/nexova/incident-analysis
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "celery", "-A", "app.celery_app:celery_app", "inspect", "ping", "--timeout=2"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - nexova
+
+  flower:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    working_dir: /app/services/api
+    command: ["python", "-m", "flower", "--app=app.celery_app:celery_app", "--broker=redis://redis:6379/0", "flower", "--address=0.0.0.0", "--port=5555"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+      incident-analysis-worker:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; response = urllib.request.urlopen('http://127.0.0.1:5555/', timeout=3); assert response.status == 200"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - nexova
+
   reporting-deployer:
     build:
       context: .
@@ -201,14 +259,45 @@ services:
     networks:
       - nexova
 
+  redis:
+    image: redis:7-alpine
+    container_name: nexova-redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory-policy
+      - noeviction
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nexova
+
+
 volumes:
+  incident_analysis_uploads:
   nightly_export_audit:
   interfaces_node_modules:
   interfaces_next_cache:
   reporting_postgres_data:
   prefect_server_data:
   prefect_worker_data:
+  redis_data:
 
 networks:
   nexova:
     name: "${DOCKER_NETWORK_NAME}"
+
+
+  
+
+
+   

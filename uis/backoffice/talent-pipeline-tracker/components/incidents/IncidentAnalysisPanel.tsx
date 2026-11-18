@@ -1,7 +1,7 @@
 "use client";
 
 import { DragEvent, useRef, useState } from "react";
-import { analyzeIncidents, exportIncidentResults } from "@/lib/incident-analysis-api";
+import { analyzeIncidents, exportIncidentResults, getIncidentAnalysisTask } from "@/lib/incident-analysis-api";
 import { getUserFacingApiError } from "@/lib/api-error-messages";
 import {
   INCIDENT_CATEGORIES,
@@ -83,7 +83,7 @@ function Breakdown({
   );
 }
 
-function Results({ result }: { result: IncidentAnalysisResult }) {
+function Results({ result, taskId }: { result: IncidentAnalysisResult; taskId: string }) {
   return (
     <div className="mt-10 space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -93,7 +93,7 @@ function Results({ result }: { result: IncidentAnalysisResult }) {
           </p>
           <h2 className="mt-1 text-xl font-black tracking-tight">Aggregated results</h2>
         </div>
-        <DownloadButton />
+        <DownloadButton taskId={taskId} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -102,7 +102,7 @@ function Results({ result }: { result: IncidentAnalysisResult }) {
         <MetricCard label="Invalid records" value={result.invalid_records} />
         <MetricCard
           label="Average satisfaction"
-          value={result.average_satisfaction === null ? "—" : result.average_satisfaction.toFixed(2)}
+          value={result.average_satisfaction == null ? "—" : result.average_satisfaction.toFixed(2)}
         />
       </div>
 
@@ -124,7 +124,7 @@ function Results({ result }: { result: IncidentAnalysisResult }) {
   );
 }
 
-function DownloadButton() {
+function DownloadButton({ taskId }: { taskId: string }) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,7 +132,7 @@ function DownloadButton() {
     setDownloading(true);
     setError(null);
     try {
-      const blob = await exportIncidentResults();
+      const blob = await exportIncidentResults(taskId);
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
@@ -162,6 +162,7 @@ export function IncidentAnalysisPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<IncidentAnalysisResult | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -169,6 +170,7 @@ export function IncidentAnalysisPanel() {
   function selectFile(nextFile: File | undefined) {
     setError(null);
     setResult(null);
+    setTaskId(null);
     if (!nextFile) return;
     if (!nextFile.name.toLowerCase().endsWith(".csv")) {
       setFile(null);
@@ -190,7 +192,22 @@ export function IncidentAnalysisPanel() {
     setError(null);
     setResult(null);
     try {
-      setResult(await analyzeIncidents(file));
+      const accepted = await analyzeIncidents(file);
+      setTaskId(accepted.task_id);
+      const pollIntervalMs = 1_000;
+      const maxPolls = 120;
+      for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+        const task = await getIncidentAnalysisTask(accepted.task_id);
+        if (task.status === "success" && task.result) {
+          setResult(task.result);
+          return;
+        }
+        if (task.status === "failure" || task.status === "revoked") {
+          throw new Error(task.error ?? "Analysis failed. Please upload the file again.");
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs));
+      }
+      throw new Error("Analysis is taking longer than expected. Try again shortly.");
     } catch (analysisError) {
       setError(getUserFacingApiError(analysisError, "No se pudo analizar el archivo."));
     } finally {
@@ -256,7 +273,7 @@ export function IncidentAnalysisPanel() {
         )}
       </div>
 
-      {result && <Results result={result} />}
+      {result && taskId && <Results result={result} taskId={taskId} />}
     </div>
   );
 }

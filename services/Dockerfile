@@ -11,6 +11,9 @@ COPY services/api/requirements.txt /app/services/api/requirements.txt
 COPY packages/shared/python /app/packages/shared/python
 
 RUN cd /app/services/api && uv pip install --system -r requirements.txt
+# requirements.txt is an exported runtime snapshot and currently omits these
+# project dependencies; install the declared async runtime packages explicitly.
+RUN uv pip install --system "celery>=5.7.0" "flower>=2.2.0"
 
 COPY services/api /app/services/api
 

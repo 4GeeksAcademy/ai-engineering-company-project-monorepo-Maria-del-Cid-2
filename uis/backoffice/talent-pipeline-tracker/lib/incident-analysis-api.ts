@@ -1,6 +1,7 @@
 import {
   IncidentAnalysisApiError,
-  type IncidentAnalysisResult,
+  type IncidentAnalysisTaskAccepted,
+  type IncidentAnalysisTaskStatus,
 } from "../types/incident-analysis.ts";
 import {
   createRequestSignal,
@@ -66,7 +67,7 @@ async function requestIncidentAnalysis<T>(
 export async function analyzeIncidents(
   csvFile: File | Blob,
   options: IncidentAnalysisRequestOptions = {},
-): Promise<IncidentAnalysisResult> {
+): Promise<IncidentAnalysisTaskAccepted> {
   const formData = new FormData();
   const filename =
     typeof File !== "undefined" && csvFile instanceof File
@@ -75,24 +76,33 @@ export async function analyzeIncidents(
   formData.append("file", csvFile, filename);
 
   // Do not set Content-Type: fetch must add the multipart boundary.
-  return requestIncidentAnalysis<IncidentAnalysisResult>(
+  return requestIncidentAnalysis<IncidentAnalysisTaskAccepted>(
     "/incidents/analyze",
-    {
-      ...options,
-      method: "POST",
-      body: formData,
-    }
+    { ...options, method: "POST", body: formData },
+  );
+}
+
+export async function getIncidentAnalysisTask(
+  taskId: string,
+  options: IncidentAnalysisRequestOptions = {},
+): Promise<IncidentAnalysisTaskStatus> {
+  return requestIncidentAnalysis<IncidentAnalysisTaskStatus>(
+    `/tasks/${encodeURIComponent(taskId)}`,
+    options,
   );
 }
 
 export async function exportIncidentResults(
+  taskId: string,
   options: IncidentAnalysisRequestOptions = {},
 ): Promise<Blob> {
-  const response = await requestIncidentAnalysis<Blob>(
-    "/incidents/results/export",
+  if (!taskId) {
+    throw new IncidentAnalysisApiError(400, "A task ID is required to export results.");
+  }
+  return requestIncidentAnalysis<Blob>(
+    `/incidents/tasks/${encodeURIComponent(taskId)}/export`,
     { ...options, responseType: "blob" },
   );
-  return response;
 }
 
 export const analyzeIncidentCsv = analyzeIncidents;

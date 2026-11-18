@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { ApiClientError } from "../lib/api-errors.ts";
 import { IncidentAnalysisApiError } from "../types/incident-analysis.ts";
-import { analyzeIncidents, exportIncidentResults } from "../lib/incident-analysis-api.ts";
+import { analyzeIncidents, exportIncidentResults, getIncidentAnalysisTask } from "../lib/incident-analysis-api.ts";
 
 const originalFetch = globalThis.fetch;
 
@@ -17,23 +17,34 @@ function rejectingOnAbort() {
 }
 
 describe("Incident Analysis API client", () => {
-  it("preserves JSON analysis results, empty success bodies, and export blobs", async () => {
-    globalThis.fetch = async (url) => {
-      if (url.endsWith("/results/export")) {
+  it("submits an async analysis, polls its task, and exports by task ID", async () => {
+    const taskId = "a".repeat(32);
+    const calls = [];
+    globalThis.fetch = async (url, options) => {
+      calls.push({ url: String(url), options });
+      if (String(url).endsWith("/incidents/analyze")) {
+        return Response.json({ task_id: taskId }, { status: 202 });
+      }
+      if (String(url).endsWith(`/tasks/${taskId}`)) {
+        return Response.json({ task_id: taskId, status: "success", result: { total_records: 1 } });
+      }
+      if (String(url).endsWith(`/incidents/tasks/${taskId}/export`)) {
         return new Response(new Blob(["a,b\n1,2\n"], { type: "text/csv" }));
       }
-      return Response.json({ total_records: 1 });
+      throw new Error(`Unexpected URL: ${url}`);
     };
 
-    const result = await analyzeIncidents(new Blob(["csv"]));
-    assert.deepEqual(result, { total_records: 1 });
+    const accepted = await analyzeIncidents(new Blob(["csv"]));
+    assert.deepEqual(accepted, { task_id: taskId });
+    assert.equal(calls[0].options.method, "POST");
+    assert.ok(calls[0].options.body instanceof FormData);
 
-    globalThis.fetch = async () => new Response(null, { status: 204 });
-    assert.equal(await analyzeIncidents(new Blob(["csv"])), undefined);
+    const status = await getIncidentAnalysisTask(taskId);
+    assert.deepEqual(status, { task_id: taskId, status: "success", result: { total_records: 1 } });
 
-    globalThis.fetch = async () => new Response(new Blob(["a,b\n1,2\n"], { type: "text/csv" }));
-    const exportResult = await exportIncidentResults();
+    const exportResult = await exportIncidentResults(taskId);
     assert.equal(await exportResult.text(), "a,b\n1,2\n");
+    assert.equal(calls[2].url, `/api/incidents/tasks/${taskId}/export`);
   });
 
   it("classifies invalid JSON in a successful analysis response", async () => {
