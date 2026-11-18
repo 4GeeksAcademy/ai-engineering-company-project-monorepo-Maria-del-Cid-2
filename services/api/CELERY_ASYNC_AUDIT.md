@@ -8,6 +8,77 @@
 **Fecha:** 2026-11-18  
 **Rama comprobada:** `feature/celery-async-tasks`
 
+## Validación final y documentación — Etapa 4 (2026-11-18)
+
+Esta sección añade la evidencia de validación final. Las observaciones de Etapa
+1 y Etapa 2 se mantienen como registro histórico y no se reescriben para que
+parezcan mediciones hechas en esta etapa.
+
+### Pruebas y comprobaciones
+
+- **Backend completo:** `uv run pytest -q` desde `services/api` — 216 passed,
+  1 skipped, 40 subtests passed, 7 warnings.
+- **Focalizadas de Celery:** 11 passed, 7 warnings, incluyendo fiabilidad de
+  retries/DLQ y la integración local de cola/worker registrada en la validación.
+- **Backoffice:** `npm test` desde
+  `uis/backoffice/talent-pipeline-tracker` — 89 passed, 18 suites, 0 failed,
+  0 skipped.
+- **TypeScript:** `npx tsc --noEmit` en el backoffice — sin errores reportados.
+- **Compose:** `docker compose config --quiet` — configuración válida.
+- **Higiene de diff:** `git diff --check` — sin errores después de los cambios
+  de documentación.
+- **Compose operativo:** servicios principales comprobados healthy durante la
+  validación controlada. Flower confirmó health de su endpoint, pero no se
+  obtuvo verificación del estado de la tarea por Flower; una consulta a la API
+  devolvió 401. No se atribuye a Flower confirmación task-level.
+
+### Regresión ampliada de componentes
+
+Se ejecutó además un grupo de suites para auth, Incident Analysis/Celery,
+Incident Manager, inventario y su outbox, suppliers y telemetría, con rutas
+TinyDB y SQLite temporales. Resultado: **433 passed, 1 failed, 1 skipped, 67
+subtests passed, 7 warnings**. El único fallo fue
+`test_auth_password_reset.PasswordResetApiTests.test_concurrent_consumption_allows_only_one_reset`:
+dos hilos leyeron/escribieron la misma TinyDB JSON simultáneamente y uno
+observó un archivo vacío (`JSONDecodeError`). Es un fallo observado en la
+regresión actual, no se modificó ni se ocultó. No se estableció con certeza si
+es preexistente respecto a esta rama; por tanto, queda **sin clasificar como
+preexistente o introducido**. Las suites de componentes presentes en esa misma
+ejecución sí pasaron, excepto el caso concurrente señalado. Los skips incluyen
+escenarios condicionados a configuración de almacenamiento/servicios externos.
+
+### Prueba controlada de worker y DLQ
+
+Un primer trabajo sintético Compose terminó tras un intento; su causa no quedó
+determinada, así que no se usa como evidencia del retry. Después de reiniciar
+solo el worker para recargar los módulos montados, una segunda entrada sintética
+mostró intentos 1, 2 y 3, estado API `failure`, y una fila DLQ con
+`attempt_count=3` y `error_type=FileNotFoundError`. El CSV artificial se eliminó
+y el consumidor del worker se restauró sin tareas activas/pendientes al cerrar
+la prueba. Estos casos no modificaron la lógica funcional.
+
+### Build y límites
+
+El build del backoffice compiló páginas/rutas, pero Next.js terminó con
+`SecurityFatalError` asociado a una vulnerabilidad conocida de la versión
+instalada. El propio mensaje sugirió actualizar Next.js; no se ejecutó una
+actualización de dependencias sin autorización. Esto es un bloqueo de seguridad
+del entorno/dependencia, no un error demostrado de TypeScript. La suite de tests
+y `tsc --noEmit` pasaron por separado.
+
+La DLQ y telemetría siguen apuntando a la misma base Supabase/esquema `public`,
+con separación a nivel de tabla solamente. No se utilizaron esas credenciales
+para el test concurrente fallido. La integración DLQ que usa `CELERY_DATABASE_URL`
+requiere un destino de prueba aislado y no debe ejecutarse contra producción.
+
+### Documentación de operación
+
+El runbook de arranque/parada, consulta de tareas, ejecución local en Windows y
+Compose, variables y pruebas está en `services/api/README.md`, sección
+«Operación de Celery». La guía didáctica está en
+`docs/aprendiendo/aprendiendo-colas-mensajeros-tareas-asincronas.md`. Ambas
+señalan expresamente que `inventory-outbox-worker` es independiente de Celery.
+
 ## Estado vigente — Etapa 2 (2026-11-18)
 
 Esta sección es la referencia actual; el resto del documento conserva el
