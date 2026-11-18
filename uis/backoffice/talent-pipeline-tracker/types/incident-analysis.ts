@@ -35,7 +35,7 @@ export interface IncidentAnalysisResult {
   by_category: Partial<Record<IncidentCategory, number>>;
   by_status: Partial<Record<IncidentStatus, number>>;
   satisfaction_distribution: Partial<Record<SatisfactionScore, number>>;
-  average_satisfaction: number | null;
+  average_satisfaction?: number | null;
   invalid_by_type: Partial<Record<ValidationErrorCode, number>>;
 }
 

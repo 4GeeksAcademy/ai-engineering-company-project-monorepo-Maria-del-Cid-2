@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 import os
 import sys
 import tempfile
@@ -189,6 +190,7 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
     response_model=IncidentAnalysisTaskAccepted,
 )
 async def analyze_uploaded_incidents(
+    request: Request,
     file: UploadFile = File(...),
 ) -> IncidentAnalysisTaskAccepted:
     """Store a bounded CSV upload and enqueue asynchronous aggregate analysis."""
@@ -228,12 +230,28 @@ async def analyze_uploaded_incidents(
             raise HTTPException(status_code=400, detail="CSV must contain at least one data row")
         os.chmod(temp_path, 0o600)
         temp_path.replace(final_path)
+        supplied_request_id = request.headers.get("X-Request-ID", "")
+        correlation_id = (
+            hashlib.sha256(supplied_request_id.encode("utf-8")).hexdigest()[:32]
+            if supplied_request_id
+            else uuid.uuid4().hex
+        )
         try:
-            task = analyze_incidents_task.apply_async(args=[upload_id])
+            task = analyze_incidents_task.apply_async(
+                args=[upload_id],
+                kwargs={"correlation_id": correlation_id},
+                headers={"correlation_id": correlation_id},
+            )
         except Exception as exc:
             final_path.unlink(missing_ok=True)
             logger.warning("Incident analysis task submission failed exception_type=%s", type(exc).__name__)
             raise HTTPException(status_code=503, detail="Analysis queue is temporarily unavailable") from exc
+        logger.info(
+            "event=task_accepted task_id=%s task_name=%s status=QUEUED correlation_id=%s",
+            task.id,
+            analyze_incidents_task.name,
+            correlation_id,
+        )
         _cleanup_stale_uploads(upload_dir, keep=final_path)
         return IncidentAnalysisTaskAccepted(task_id=task.id)
     except CsvReadError as exc:

@@ -102,7 +102,7 @@ function Results({ result, taskId }: { result: IncidentAnalysisResult; taskId: s
         <MetricCard label="Invalid records" value={result.invalid_records} />
         <MetricCard
           label="Average satisfaction"
-          value={result.average_satisfaction === null ? "—" : result.average_satisfaction.toFixed(2)}
+          value={result.average_satisfaction == null ? "—" : result.average_satisfaction.toFixed(2)}
         />
       </div>
 
