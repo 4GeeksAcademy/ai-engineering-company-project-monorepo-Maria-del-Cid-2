@@ -4,7 +4,7 @@
 
 Guía didáctica del desarrollo por fases de un sistema de *forecasting* de
 
-ingresos. Este documento se actualizará al cerrar cada fase. **Estado actual: Fase 6 — pruebas automatizadas completadas; fases 1–5 registradas. Fase 7 pendiente de autorización.
+ingresos. Este documento se actualizó al cierre de las siete fases. **Estado actual: Fase 7 — documentación y revisión final completadas.**
 
 
 
@@ -12,13 +12,13 @@ ingresos. Este documento se actualizará al cerrar cada fase. **Estado actual: F
 
 
 
-El propósito es estimar los ingresos mensuales consolidados de Nexova y ayudar
-
-a dirección a reconocer desviaciones que merezcan atención. La predicción no
-
-sustituye el criterio de Marcos ni Laura: ofrece una referencia cuantitativa
-
-cuyo error y limitaciones deberán explicarse en términos comprensibles.
+El propósito es estimar los ingresos mensuales consolidados de Nexova y dar a
+dirección una referencia cuantitativa para presupuestación, planificación de
+capacidad y revisión de desviaciones. El modelo predice `revenue_usd` por mes;
+no identifica por sí solo causas comerciales ni prescribe decisiones. Marcos,
+Laura y otros responsables pueden comparar el pronóstico con resultados reales
+y combinarlo con información de contratos, pipeline y contexto empresarial que
+no está presente en esta serie. No sustituye el criterio de gestión.
 
 
 
@@ -29,8 +29,15 @@ el CSV original y utilizar únicamente observaciones `business_line =
 consolidated`. Los porcentajes de peso de las líneas de negocio que aparecen en
 
 el briefing son contexto aproximado, no datos mensuales, y no permiten calcular
+el cambio real del mix de negocio. La serie consolidada se eligió porque es el
+objetivo mensual del proyecto y evita fingir precisión por línea cuando no hay
+observaciones mensuales segmentadas verificadas. Por ello el modelo no mide ni
+predice composición del negocio, margen, contratos o ingresos por línea.
 
-el cambio real del mix de negocio.
+El pasado es solo una referencia: cambios de mercado, precios, clientes,
+capacidad, adquisiciones o calidad del origen pueden romper patrones históricos.
+Una serie pequeña y un único holdout tampoco permiten asegurar el comportamiento
+futuro ni inferir causalidad.
 
 
 
@@ -48,21 +55,63 @@ el cambio real del mix de negocio.
 
 | 3. Entrenamiento | Random Forest entrenado solo con 2016–2023; forecast recursivo 2024–2025. | **Completada en esta entrega** |
 
-| 4. Evaluación | Calcular métricas acordadas con el período 2024–2025. | Pendiente |
+| 4. Evaluación | Calcular métricas acordadas con el período 2024–2025. | **Completada** |
 
 | 5. Visualización | Mostrar realidad, predicción y banda orientativa calibrada con validación temporal. | **Completada** |
 
-| 6. Pruebas | Verificar split, calidad, reproducibilidad y ausencia de fuga temporal. | **Completada; suite relevante: 24 passed** |
+| 6. Pruebas | Verificar split, calidad, reproducibilidad y ausencia de fuga temporal. | **Completada; suite combinada: 25 passed (Phase 6: 10 passed)** |
 
-| 7. Documentación y revisión | Consolidar decisiones, resultados y límites del sistema. | Pendiente |
+| 7. Documentación y revisión | Consolidar decisiones, resultados y límites del sistema. | **Completada** |
 
 
 
-No se avanzará a una fase posterior sin autorización expresa del usuario.
+Las fases 1–7 están cerradas. Las mejoras futuras indicadas aquí son propuestas y no forman parte de la implementación actual.
 
 
 
 ## 3. Fase 1 — exploración y diagnóstico
+
+### Conceptos de Machine Learning usados en el proyecto
+
+Este trabajo es **aprendizaje supervisado**: cada ejemplo de entrenamiento
+contiene features (información de calendario e ingresos pasados) y una etiqueta
+conocida, el ingreso del mes objetivo. Como esa etiqueta es numérica, es un
+problema de **regresión**. El modelo aprende relaciones predictivas; no demuestra
+que una feature cause el ingreso.
+
+El conjunto de **entrenamiento** son los meses 2016–2023, usados para ajustar los
+árboles. El **holdout** son 2024–2025, reservado para medir rendimiento en meses
+posteriores. En series temporales los datos no se barajan al azar: una división
+aleatoria podría permitir que meses futuros influyeran en el entrenamiento y
+simular un escenario que no existiría al predecir en producción. La evaluación
+de holdout es una medición posterior del resultado, no una entrada para ajustar
+el modelo.
+
+La **ingeniería de features** transforma el historial en información útil para
+el algoritmo. Un lag es un valor anterior (por ejemplo, `revenue_lag_1` para
+enero de 2024 es diciembre de 2023); una estadística móvil resume meses previos.
+La tendencia es un índice temporal creciente; mes, trimestre y seno/coseno
+codifican el calendario. La **estacionalidad** son patrones que se repiten por
+época del año (como enero alto y agosto bajo en esta serie); la tendencia es el
+cambio de nivel a lo largo del tiempo. Se usan ambas representaciones porque
+son señales distintas.
+
+Un **Random Forest** ajusta muchos árboles de decisión sobre muestras aleatorias
+de filas/features y promedia sus resultados de regresión. El promedio suele
+reducir la inestabilidad de un árbol individual, pero no garantiza extrapolar
+bien una tendencia ni superar un baseline simple. `random_state=42` fija la
+aleatoriedad usada por el bosque para que, con los mismos datos y dependencias,
+la ejecución sea reproducible; no garantiza idénticos resultados entre todas
+las versiones de librerías o plataformas.
+
+Un pronóstico de horizonte largo requiere **recursión**: después de predecir
+enero de 2024, esa predicción entra al historial para crear features de febrero;
+no se dispone del ingreso real futuro. La **fuga de datos** ocurre si se usa
+información que no estaría disponible en el momento de pronosticar, por ejemplo
+el ingreso real de febrero para construir sus lags o para ajustar un scaler con
+todo el periodo. Las ventanas se desplazan una observación y el holdout se
+agrega al historial como predicciones, no como valores reales. En este pipeline
+no existe un transformador de preprocesamiento aprendido separado del estimador.
 
 
 
@@ -143,6 +192,14 @@ fecha, enteros y decimales al validarlos. La serie satisface las condiciones
 básicas de cobertura y continuidad solicitadas. Esta validación no demuestra
 
 por sí sola la procedencia ni la exactitud contable de los importes.
+
+Las columnas disponibles son `month` (mes de observación), `revenue_usd`
+(ingreso mensual en USD), `active_contracts` (contratos activos),
+`avg_contract_value_usd` (valor medio de contrato) y `business_line` (segmento
+de negocio). La serie usada cubre enero de 2016 a diciembre de 2025. En la
+revisión exploratoria se encontraron 120 filas consolidadas, una por cada mes,
+sin duplicados, huecos, nulos ni valores de ingreso no positivos; las fechas
+corresponden al primer día de mes y los campos numéricos se pudieron convertir.
 
 
 
@@ -230,6 +287,12 @@ Es un resumen exploratorio, no una prueba causal de que vacaciones o
 
 presupuestos produzcan esas diferencias.
 
+Decisiones de exploración: conservar el CSV de origen sin editar, filtrar la
+línea consolidada y no desagregar con porcentajes aproximados del briefing.
+También se distinguió el crecimiento de sumas anuales del crecimiento YoY del
+mismo mes; sus cifras no son intercambiables. Estos controles describen
+estructura y patrones, no validan la contabilidad ni el origen de los datos.
+
 
 
 ### 3.4. Dependencias y convenciones del proyecto
@@ -306,7 +369,7 @@ revisará la arquitectura aplicable antes de crear rutas.
 
   exactitud ni probabilidad. No se reentrenó el modelo ni se alteraron
 
-  hiperparámetros; Fase 5 permanece pendiente.
+  hiperparámetros; la visualización se completó en Fase 5.
 
 
 
@@ -346,7 +409,7 @@ importaciones relativas que requieren ese contexto.
 
 El PNG se guarda en `data/process/artifacts/sales_forecast_phase5.png`. La calibración se guarda en `forecast_variability_calibration.csv` y `forecast_variability_calibration.json`. La banda usa pocos folds históricos, no modela incertidumbre específica por horizonte y no garantiza cobertura; el gráfico cubre 24 meses de ingresos consolidados. Un punto fuera de banda no establece por sí mismo una causa comercial.
 
-## 4. Decisiones técnicas pendientes
+## 4. Decisiones técnicas y límites
 
 
 
@@ -354,27 +417,27 @@ El PNG se guarda en `data/process/artifacts/sales_forecast_phase5.png`. La calib
 
   consolidación y forma correcta de comparar crecimiento anual.
 
-- En Fase 2, usar un split cronológico fijo: 96 meses de entrenamiento
+- Se fijó en Fase 2 un split cronológico: 96 meses de entrenamiento
 
   (2016–2023) y 24 de prueba (2024–2025), sin aleatorización.
 
-- Elegir Random Forest o XGBoost tras revisar dependencias, tamaño reducido y
+- Se eligió Random Forest (no XGBoost) tras revisar dependencias, tamaño reducido y
 
   estrategia temporal. No se eligió ni entrenó un modelo en esta fase.
 
-- Definir features causales y predicción recursiva que no consulte ingresos
+- Se definieron features causales y predicción recursiva que no consulta ingresos
 
   reales del período de prueba para los lags o ventanas móviles.
 
-- Acordar definición de caída anómala para ROC-AUC/Gini y revisar cuántos casos
+- Se acordó una definición operativa de caída anómala para ROC-AUC/Gini y se revisó
 
   reales hay; no calcularla antes de esa decisión.
 
-- Investigar K2 Score y solicitar aprobación para cualquier definición no
+- Se documentó el K2 Score con la definición aprobada basada en RMSSE; no es una
 
   documentada.
 
-- Elegir una metodología respaldada por datos de entrenamiento para la banda
+- Se eligió una metodología basada solo en validación de entrenamiento para la banda
 
   de variabilidad y una ubicación de artefactos coherente con el monorepo.
 
@@ -424,7 +487,7 @@ no se puede afirmar que el patrón anual sea exactamente determinista ni que la
 
 fuente esté respaldada por un contexto de datos formal. La próxima fase debe
 
-preparar una estrategia temporal reproducible, previa autorización expresa.
+preparar una estrategia temporal reproducible, que quedó fijada en la Fase 2.
 
 
 
@@ -518,14 +581,14 @@ Durante la primera ejecución, una comparación exacta de dos promedios flotante
 
 
 
-### 7.5. Límites y siguiente autorización
+### 7.5. Límites y transición a la siguiente fase
 
 
 
-La Fase 2 está cerrada: validación de datos, features, split fijo, cálculo interanual mensual y salvaguardas de preparación recursiva implementados y probados. Queda pendiente la decisión de dependencias y entorno antes de entrenar, además de los asuntos de Gini/ROC-AUC, K2, caída anómala y banda de variabilidad documentados arriba. No se inició la Fase 3. Se requiere autorización expresa antes de seleccionar o ajustar modelos.
+La Fase 2 quedó cerrada con validación de datos, features, split fijo, cálculo interanual mensual y salvaguardas de preparación recursiva. En aquel cierre se dejaron para fases posteriores la decisión de entorno y los asuntos de evaluación/anomalías; se resolvieron/documentaron en las fases siguientes.
 
 
-## 8. Fase 3 — Random Forest y forecast recursivo
+## Fase 3 — Random Forest y forecast recursivo
 
 Se seleccionó `RandomForestRegressor` de scikit-learn con `random_state=42`, 300 árboles, profundidad máxima 5, `min_samples_split=4`, `min_samples_leaf=2` y `max_features=0.8`. La configuración conservadora evita una búsqueda de hiperparámetros guiada por el período holdout. Del período 2016–2023 hay 96 meses; las variables causales requieren 12 meses de historia y quedan 84 observaciones objetivo para ajustar el estimador (enero 2017–diciembre 2023).
 
@@ -533,17 +596,206 @@ El pronóstico se genera secuencialmente para los 24 meses de enero de 2024 a di
 
 Artefactos reproducibles en `data/process/artifacts/`: `sales_random_forest.joblib`, `sales_forecast_predictions.csv`, `feature_importance.csv` y `training_metadata.json`. La variable de mayor importancia impurity-based fue `revenue_lag_12` (~0,753), seguida por `month` (~0,063) y `revenue_roll_mean_12` (~0,045). Esta importancia no es causal y puede distorsionarse por la correlación entre retardos y promedios móviles.
 
-Las cuatro métricas de evaluación acordadas no se calcularon en esta fase. Fase 4 queda pendiente de autorización explícita.
+La selección de Random Forest y la configuración se documentan en `data/process/PHASE3_RANDOM_FOREST.md`; el entrenamiento está implementado en `train_sales_forecast.py`. Se conservó el modelo y sus predicciones congeladas al completar las fases siguientes.
+
+## Fase 4 — evaluación del holdout
+
+`evaluate_sales_forecast.py` lee las predicciones congeladas y calcula métricas; no vuelve a ajustar el modelo. Verifica que existan exactamente los 24 meses esperados y evalúa regresión, cambio de distribución de features (PSI), ranking de riesgo de caída (ROC-AUC/Gini) y K2 definido operativamente como RMSSE estacional. Los resultados completos están en `artifacts/evaluation_report.json`, `evaluation_report.md`, `psi_by_feature.csv` y `anomaly_risk_evaluation.csv`.
+
+### Resultados verificados
+
+| Métrica | Resultado | Qué indica y qué no indica |
+|---|---:|---|
+| MSE | 3812985067.1854653 USD² | Media de los errores al cuadrado; penaliza más los errores grandes y queda en unidades cuadradas. |
+| RMSE | 61749.37301046437 USD | Raíz del MSE, en unidades de ingreso; resume el tamaño del error, no la dirección. |
+| RMSE / ingreso medio real | 6.436495578851573% | RMSE dividido por el ingreso medio del holdout (959363.2474999999 USD). No es una probabilidad ni un porcentaje de meses correctos. |
+| ROC-AUC | 0.5714285714285714 | Capacidad de ordenar positivos sobre negativos para la etiqueta de riesgo elegida; 0.5 equivale a azar en interpretación idealizada. |
+| Gini | 0.1428571428571428 | `2 × ROC-AUC − 1`; resume el mismo ranking, no es una segunda evidencia independiente. |
+| Nexova K2 (RMSSE) | 1.181744769252833 | Raíz del MSE holdout dividido por el MSE de diferencias estacionales de 12 meses en entrenamiento. Mayor que 1: el error excede la escala de referencia estacional naïve. |
+
+K2 es el nombre operativo del proyecto para esta definición aprobada de RMSSE,
+no una métrica universal llamada K2. El valor **no demuestra mejora frente al
+baseline estacional naïve**; con esta definición queda por encima de su escala
+de error. No debe denominarse exactitud ni probabilidad.
+
+La etiqueta de anomalía de Fase 4 es crecimiento YoY real por debajo del
+percentil 10 histórico para el mismo mes calendario; hay **3 positivos entre 24**.
+ROC-AUC y Gini se basan en solo tres casos positivos y tienen incertidumbre alta;
+son descriptivos, no una validación estadística robusta. La regla es operativa,
+no un umbral de pérdida aprobado por el negocio.
+
+PSI compara distribuciones de features calculadas sobre entrenamiento con las
+features recursivas del holdout. La implementación usa hasta diez bins definidos
+por cuantiles de entrenamiento, límites infinitos y piso epsilon para evitar
+logaritmos de cero. PSI alto indica cambio de distribución bajo este esquema,
+no diagnostica su causa ni prueba por sí solo degradación predictiva. Se omiten
+los índices monótonos `year` y `trend` porque su desplazamiento cronológico es
+esperable. Los valores de la tabla son los del artefacto congelado:
+
+| Feature | PSI | Feature | PSI |
+|---|---:|---|---:|
+| `revenue_roll_mean_12` | 12.267849060308903 | `revenue_roll_mean_6` | 10.896828069482316 |
+| `revenue_roll_mean_3` | 9.426190484838484 | `revenue_lag_12` | 8.332302495132154 |
+| `revenue_lag_2` | 8.168126867711694 | `revenue_lag_3` | 8.107061441410115 |
+| `revenue_lag_6` | 8.105511607138943 | `revenue_lag_1` | 6.86778120421177 |
+| `revenue_roll_std_12` | 4.152021202950776 | `month_cos` | 0.0 |
+| `month_sin` | 0.0 | `quarter` | 0.0 |
+| `month` | 0.0 | | |
+
+Los PSI de features de ingresos son grandes bajo la convención de bins usada;
+no se interpretan como evidencia automática de error de código. Reflejan una
+diferencia marcada entre el historial de entrenamiento y la distribución
+recursiva posterior. Las guías heurísticas habituales de umbral PSI no son
+universales y estos valores extremos, con 24 meses de comparación, requieren
+investigar estabilidad antes de un uso operativo.
+
+## Fase 5 — visualización y banda de variabilidad
+
+`visualize_sales_forecast.py` lee el CSV congelado, el informe de evaluación y
+las filas de anomalía, y guarda `data/process/artifacts/sales_forecast_phase5.png`.
+La línea real muestra ingresos observados del holdout; la línea predicha muestra
+el pronóstico recursivo fijado en Fase 3. La banda centrada en la predicción usa
+el percentil empírico 90 de errores absolutos recursivos de tres folds de
+validación anteriores al holdout, con 12 meses por fold y 36 errores agrupados.
+Su semianchura congelada es 85365.16010281869 USD (aprox. ±85,365 USD). Es una banda
+orientativa de variabilidad, no un intervalo de confianza: no tiene cobertura
+probabilística garantizada ni es específica del horizonte mensual.
+
+Los marcadores de desviación señalan reales fuera de la banda (3 en el holdout).
+No son automáticamente anomalías de negocio: la banda es una referencia
+empírica y no explica causas. Es distinto de la etiqueta de Fase 4, que identifica
+3 meses con crecimiento YoY bajo un umbral estacional de entrenamiento. La
+coincidencia en el conteo no hace iguales las definiciones ni necesariamente los
+meses señalados.
+
 ## Fase 6 — pruebas automatizadas (completada)
 
-Las pruebas automatizadas convierten las reglas del pipeline en comprobaciones repetibles: detectan cambios accidentales antes de confiar en un nuevo resultado. En una serie temporal, el split debe respetar el orden cronológico; mezclar meses futuros en entrenamiento produce fuga temporal y una evaluación artificialmente optimista. El warm-up de 12 meses solo reduce las filas supervisadas disponibles (96 a 84); no desplaza los límites del split (entrenamiento 2016–2023, 96 meses; holdout 2024–2025, 24 meses).
+La validación combinada de Fases 2, 3, 4 y 6 terminó con **25 passed**; la suite
+individual Phase 6 contiene **10 passed**. La cobertura incluye split y fechas,
+warm-up y filas de entrenamiento, validación de datos, features causales,
+recursión, independencia frente a valores reales del holdout, semilla y
+reproducibilidad contra el artefacto congelado, evaluación sobre el holdout,
+calibración pre-holdout y conservación de artefactos congelados mediante hashes.
+Las pruebas con salidas escriben en directorios temporales.
 
-La suite Phase 6 verifica carga y orden mensual, rechazo de datos inválidos, causalidad de lags/ventanas (los promedios usan ingresos desplazados), uso explícito de historial recursivo, cantidad de filas de entrenamiento y semilla. También compara dos entrenamientos aislados con el artefacto de predicciones congelado; comprueba el reporte sobre las 24 observaciones holdout; y verifica que la calibración se forma con tres folds anteriores al holdout (36 errores) y no cambia al envenenar valores holdout. La prueba de visualización escribe en `tmp_path` y compara hashes de modelo, predicciones, metadatos y evaluación para demostrar que permanecen intactos. No hay un transformador de preprocesamiento aprendido aparte del propio estimador que necesite un test fit/transform separado.
-
-Los tests que entrenan o generan visualizaciones redirigen las salidas a carpetas temporales. La evaluación y el test de conservación leen los artefactos congelados, sin reentrenarlos ni sobrescribirlos. Comando ejecutado para las fases probadas:
+Desde la raíz del repositorio, con el Python del entorno seleccionado:
 
 ```powershell
 python -m pytest data/process/test_sales_forecast_phase2.py data/process/test_sales_forecast_phase3.py data/process/test_sales_forecast_phase4.py data/process/test_sales_forecast_phase6.py -q
+python -m pytest data/process/test_sales_forecast_phase6.py -q
 ```
 
-Resultado: **24 pruebas aprobadas**. Un fallo en una prueba indica que una invariancia o contrato esperado dejó de cumplirse; no debe resolverse alterando el modelo o sus resultados congelados sin investigar la causa. No se inició la Fase 7.
+## Fase 7 — documentación y reproducción
+
+### Mapa de archivos
+
+| Ruta | Responsabilidad |
+|---|---|
+| `data/raw/nexova_sales.csv` | Fuente original; se mantiene sin editar. |
+| `data/process/sales_forecast.py` | Validación/carga, split, features causales, YoY y helper recursivo. |
+| `data/process/train_sales_forecast.py` | Ajusta el RF fijo, genera pronóstico recursivo y artefactos de Fase 3. |
+| `data/process/evaluate_sales_forecast.py` | Evalúa predicciones existentes y persiste reporte/PSI/anomalías. |
+| `data/process/visualize_sales_forecast.py` | Genera gráfico y resumen de calibración sin reentrenar el artefacto final. |
+| `data/process/test_sales_forecast_phase{2,3,4,6}.py` | Pruebas unitarias e integración del pipeline por fase. |
+| `data/process/artifacts/` | Modelo, predicciones, metadatos, evaluación, calibración y gráfico existentes. |
+
+El entrenamiento usa calendario (`year`, `month`, `quarter`, `trend`, seno y
+coseno del mes) y valores pasados de ingresos (lags 1/2/3/6/12, medias móviles
+3/6/12 y desviación móvil 12). Se excluyen `active_contracts` y
+`avg_contract_value_usd`: no hay garantía de que esos campos futuros estén
+disponibles al emitir un pronóstico. También se excluye la etiqueta actual de
+ingresos de las features. Las primeras 12 filas carecen de historia completa;
+por eso se ajusta con enero de 2017–diciembre de 2023 (84 objetivos), aunque el
+periodo nominal de entrenamiento siga teniendo 96 meses.
+
+Los artefactos de Fase 3 son `sales_random_forest.joblib`,
+`sales_forecast_predictions.csv`, `feature_importance.csv` y
+`training_metadata.json`. Evaluación añade `evaluation_report.json`,
+`evaluation_report.md`, `psi_by_feature.csv` y `anomaly_risk_evaluation.csv`;
+Fase 5 añade el PNG y archivos de calibración. El conjunto versionado/congelado
+debe tratarse como salida de referencia; no lo sobrescribas al repetir tests.
+
+### Pasos para reproducir
+
+1. Usa Windows y un Python compatible con las dependencias declaradas. La
+  implementación fue verificada con Python 3.14.6; `.python-version` y
+  `pyproject.toml` documentan el entorno fijado del repositorio. Comprueba
+  versiones compatibles si utilizas otro Python.
+2. Desde la raíz, crea/activa un entorno virtual `.venv` (por ejemplo,
+  `uv venv --python 3.14`). No reutilices el entorno de otro servicio si sus
+  dependencias interfieren.
+3. Instala las dependencias de forecasting con el comando verificado:
+
+  ```powershell
+  uv pip install --python .venv\Scripts\python.exe -r data/process/requirements.txt
+  ```
+
+4. Para volver a entrenar explícitamente —esto **sobrescribe** los artefactos
+  de Fase 3 y por ello no es necesario para evaluar o visualizar los resultados
+  congelados— ejecuta desde la raíz:
+
+  ```powershell
+  .venv\Scripts\python.exe -m data.process.train_sales_forecast
+  ```
+
+5. Para recalcular evaluación de los artefactos existentes, ejecuta:
+
+  ```powershell
+  uv run python -m data.process.evaluate_sales_forecast
+  ```
+
+  `uv run` usa el entorno del proyecto, que debe incluir las dependencias del
+  pipeline; si solo se instaló el requirements específico en `.venv`, usa
+  `.venv\Scripts\python.exe -m data.process.evaluate_sales_forecast`. El
+  módulo no reentrena, pero guarda/sobrescribe reporte, PSI y anomalías. Para
+  preservar los resultados congelados, lee los informes existentes en vez de
+  ejecutarlo.
+6. Para regenerar únicamente el gráfico y calibración, sin reentrenar, usa el
+  comando verificado:
+
+  ```powershell
+  uv run python -m data.process.visualize_sales_forecast
+  ```
+
+  `-m` importa y ejecuta el archivo como módulo dentro de `data.process`;
+  es necesario porque el script emplea imports relativos. El visualizador lee
+  artefactos existentes y escribe sus salidas de gráfico/calibración.
+7. Ejecuta las dos órdenes de pytest de la sección Fase 6. Para el mismo
+  intérprete elegido explícitamente, antepone a cada una
+  `.venv\Scripts\python.exe -m pytest` en lugar de `python -m pytest`. En
+  este proyecto, `uv run` usa el entorno declarado en `pyproject.toml`; instala
+  allí las dependencias de `data/process/requirements.txt` si ejecutas el
+  comando de pytest con `uv run`.
+
+### Problemas resueltos y límites finales
+
+El warm-up de 12 meses se trató como disponibilidad de historia, no como una
+razón para mover los límites del split. La recursión usa reales solo hasta
+diciembre de 2023 y después añade predicciones; las pruebas de perturbación del
+holdout comprueban que sus reales no contaminan el forecast ni la calibración.
+Para comparar errores se definió K2 explícitamente con RMSSE estacional naïve
+de lag 12, calculado con 84 diferencias de entrenamiento. Para la banda se
+eligieron folds recursivos pre-holdout porque los errores del propio test no
+deben calibrar una banda que luego se presenta sobre ese test. Se usa `python
+-m`/`uv run ... -m` donde los imports relativos requieren el contexto del
+paquete. Las dependencias se aislaron en `.venv`.
+
+El proyecto implementa un flujo reproducible de datos mensuales consolidados,
+entrenamiento, pronóstico, evaluación, visualización y tests. En este holdout,
+RMSE es 6.44% del ingreso medio, pero K2=1.181745 está por encima de 1: no hay
+evidencia de superioridad frente a la referencia estacional naïve. PSI indica
+cambio fuerte en la distribución de varias features; ROC-AUC/Gini tienen solo
+tres positivos. El dataset contiene 120 meses, el holdout 24 y el análisis
+consolidado no permite valorar mix de negocio. La banda tampoco es un intervalo
+de confianza. Son límites sustantivos, no detalles que una sola métrica pueda
+resolver.
+
+Posibles mejoras (no implementadas): más historia y evaluación walk-forward con
+múltiples periodos; comparación explícita de pronósticos y baseline naïve por
+horizonte; umbrales de desviación acordados con negocio; más datos de drivers
+disponibles al origen de forecast; análisis de estabilidad y recalibración
+periódica; y monitoreo operativo. El proyecto no está integrado en la API ni en
+la web y no debe describirse como listo para producción.
+
+La Fase 7 cierra la documentación de este ejercicio. No se modificaron el modelo,
+los hiperparámetros, predicciones congeladas ni resultados de evaluación.
