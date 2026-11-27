@@ -1,0 +1,147 @@
+{
+  "evaluation_period": {
+    "start": "2024-01-01",
+    "end": "2025-12-01"
+  },
+  "observation_count": 24,
+  "training_period": {
+    "start": "2016-01-01",
+    "end": "2023-12-01"
+  },
+  "phase3_experiment_verified": {
+    "algorithm": "sklearn.ensemble.RandomForestRegressor",
+    "random_state": 42,
+    "training_target_rows": 84,
+    "prediction_count": 24,
+    "prediction_path": "C:\\Users\\maria\\Documents\\Curso IA Engineer 4geeks\\GitHub\\ai-engineering-company-project-monorepo-Maria-del-Cid-2\\data\\process\\artifacts\\sales_forecast_predictions.csv",
+    "model_path": "C:\\Users\\maria\\Documents\\Curso IA Engineer 4geeks\\GitHub\\ai-engineering-company-project-monorepo-Maria-del-Cid-2\\data\\process\\artifacts\\sales_random_forest.joblib",
+    "no_retraining": true
+  },
+  "regression_metrics": {
+    "mse_usd_squared": 3812985067.1854653,
+    "rmse_usd": 61749.37301046437,
+    "mean_actual_revenue_usd": 959363.2474999999,
+    "rmse_pct_of_mean_actual": 6.436495578851573
+  },
+  "psi": {
+    "method": "10 train-quantile bins (unique quantile boundaries; infinite tails), epsilon floor 1e-6 then renormalize",
+    "reference_period": "2016-01 to 2023-12",
+    "comparison_period": "2024-01 to 2025-12",
+    "variables": [
+      {
+        "feature": "revenue_roll_mean_12",
+        "psi": 12.267849060308903,
+        "reference_non_null": 84,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_roll_mean_6",
+        "psi": 10.896828069482316,
+        "reference_non_null": 90,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_roll_mean_3",
+        "psi": 9.426190484838484,
+        "reference_non_null": 93,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_lag_12",
+        "psi": 8.332302495132154,
+        "reference_non_null": 84,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_lag_2",
+        "psi": 8.168126867711694,
+        "reference_non_null": 94,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_lag_3",
+        "psi": 8.107061441410115,
+        "reference_non_null": 93,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_lag_6",
+        "psi": 8.105511607138943,
+        "reference_non_null": 90,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_lag_1",
+        "psi": 6.86778120421177,
+        "reference_non_null": 95,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "revenue_roll_std_12",
+        "psi": 4.152021202950776,
+        "reference_non_null": 84,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "month_cos",
+        "psi": 0.0,
+        "reference_non_null": 96,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "month_sin",
+        "psi": 0.0,
+        "reference_non_null": 96,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "quarter",
+        "psi": 0.0,
+        "reference_non_null": 96,
+        "comparison_non_null": 24
+      },
+      {
+        "feature": "month",
+        "psi": 0.0,
+        "reference_non_null": 96,
+        "comparison_non_null": 24
+      }
+    ],
+    "interpretation_guidance": "Common heuristic: <0.10 small, 0.10\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u01530.25 moderate, >=0.25 material; not universal thresholds.",
+    "business_mix_note": "Consolidated-only data cannot measure outsourcing/headhunting/training mix stability."
+  },
+  "anomaly_gini": {
+    "definition": "Anomaly = actual same-calendar-month YoY growth below the calendar-month 10% quantile of training YoY growth (2017\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u01532023).",
+    "threshold_source": "training actuals only; per-calendar-month quantile",
+    "tail_quantile": 0.1,
+    "positive_count": 3,
+    "negative_count": 21,
+    "observation_count": 24,
+    "score_definition": "negative recursively predicted same-month YoY growth; higher means greater downside risk",
+    "roc_auc": 0.5714285714285714,
+    "gini": 0.1428571428571428,
+    "status": "valid",
+    "note": "AUC/Gini are undefined if either class is absent; no fallback or threshold tuning is applied."
+  },
+  "k2_score": {
+    "value": 1.181744769252833,
+    "numerator_test_mse": 3812985067.1854653,
+    "denominator_training_seasonal_naive_mse": 2730346258.471877,
+    "training_seasonal_differences": 84,
+    "seasonal_period_months": 12,
+    "status": "valid",
+    "name": "Nexova K2 Score (operationally defined as RMSSE)",
+    "formula": "sqrt(test MSE / training seasonal-naive MSE at lag 12)",
+    "training_period": "2016-01 to 2023-12",
+    "evaluation_period": "2024-01 to 2025-12",
+    "denominator_source": "training actual revenue only; 84 seasonal-naive differences",
+    "interpretation": "<1: below seasonal-naive reference scale; =1: equal; >1: above reference scale.",
+    "not_accuracy_percentage_or_probability": true
+  },
+  "limitations": [
+    "Only 24 monthly holdout observations; PSI and ROC-AUC/Gini have substantial sampling uncertainty.",
+    "The anomaly cutoff is a declared training-only seasonal lower-tail rule, not an externally validated business loss threshold.",
+    "PSI describes observed consolidated-series feature distributions, not business-line mix stability.",
+    "No confidence intervals or visualizations are produced in Phase 4."
+  ]
+}

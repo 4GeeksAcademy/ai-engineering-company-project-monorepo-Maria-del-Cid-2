@@ -303,13 +303,21 @@ revisará la arquitectura aplicable antes de crear rutas.
 
    comprobarse con resultados, sin forzar una puntuación.
 
-6. **K2 Score:** no se encontró una definición en los documentos consultados;
+6. **K2 Score:** implementado con autorización como RMSSE para Nexova. El
 
-   el barrido exploratorio del repositorio no aportó una definición aplicable.
+  nombre K2 es propio del proyecto, no universal. Se calcula como la raíz del
 
-   Su significado no se debe inventar. La implementación queda detenida hasta
+  MSE de los 24 pronósticos congelados dividido por el MSE estacional ingenuo
 
-   investigar/definir una fórmula y obtener aprobación expresa.
+  de entrenamiento (lag 12), calculado exclusivamente con los 96 meses de
+
+  2016-01 a 2023-12 (84 diferencias). K2 < 1 indica error por debajo de la
+
+  escala de referencia; = 1, igual; > 1, por encima. No es porcentaje de
+
+  exactitud ni probabilidad. No se reentrenó el modelo ni se alteraron
+
+  hiperparámetros; Fase 5 permanece pendiente.
 
 
 
