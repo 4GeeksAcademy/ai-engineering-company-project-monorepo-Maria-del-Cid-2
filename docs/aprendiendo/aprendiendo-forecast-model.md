@@ -51,7 +51,7 @@ el cambio real del mix de negocio.
 
 | 4. Evaluación | Calcular métricas acordadas con el período 2024–2025. | Pendiente |
 
-| 5. Visualización | Mostrar realidad, predicción y una banda de error con método explícito. | Pendiente |
+| 5. Visualización | Mostrar realidad, predicción y banda orientativa calibrada con validación temporal. | **Completada** |
 
 | 6. Pruebas | Verificar split, calidad, reproducibilidad y ausencia de fuga temporal. | Fases 2 y 3 completadas; evaluación pendiente |
 
@@ -237,23 +237,13 @@ presupuestos produzcan esas diferencias.
 
 
 
-El `pyproject.toml` de la raíz no declara dependencias de ML. El manifiesto
+Las dependencias específicas del pipeline de forecasting se declaran en
+`data/process/requirements.txt`, separadas de las dependencias del servicio API.
+Desde la raíz del repositorio se instalan en el entorno `.venv` con:
 
-`services/api/pyproject.toml` sí declara pandas, pero no scikit-learn, XGBoost,
-
-Matplotlib ni NumPy de forma explícita. En el intérprete Python seleccionado
-
-para el entorno local se comprobaron imports: pandas, NumPy y pytest disponibles;
-
-scikit-learn, XGBoost y Matplotlib no disponibles. La disponibilidad local no
-
-equivale a una dependencia declarada ni garantiza que el entorno de despliegue
-
-las tenga. **No se instaló ninguna dependencia en esta fase.** Antes de la
-
-implementación habrá que decidir en qué manifiesto/entorno corresponde
-
-declararlas y confirmar si se necesitan todas.
+```powershell
+uv pip install --python .venv\Scripts\python.exe -r data/process/requirements.txt
+```
 
 
 
@@ -326,6 +316,36 @@ No se modificó ni corrigió el CSV. Los pesos de negocio del briefing no se
 usaron para construir observaciones inexistentes.
 
 
+
+## Fase 5 - visualización de resultados (2025-06)
+
+Se añadió `data/process/visualize_sales_forecast.py`. Lee el CSV de predicciones congeladas de Fase 3 y los resultados existentes de Fase 4; no reentrena ni modifica el modelo o las predicciones del holdout.
+
+### Banda orientativa de variabilidad
+
+Se reprodujo el procedimiento recursivo en tres validaciones de origen expansivo, con orígenes enero de 2020, enero de 2021 y enero de 2022, cada una con horizonte de 12 meses. En cada fold, el Random Forest se ajustó solo con observaciones previas al origen y con las variables e hiperparámetros guardados en `training_metadata.json`. Los meses pronosticados se añadieron al historial como predicciones, no como reales. Todos los errores de calibración son anteriores al holdout de 2024-2025.
+
+La semiamplitud es `q90(|real - predicho|)` en los 36 errores absolutos agrupados de los folds; se representa `predicción ± semiamplitud`. Se denomina **banda orientativa de variabilidad**, no intervalo de confianza: hay solo tres folds, se agrupan horizontes de 1 a 12 y no se garantiza cobertura futura. Ningún error del holdout interviene en este cálculo.
+
+### Lectura de diferencias y etiquetas
+
+Un marcador rojo indica un real fuera de la banda (`|real - predicho| > semiamplitud`). Es una desviación respecto a la variabilidad de los folds, no una anomalía de negocio confirmada. La cruz morada muestra por separado la etiqueta de Fase 4: crecimiento interanual real bajo el percentil 10 de entrenamiento para el mismo mes calendario. La regla de Fase 4 marcó 3 de los 24 meses del holdout. Son criterios distintos.
+
+El gráfico resume totales, diferencia acumulada, RMSE y K2. K2 = 1.181745 (>1) indica que el error supera la escala de error estacional ingenua en este holdout; no se presenta como mejora frente al baseline. Los totales y métricas describen este periodo; no son medidas de rentabilidad ni garantías futuras.
+
+### Generación y limitaciones
+
+Desde la raíz del repositorio, con las dependencias de forecasting instaladas,
+ejecutar:
+
+```powershell
+uv run python -m data.process.visualize_sales_forecast
+```
+
+Se usa `-m` para ejecutar el módulo dentro del paquete: el script contiene
+importaciones relativas que requieren ese contexto.
+
+El PNG se guarda en `data/process/artifacts/sales_forecast_phase5.png`. La calibración se guarda en `forecast_variability_calibration.csv` y `forecast_variability_calibration.json`. La banda usa pocos folds históricos, no modela incertidumbre específica por horizonte y no garantiza cobertura; el gráfico cubre 24 meses de ingresos consolidados. Un punto fuera de banda no establece por sí mismo una causa comercial.
 
 ## 4. Decisiones técnicas pendientes
 
