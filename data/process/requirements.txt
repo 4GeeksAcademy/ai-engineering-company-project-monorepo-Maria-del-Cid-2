@@ -1,0 +1,4 @@
+# Dependencies for the Nexova sales forecasting pipeline (not the API service).
+scikit-learn>=1.7,<2
+pandas>=2,<3
+joblib>=1.4,<2
