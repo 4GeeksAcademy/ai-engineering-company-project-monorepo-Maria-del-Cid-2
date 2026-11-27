@@ -4,8 +4,7 @@
 
 Guía didáctica del desarrollo por fases de un sistema de *forecasting* de
 
-ingresos. Este documento se actualizará al cerrar cada fase. **Estado actual: Fase 3 — entrenamiento y forecast recursivo completados. Fase 4 (evaluación) pendiente de autorización.
-preparado un modelo ni un pipeline.
+ingresos. Este documento se actualizará al cerrar cada fase. **Estado actual: Fase 6 — pruebas automatizadas completadas; fases 1–5 registradas. Fase 7 pendiente de autorización.
 
 
 
@@ -53,7 +52,7 @@ el cambio real del mix de negocio.
 
 | 5. Visualización | Mostrar realidad, predicción y banda orientativa calibrada con validación temporal. | **Completada** |
 
-| 6. Pruebas | Verificar split, calidad, reproducibilidad y ausencia de fuga temporal. | Fases 2 y 3 completadas; evaluación pendiente |
+| 6. Pruebas | Verificar split, calidad, reproducibilidad y ausencia de fuga temporal. | **Completada; suite relevante: 24 passed** |
 
 | 7. Documentación y revisión | Consolidar decisiones, resultados y límites del sistema. | Pendiente |
 
@@ -535,3 +534,16 @@ El pronóstico se genera secuencialmente para los 24 meses de enero de 2024 a di
 Artefactos reproducibles en `data/process/artifacts/`: `sales_random_forest.joblib`, `sales_forecast_predictions.csv`, `feature_importance.csv` y `training_metadata.json`. La variable de mayor importancia impurity-based fue `revenue_lag_12` (~0,753), seguida por `month` (~0,063) y `revenue_roll_mean_12` (~0,045). Esta importancia no es causal y puede distorsionarse por la correlación entre retardos y promedios móviles.
 
 Las cuatro métricas de evaluación acordadas no se calcularon en esta fase. Fase 4 queda pendiente de autorización explícita.
+## Fase 6 — pruebas automatizadas (completada)
+
+Las pruebas automatizadas convierten las reglas del pipeline en comprobaciones repetibles: detectan cambios accidentales antes de confiar en un nuevo resultado. En una serie temporal, el split debe respetar el orden cronológico; mezclar meses futuros en entrenamiento produce fuga temporal y una evaluación artificialmente optimista. El warm-up de 12 meses solo reduce las filas supervisadas disponibles (96 a 84); no desplaza los límites del split (entrenamiento 2016–2023, 96 meses; holdout 2024–2025, 24 meses).
+
+La suite Phase 6 verifica carga y orden mensual, rechazo de datos inválidos, causalidad de lags/ventanas (los promedios usan ingresos desplazados), uso explícito de historial recursivo, cantidad de filas de entrenamiento y semilla. También compara dos entrenamientos aislados con el artefacto de predicciones congelado; comprueba el reporte sobre las 24 observaciones holdout; y verifica que la calibración se forma con tres folds anteriores al holdout (36 errores) y no cambia al envenenar valores holdout. La prueba de visualización escribe en `tmp_path` y compara hashes de modelo, predicciones, metadatos y evaluación para demostrar que permanecen intactos. No hay un transformador de preprocesamiento aprendido aparte del propio estimador que necesite un test fit/transform separado.
+
+Los tests que entrenan o generan visualizaciones redirigen las salidas a carpetas temporales. La evaluación y el test de conservación leen los artefactos congelados, sin reentrenarlos ni sobrescribirlos. Comando ejecutado para las fases probadas:
+
+```powershell
+python -m pytest data/process/test_sales_forecast_phase2.py data/process/test_sales_forecast_phase3.py data/process/test_sales_forecast_phase4.py data/process/test_sales_forecast_phase6.py -q
+```
+
+Resultado: **24 pruebas aprobadas**. Un fallo en una prueba indica que una invariancia o contrato esperado dejó de cumplirse; no debe resolverse alterando el modelo o sus resultados congelados sin investigar la causa. No se inició la Fase 7.
