@@ -1,0 +1,19 @@
+[project]
+name = "ai-engineering-company-project-monorepo-maria-del-cid-2"
+version = "0.1.0"
+description = "Forecasting and AI engineering project monorepo"
+readme = "README.md"
+authors = [
+    { name = "Maria del Cid", email = "mariacidtl@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "joblib>=1.4,<2",
+    "matplotlib>=3.8,<4",
+    "pandas>=2,<3",
+    "scikit-learn>=1.7,<2",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"

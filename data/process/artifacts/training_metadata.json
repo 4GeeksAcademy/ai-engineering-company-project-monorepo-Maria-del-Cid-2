@@ -1,0 +1,53 @@
+{
+  "algorithm": "sklearn.ensemble.RandomForestRegressor",
+  "random_state": 42,
+  "training_period": {
+    "start": "2016-01-01",
+    "end": "2023-12-01"
+  },
+  "training_target_rows": 84,
+  "training_rows_with_warmup": 96,
+  "test_period": {
+    "start": "2024-01-01",
+    "end": "2025-12-01"
+  },
+  "recursive_prediction_count": 24,
+  "feature_columns": [
+    "year",
+    "month",
+    "quarter",
+    "trend",
+    "month_sin",
+    "month_cos",
+    "revenue_lag_1",
+    "revenue_lag_2",
+    "revenue_lag_3",
+    "revenue_lag_6",
+    "revenue_lag_12",
+    "revenue_roll_mean_3",
+    "revenue_roll_mean_6",
+    "revenue_roll_mean_12",
+    "revenue_roll_std_12"
+  ],
+  "hyperparameters": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "criterion": "squared_error",
+    "max_depth": 5,
+    "max_features": 0.8,
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 2,
+    "min_samples_split": 4,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 300,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "note": "No test actuals were used for fitting or recursive feature history."
+}

@@ -1,0 +1,19 @@
+{
+  "band": {
+    "method": "pooled empirical quantile of absolute recursive validation residuals",
+    "quantile": 0.9,
+    "half_width_usd": 85365.16010281869,
+    "validation_origins": 3,
+    "fold_count": 3,
+    "errors_used": 36,
+    "horizon_months": 12,
+    "training_period_only": true,
+    "is_confidence_interval": false
+  },
+  "deviations_outside_band": 3,
+  "phase4_anomaly_labels": 3,
+  "holdout_period": {
+    "start": "2024-01-01",
+    "end": "2025-12-01"
+  }
+}
